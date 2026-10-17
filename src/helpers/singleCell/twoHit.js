@@ -77,7 +77,7 @@ function tsgGenesOf(entry, tsgSet) {
  *        two damaging SNVs known to be in trans count as two hits in a cell that carries both
  * @returns [{ gene, state, hits: [{ kind, label, n, fraction, ids, key?, vaf?, site? }], tumorN, cells: { both, snvOnly, lossOnly, ... }, ... }]
  */
-export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes = GBM_TSG, phase = null } = {}) {
+export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes = GBM_TSG, phase = null, broadCn0 = null } = {}) {
   const geneSet = new Set(genes.map((g) => g.toUpperCase()));
   const isTsg = (g, role) => Boolean(g) && (geneSet.has(`${g}`.toUpperCase()) || roleIsTsg(role));
   let tumor = tumorIds && tumorIds.length ? new Set(tumorIds.map(String)) : null;
@@ -93,9 +93,11 @@ export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes 
   // calling problem in those cells, not a viable homozygous deletion; neither the event nor the per-cell allelic HOMDEL
   // calls of that gene are counted, and the call lists them as excluded
   const broad = new Map();
+  // _cohort/broad_cn0.json for this patient (gene -> { mb, cells }): independent of view filters that may drop the event
+  Object.entries(broadCn0 || {}).forEach(([g, b]) => broad.set(g, { mb: Number(b.mb), n: (b.cells || []).filter(keep).length, cells: new Set((b.cells || []).map(String)) }));
   entries.forEach((entry) => {
     const e = entry.event || {};
-    if (entry.cls === "homdel" && isBroadCn0(e)) tsgGenesOf(entry, isTsg).forEach((g) => broad.set(g, { mb: Number(e.cn0_segment_mb_median), n: splitIds(e.cell_ids).filter(keep).length }));
+    if (entry.cls === "homdel" && isBroadCn0(e)) tsgGenesOf(entry, isTsg).forEach((g) => !broad.has(g) && broad.set(g, { mb: Number(e.cn0_segment_mb_median), n: splitIds(e.cell_ids).filter(keep).length, cells: null }));
   });
   entries.forEach((entry) => {
     const e = entry.event || {};
@@ -151,7 +153,15 @@ export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes 
     [[LOSS_CODE.HOMDEL, "homdel"], [LOSS_CODE.LOH, "loh"], [LOSS_CODE.CNLOH, "cnloh"]].forEach(([code, kind]) => {
       const ids = groups[code];
       if (!ids.length) return;
-      if (kind === "homdel" && broad.has(g)) return; // broad CN-0 artefact (see above)
+      // broad CN-0 artefact (see above): drop those cells' HOMDEL calls (all of them when the cell list is unknown)
+      if (kind === "homdel" && broad.has(g)) {
+        const bc = broad.get(g).cells;
+        if (!bc) return;
+        const kept = ids.filter((id) => !bc.has(id));
+        ids.length = 0;
+        kept.forEach((id) => ids.push(id));
+        if (!ids.length) return;
+      }
       if (kind === "homdel") slotG.hits = slotG.hits.filter((h) => h.kind !== "homdel"); // allelic calls replace the events' HOMDEL rows
       slotG.hits.push({ kind, ids, n: ids.length, fraction: covered ? ids.length / covered : 0, source: "per-cell allelic CN (allelic.json)", text: kind === "homdel" ? `${g} homozygous deletion` : `${HIT_LABEL[kind]} at ${g}` });
     });

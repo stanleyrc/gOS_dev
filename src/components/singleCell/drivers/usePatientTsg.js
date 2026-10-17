@@ -12,11 +12,13 @@ export default function usePatientTsg(entries, tumorIds) {
   const patient = useSelector((s) => s.SingleCell.patient);
   const loss = useCohortExport(dataset, "tsg_loss.json");
   const phase = useCohortExport(dataset, "tsg_phase.json");
+  const broad = useCohortExport(dataset, "broad_cn0.json");
+  const myBroad = broad.data?.patients?.[patient?.caseReportId] || null;
   const myPhase = phase.data?.patients?.[patient?.caseReportId] || null;
   const mine = loss.data?.patients?.[patient?.caseReportId] || null;
   return useMemo(() => {
-    const calls = twoHitCalls(entries || [], { loss: mine, tumorIds, phase: myPhase });
+    const calls = twoHitCalls(entries || [], { loss: mine, tumorIds, phase: myPhase, broadCn0: myBroad });
     attachCalls(entries || [], calls);
     return { calls, secondHits: secondHitMap(calls), status: loss.status, hasLoss: Boolean(mine) };
-  }, [entries, mine, myPhase, tumorIds, loss.status]);
+  }, [entries, mine, myPhase, myBroad, tumorIds, loss.status]);
 }
