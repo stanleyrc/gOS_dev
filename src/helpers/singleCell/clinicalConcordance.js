@@ -159,7 +159,7 @@ export function tmbRows(recovery) {
 
 const OBSOLETE = "old_truncal_mutations";
 /** Annotation strip (Fig. 1b style) for one patient from clinical_assays.json clinical_meta; every field is real or "not available". */
-export function metaStrip(assays, patient) {
+export function metaStrip(assays, patient, regions = null) {
   const m = assays?.clinical_meta?.patients?.[patient];
   const src = assays?.clinical_meta?.source || "clinical metadata";
   const na = (why) => ({ value: null, why });
@@ -175,7 +175,12 @@ export function metaStrip(assays, patient) {
       ...(m?.truncal_mutations_mapped != null ? { value: m.truncal_mutations_mapped.toLocaleString("en-US"), sub: m.truncal_tree_sites != null ? `${m.truncal_tree_sites.toLocaleString("en-US")} tree sites` : null } : na(m?.truncal_mutations_mapped_note || "no mapping for current tree")),
     },
     { key: "recurrence", label: "Primary / recurrent", ...na("not in any data file") },
-    { key: "regions", label: "Regions sampled", ...na("not in any data file") },
+    {
+      key: "regions",
+      label: "Regions sampled",
+      tip: "tumour regions with sequenced cells (cell metadata region field, _cohort/regions.json)",
+      ...(regions?.patients?.[patient] ? { value: `${regions.patients[patient].n_regions}`, sub: regions.patients[patient].regions.join(", ") } : na(regions ? "no regions for this patient in _cohort/regions.json" : "_cohort/regions.json not exported")),
+    },
   ];
   // the obsolete count must never be displayed
   return fields.filter((f) => f.key !== OBSOLETE);
