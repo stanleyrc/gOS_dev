@@ -229,7 +229,7 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {} }) {
     return ev ? driverHref(p, ev) : null;
   };
   const vafPts = vaf.map((p) => ({ ...p, tip: `${p.patient} ${p.label}\nclinical VAF ${(100 * p.x).toFixed(0)}%, single-cell pooled VAF ${(100 * p.y).toFixed(1)}% (${p.carriers ?? "?"} of ${p.covered ?? "?"} covered tumour cells)${p.germlineLike ? "\nalso present in normal cells (germline-like)" : ""}`, href: href(p.patient, p.row, "snv"), show: p.status === "not_recovered" || p.y < 0.02 }));
-  const cnPts = cn.map((p) => ({ ...p, show: true, tip: `${p.patient} ${p.label}\nclinical estimate ${p.x} copies; single-cell median CN ${p.y} (mean ${p.yMean}, max ${p.yMax}); ${(100 * p.frac).toFixed(0)}% of tumour cells amplified`, href: href(p.patient, p.row, "cnv") }));
+  const cnPts = cn.map((p) => ({ ...p, show: true, tip: `${p.patient} ${p.label}\nclinical estimate ${p.x} copies; single-cell carrier-cell median CN ${p.y} (all tumour cells ${p.yAll}, mean ${p.yMean}, max ${p.yMax}); ${(100 * p.frac).toFixed(0)}% of tumour cells amplified`, href: href(p.patient, p.row, "cnv") }));
   const sumCols = [
     { title: "Alteration type", dataIndex: "kind", render: (k) => KIND_LABEL[k] },
     { title: "Reported", dataIndex: "total" },
@@ -276,8 +276,8 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {} }) {
         <HintLine text="Each point is a reported SNV / indel with a clinical VAF and enough single-cell coverage (pooled over all cells of the patient). Dashed line: equal VAF. Outlined points are also present in normal cells (germline-like). The clinical VAF is bulk (includes normal admixture and copy-number effects), so agreement is expected for clonal heterozygous variants only; points at 0 are covered sites with no tumour alt read." />
       </Card>
       <Card size="small" title="Copy number: clinical estimated copies vs single-cell CN">
-        {cnPts.length ? <Scatter points={cnPts} width={Math.min(width, 560)} theme={theme} logAxes xLabel="Clinical estimated copies (log)" yLabel="Single-cell median CN per tumour cell (log), bar to max" /> : <Text type="secondary">not available (no clinical amplification states copies)</Text>}
-        <HintLine text="Only amplifications whose report states 'estimated N copies' can be compared. The single-cell CN is the per-cell total CN at the gene (JaBbA graph), median over tumour cells; the vertical bar reaches the highest single cell. Bulk estimates are averages over cells, ecDNA-amplified genes vary widely between cells." />
+        {cnPts.length ? <Scatter points={cnPts} width={Math.min(width, 560)} theme={theme} logAxes xLabel="Clinical estimated copies (log)" yLabel="Single-cell median CN over carrier cells (log), bar to max" /> : <Text type="secondary">not available (no clinical amplification states copies)</Text>}
+        <HintLine text="Only amplifications whose report states 'estimated N copies' can be compared. The single-cell CN is the per-cell maximum total CN over the gene interval (JaBbA graph), median over the cells that carry the amplification; the vertical bar reaches the highest single cell. Bulk estimates are averages over cells, ecDNA-amplified genes vary widely between cells." />
       </Card>
       <Card size="small" title="Tumour mutational burden: clinical vs single-cell">
         {tmb.length ? <TmbBars rows={tmb} width={Math.min(width, 720)} theme={theme} /> : <Text type="secondary">not available (no clinical TMB)</Text>}
