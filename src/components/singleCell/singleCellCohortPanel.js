@@ -695,7 +695,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "clinical" && (
           <Col span={24}>
-            <CohortClinicalPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} rawFiles={cohortFiles.files} />
+            <CohortClinicalPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} rawFiles={cohortFiles.files} summaries={summaries} files={files} tsg={tsg} onOpenPatient={(id) => { const s = summaries.find((x) => x.caseReportId === id); if (s) openPatient(s); }} />
           </Col>
         )}
         {view === "eventassoc" && (
