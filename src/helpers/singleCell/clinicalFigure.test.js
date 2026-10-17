@@ -36,18 +36,24 @@ test("recovery counts", () => {
 });
 
 test("design counts with and without RNA", () => {
-  const d = designCounts({ recovery: rec, rnaCells: [{ patient: "P1", Region: "R1", Cell_Type: "Malignant" }, { patient: "P1", Region: "R2", Cell_Type: "T" }] });
+  const d = designCounts({ recovery: rec, rnaCells: [{ patient: "P1", Cell_Type: "Malignant" }, { patient: "P1", Cell_Type: "T" }], regions: { patients: { P1: { n_regions: 2 }, P2: { n_regions: 3 }, X: { n_regions: 9 } } } });
   expect(d.dnaTumour).toBe(15);
-  expect(d.regions.total).toBe(2);
+  expect(d.regions.total).toBe(5);
   expect(d.rna.malignant).toBe(1);
   const n = designCounts({ recovery: rec, rnaCells: null });
   expect(n.rna).toBeNull();
+  expect(n.regions).toBeNull();
+  expect(n.regionsWhy).toMatch(/not available/);
   expect(n.rnaWhy).toMatch(/not available/);
 });
 
 test("truncal/subclonal and state composition", () => {
   const t = truncalSubclonal({ patients: [{ patient: "A", patient_summary: { truncal: { n_sites: 5 }, subclonal: { n_sites: 9 } } }, { patient: "B", patient_summary: {} }] });
   expect(t).toHaveLength(1);
+  const t2 = truncalSubclonal({ patients: [{ patient: "A", patient_summary: { truncal: { n_sites: 5 }, subclonal: { n_sites: 9 } } }] }, { clinical_meta: { patients: { A: { truncal_mutations_mapped: 7 } } } });
+  expect(t2[0].truncal).toBe(7);
+  expect(t2[0].truncalSource).toBe("current tree map");
+  expect(t[0].truncalSource).toBe("tmb.json");
   const s = stateComposition([{ patient: "A", state: "MES", Cell_Type: "Malignant" }, { patient: "A", state: "AC", Cell_Type: "Malignant" }, { patient: "A", state: null, Cell_Type: "Malignant" }, { patient: "A", state: "MES", Cell_Type: "T" }]);
   expect(s[0].n).toBe(2);
   expect(s[0].frac.MES).toBe(0.5);

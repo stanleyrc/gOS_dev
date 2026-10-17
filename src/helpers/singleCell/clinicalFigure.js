@@ -121,15 +121,18 @@ export function recoveryCounts(recovery, patients) {
 }
 
 /** Clinical header strip rows: one entry per patient with the metaStrip fields and assay summary. */
-export function clinicalHeader(assays, recovery, patients, metaStrip) {
+export function clinicalHeader(assays, recovery, patients, metaStrip, regions = null) {
   return patients.map((id) => {
     const rec = recovery?.patients?.[id];
-    return { id, fields: metaStrip(assays, id), assays: (rec?.assays || []).map((a) => ({ assay: a.assay, status: a.status })), status: rec?.clinical_status || "none", tumourCells: rec?.tumour_cells ?? null };
+    return { id, fields: metaStrip(assays, id, regions), assays: (rec?.assays || []).map((a) => ({ assay: a.assay, status: a.status })), status: rec?.clinical_status || "none", tumourCells: rec?.tumour_cells ?? null };
   });
 }
 
-/** Fig. 1a: real design counts. RNA cells / regions only where rna/cells.json has them; others get a reason. */
-export function designCounts({ recovery, rnaCells, patients }) {
+/**
+ * Fig. 1a: real design counts. RNA cells from the per-patient rna/cells.json files (rnaCells, each cell tagged with its patient),
+ * regions from _cohort/regions.json (scripts/singleCell/export_regions.py); a missing source gets a reason.
+ */
+export function designCounts({ recovery, rnaCells, regions, patients }) {
   const ids = patients || Object.keys(recovery?.patients || {});
   let dnaTumour = 0;
   let dnaNormal = 0;
@@ -140,22 +143,30 @@ export function designCounts({ recovery, rnaCells, patients }) {
   });
   const out = { nPatients: ids.length, dnaTumour, dnaNormal, dnaCells: dnaTumour + dnaNormal, rna: null, regions: null };
   if (Array.isArray(rnaCells) && rnaCells.length) {
-    const rnaP = new Set(rnaCells.map((c) => c.patient));
-    const regByP = {};
-    rnaCells.forEach((c) => { if (c.Region) (regByP[c.patient] ||= new Set()).add(c.Region); });
-    out.rna = { cells: rnaCells.length, malignant: rnaCells.filter((c) => c.Cell_Type === "Malignant").length, patients: rnaP.size };
-    out.regions = { total: Object.values(regByP).reduce((s, x) => s + x.size, 0), patients: Object.keys(regByP).length, byPatient: Object.fromEntries(Object.entries(regByP).map(([p, s]) => [p, s.size])) };
+    out.rna = { cells: rnaCells.length, malignant: rnaCells.filter((c) => c.Cell_Type === "Malignant").length, patients: new Set(rnaCells.map((c) => c.patient)).size };
   }
-  out.rnaWhy = out.rna ? null : "not available (_cohort/rna/cells.json not exported)";
-  out.regionsWhy = out.regions ? `regions recorded for ${out.regions.patients} of ${out.nPatients} patients (those with RNA); not available for the others` : "not available (no region labels in any data file)";
+  const rp = regions?.patients;
+  if (rp && Object.keys(rp).length) {
+    const byPatient = Object.fromEntries(ids.filter((p) => rp[p]).map((p) => [p, rp[p].n_regions]));
+    out.regions = { total: Object.values(byPatient).reduce((x, y) => x + y, 0), patients: Object.keys(byPatient).length, byPatient };
+  }
+  out.rnaWhy = out.rna ? null : "not available (per-patient rna/cells.json not loaded)";
+  out.regionsWhy = out.regions ? `${out.regions.patients} of ${out.nPatients} patients; from the cell metadata region field` : "not available (_cohort/regions.json not exported)";
   return out;
 }
 
-/** Fig. 1d: truncal vs subclonal mutation sites per patient from tmb.json. Sorted by subclonal, ascending. */
-export function truncalSubclonal(tmb) {
+/**
+ * Fig. 1d: truncal vs subclonal mutation sites per patient. Subclonal = tmb.json sites; truncal = "truncal mutations (current tree)"
+ * of clinical_assays.json clinical_meta where available (source "current tree map"), else the tmb.json truncal sites ("tmb.json").
+ * Sorted by subclonal count, ascending.
+ */
+export function truncalSubclonal(tmb, assays = null) {
+  const meta = assays?.clinical_meta?.patients || {};
   const rows = (tmb?.patients || []).map((p) => {
     const s = p.patient_summary || {};
-    return { patient: p.patient, truncal: s.truncal?.n_sites ?? null, subclonal: s.subclonal?.n_sites ?? null, noisy: !!p.noisy, nCells: s.n_tumor_cells ?? null };
+    const m = meta[p.patient]?.truncal_mutations_mapped;
+    const fromMeta = m != null;
+    return { patient: p.patient, truncal: fromMeta ? m : s.truncal?.n_sites ?? null, truncalSource: fromMeta ? "current tree map" : "tmb.json", subclonal: s.subclonal?.n_sites ?? null, noisy: !!p.noisy, nCells: s.n_tumor_cells ?? null };
   }).filter((r) => r.truncal != null && r.subclonal != null);
   return rows.sort((a, b) => a.subclonal - b.subclonal);
 }

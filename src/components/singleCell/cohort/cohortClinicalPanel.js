@@ -8,6 +8,7 @@ import usePlotTheme from "../usePlotTheme";
 import SvgExportButton from "../svgExportButton";
 import HintLine from "../hintLine";
 import useClinicalAssays from "../clinical/useClinicalAssays";
+import useCohortExport from "./useCohortExport";
 import { ClinicalOncoprint, GlyphLegend, StackedRows } from "../clinical/clinicalViz";
 import { AgreementScatter, TmbPaired } from "../clinical/clinicalCharts";
 import Figure1Layout from "../clinical/figure1Layout";
@@ -31,6 +32,7 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {}, files = nu
   const [ref, width] = useContainerWidth(900);
   const ocRef = React.useRef(null);
   const { status, assays, recovery } = useClinicalAssays(dataset);
+  const regionsX = useCohortExport(dataset, "regions.json");
   const [view, setViewState] = useState(initialView);
   const setView = (v) => {
     setViewState(v);
@@ -46,7 +48,7 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {}, files = nu
   const [hideGerm, setHideGerm] = useState(false);
   const patients = useMemo(() => Object.keys(recovery?.patients || {}).sort(), [recovery]);
   const grid = useMemo(() => clinicalOncoprint(recovery, { patients, hideGermlineLike: hideGerm }), [recovery, patients, hideGerm]);
-  const header = useMemo(() => clinicalHeader(assays, recovery, patients, metaStrip), [assays, recovery, patients]);
+  const header = useMemo(() => clinicalHeader(assays, recovery, patients, metaStrip, regionsX.data), [assays, recovery, patients, regionsX.data]);
   const counts = useMemo(() => recoveryCounts(recovery, patients), [recovery, patients]);
   const summary = useMemo(() => summarize(recovery), [recovery]);
   const vaf = useMemo(() => vafPoints(recovery), [recovery]);
