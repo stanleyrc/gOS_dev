@@ -59,8 +59,8 @@ export function distinctHits(call, { minFraction = DEFAULT_TSG_VIEW.minFraction 
   return out.sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || b.n - a.n);
 }
 
-/** Missense hits kept only by a site-evidence rescue (tier 3, unknown effect): shown, not counted. */
-export const weakHits = (call) => call.hits.filter((h) => h.kind === "snv" && h.weak && h.n >= MIN_HIT_CELLS).map((h) => ({ label: h.protein || h.site, n: h.n, tier: h.tier, vaf: h.vaf, event: h.event }));
+/** Shown, not counted: rescued tier-3 missense, and chromosome / arm-scale CN-0 calls (broad_cn0). */
+export const weakHits = (call) => [...(call.excluded || []), ... call.hits.filter((h) => h.kind === "snv" && h.weak && h.n >= MIN_HIT_CELLS).map((h) => ({ label: h.protein || h.site, n: h.n, tier: h.tier, vaf: h.vaf, event: h.event }))];
 
 /** One gene in one patient: hits, count, same-cell fraction, clonality. */
 export function summarizeCall(call, patient, opts = {}) {
@@ -110,7 +110,7 @@ export function summaryTitle(s) {
     tail.push(`${s.sameCells}/${t} tumour cells (${pctText(s.sameFraction)}) have two hits in the same cell${s.carrierFraction != null ? `; ${pctText(s.carrierFraction)} of the mutation carriers` : ""}`);
     tail.push(s.clonal ? "clonal" : "subclonal");
   }
-  s.weak.forEach((w) => tail.push(`not counted: missense ${w.label} (tier ${w.tier ?? "?"}, unknown effect; ${w.n}/${t} tumour cells)`));
+  s.weak.forEach((w) => tail.push(w.event ? `not counted: missense ${w.label} (tier ${w.tier ?? "?"}, unknown effect; ${w.n}/${t} tumour cells)` : `not counted: ${w.label}`));
   if (s.phased) tail.push("two mutations phased in trans (read fragments covering both sites)");
   return [`${s.gene} in ${s.patient}`, ...lines, ...tail, `loss source: ${s.call.lossSource}`].join("\n");
 }

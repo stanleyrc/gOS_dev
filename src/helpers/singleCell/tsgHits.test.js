@@ -1,4 +1,4 @@
-import { LOSS_CODE, twoHitCalls } from "./twoHit";
+import { LOSS_CODE, isBroadCn0, twoHitCalls } from "./twoHit";
 import { badgeText, distinctHits, groupMultiHitEntries, inTsgSource, patientBadges, patientTally, summarizeCall, tsgGeneInfo, tsgHitGrid } from "./tsgHits";
 
 // synthetic fixtures only
@@ -121,5 +121,25 @@ describe("groupMultiHitEntries", () => {
     const calls = twoHitCalls(e, { tumorIds: cells, phase: { TP53: [{ a: "17:100", b: "17:200", relation: "trans" }] } });
     expect(groupMultiHitEntries(e, calls).map((d) => d.key)).toEqual(["TP53-100", "TP53-200", "egfr"]);
     expect(groupMultiHitEntries(e, [])).toBe(e);
+  });
+});
+
+describe("chromosome-scale CN-0 calls (broad_cn0)", () => {
+  it("are not counted as homozygous deletions, from the event or the per-cell allelic calls, and are listed as excluded", () => {
+    const hd = homdel("NF2", cells.slice(0, 14));
+    hd.event = { ...hd.event, broad_cn0: true, cn0_segment_mb_median: 50.8, cell_ids: cells.slice(0, 14).join(",") };
+    const entries = [hd, snv("NF2", cells.slice(0, 4), 100)];
+    const [c] = twoHitCalls(entries, { tumorIds: cells, loss: lossOf("NF2", code(14, LOSS_CODE.HOMDEL)) });
+    expect(c.homdelCells).toBe(0);
+    expect(c.state).toBe("monoallelic");
+    expect(c.excluded[0].label).toMatch(/50.8 Mb/);
+    const s = summarizeCall(c, "P1");
+    expect(s.nHits).toBe(1);
+    expect(s.weak[0].label).toMatch(/not counted as a homozygous deletion/);
+    expect(isBroadCn0({ broad_cn0: "true" })).toBe(true);
+  });
+  it("a focal HOMDEL still counts", () => {
+    const [c] = twoHitCalls([homdel("CDKN2A", cells.slice(0, 18))], { tumorIds: cells });
+    expect(c.state).toBe("homdel");
   });
 });

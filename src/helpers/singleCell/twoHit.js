@@ -30,6 +30,8 @@ export const LOSS_CODE = { UNKNOWN: -1, BALANCED: 0, LOSS_KEPT: 1, LOH: 2, CNLOH
 /** GBM tumour suppressors (plus OncoKB role "Tumor Suppressor" on the event itself). */
 export const GBM_TSG = ["PTEN", "NF1", "TP53", "CDKN2A", "CDKN2B", "RB1", "ATRX", "PTPN2", "NF2", "LZTR1", "SMARCB1", "CHEK2", "ARID1A", "ARID1B", "SETD2", "KMT2C", "KMT2D", "CIC", "FUBP1", "PIK3R1", "SPRED1", "STK11", "APC", "BRCA1", "BRCA2", "ATM"];
 
+/** HOMDEL event flagged by srctools gos_sc_homdel_qc as a chromosome / arm-scale CN-0 call. */
+export const isBroadCn0 = (e) => Boolean(e) && (e.broad_cn0 === true || `${e.broad_cn0}` === "true");
 export const HIT_LABEL = { snv: "SNV / indel", homdel: "homozygous deletion", loh: "LOH (loss of the other allele)", cnloh: "copy-neutral LOH", sv: "SV / fusion" };
 export const STATE_LABEL = { biallelic: "biallelic", homdel: "homozygous deletion", monoallelic: "monoallelic", none: "no hit" };
 
@@ -87,10 +89,19 @@ export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes 
     if (!byGene.has(g)) byGene.set(g, { gene: g, hits: [] });
     return byGene.get(g);
   };
+  // HOMDEL events whose CN-0 segment is chromosome / arm scale (srctools gos_sc_homdel_qc broad_cn0): a copy-number
+  // calling problem in those cells, not a viable homozygous deletion; neither the event nor the per-cell allelic HOMDEL
+  // calls of that gene are counted, and the call lists them as excluded
+  const broad = new Map();
+  entries.forEach((entry) => {
+    const e = entry.event || {};
+    if (entry.cls === "homdel" && isBroadCn0(e)) tsgGenesOf(entry, isTsg).forEach((g) => broad.set(g, { mb: Number(e.cn0_segment_mb_median), n: splitIds(e.cell_ids).filter(keep).length }));
+  });
   entries.forEach((entry) => {
     const e = entry.event || {};
     const cls = entry.cls;
     if (cls !== "snv" && cls !== "homdel" && cls !== "fusion") return;
+    if (cls === "homdel" && isBroadCn0(e)) return;
     if (cls === "snv" && !damagingSnv(e)) return;
     tsgGenesOf(entry, isTsg).forEach((g) => {
       const ids = (entry.carriers || splitIds(e.cell_ids)).filter(keep);
@@ -140,6 +151,7 @@ export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes 
     [[LOSS_CODE.HOMDEL, "homdel"], [LOSS_CODE.LOH, "loh"], [LOSS_CODE.CNLOH, "cnloh"]].forEach(([code, kind]) => {
       const ids = groups[code];
       if (!ids.length) return;
+      if (kind === "homdel" && broad.has(g)) return; // broad CN-0 artefact (see above)
       if (kind === "homdel") slotG.hits = slotG.hits.filter((h) => h.kind !== "homdel"); // allelic calls replace the events' HOMDEL rows
       slotG.hits.push({ kind, ids, n: ids.length, fraction: covered ? ids.length / covered : 0, source: "per-cell allelic CN (allelic.json)", text: kind === "homdel" ? `${g} homozygous deletion` : `${HIT_LABEL[kind]} at ${g}` });
     });
@@ -152,6 +164,10 @@ export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes 
   }, 0);
   const tumorN = tumor ? tumor.size : denomFromEvents || lossCells.length || 1;
   const out = [];
+  broad.forEach((b, g) => {
+    const sl = byGene.get(g);
+    if (sl) sl.excluded = [{ label: `CN 0 over ${Number.isFinite(b.mb) ? b.mb.toFixed(1) : "?"} Mb (chromosome / arm scale) in ${b.n} cells: copy-number calling artefact, not counted as a homozygous deletion`, n: b.n }];
+  });
   byGene.forEach((s) => {
     s.hits.forEach((h) => {
       if (h.source === "filtered events") h.fraction = Number.isFinite(h.fraction) && h.fraction > 0 ? h.fraction : h.n / tumorN;
@@ -232,6 +248,7 @@ function classify(s, tumorN, hasLoss, trans = new Set()) {
     vafSuggestsLoh,
     lossSource: s.lossSource || (hasLoss ? "tsg_loss.json has no entry for this gene" : "filtered events only (tsg_loss.json not available)"),
     lossIds: new Set([...sets.loss, ...sets.homdel]),
+    excluded: s.excluded || [],
   };
   call.text = describeCall(call);
   return call;
