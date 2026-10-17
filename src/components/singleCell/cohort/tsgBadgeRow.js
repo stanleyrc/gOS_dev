@@ -9,8 +9,8 @@ const { Text } = Typography;
  * "TSG hits" badge row: one badge per tumour suppressor with two or more hits ("TP53 ×2 (biallelic, 98%)"), each linking to the driver in
  * the patient's Drivers layer. `tsg` is the result of useTsgBadges.
  */
-export default function TsgBadgeRow({ patient, tsg, label = "TSG hits" }) {
-  const head = <div style={{ fontSize: 12, color: "var(--sc-muted, #8c8c8c)", textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>;
+export default function TsgBadgeRow({ patient, tsg, label = "TSG hits", inline = false }) {
+  const head = inline ? null : <div style={{ fontSize: 12, color: "var(--sc-muted, #8c8c8c)", textTransform: "uppercase", letterSpacing: 0.3 }}>{label}</div>;
   if (!tsg || tsg.status === "loading") return null;
   if (tsg.status === "none") {
     return (
