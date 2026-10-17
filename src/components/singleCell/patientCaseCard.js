@@ -4,6 +4,8 @@ import { casePath, tryGet } from "../../redux/singleCell/loaders";
 import useCohortExport from "./cohort/useCohortExport";
 import { cardTmb, cardVignette, keyDrivers, parseClones, treeSource, tumourClones } from "../../helpers/singleCell/patientCard";
 import { driverHref, linkClick } from "../../helpers/singleCell/driverLink";
+import useTsgBadges from "./cohort/useTsgBadges";
+import TsgBadgeRow from "./cohort/tsgBadgeRow";
 
 const { Text } = Typography;
 const eventsCache = new Map();
@@ -54,6 +56,7 @@ export default function PatientCaseCard({ record, dataset, onClick }) {
   const v = useMemo(() => cardVignette(vig.data, pair), [vig.data, pair]);
   const tmb = useMemo(() => cardTmb(tmbDoc.data, pair), [tmbDoc.data, pair]);
   const drivers = useMemo(() => keyDrivers(events, 3), [events]);
+  const tsg = useTsgBadges(dataset, pair, events);
   const normalFromClones = clones.filter((c) => /^normal$/i.test(c.name)).reduce((s, c) => s + c.n, 0);
   const nCells = record.cell_count ?? v?.nCells;
   const nNormal = v?.nNormal ?? normalFromClones;
@@ -115,6 +118,7 @@ export default function PatientCaseCard({ record, dataset, onClick }) {
           <div><NA why={events === null ? "filtered.events.json" : "no tier-1 event"} /></div>
         )}
       </div>
+      <TsgBadgeRow patient={pair} tsg={tsg} />
       <div style={{ marginTop: "auto" }}>
         <Tooltip title={tree.file ? `${tree.file}${tree.noSnvs ? ": no SNVs on this tree yet; it will be replaced by the genotyping-pipeline tree" : ""}` : undefined}>
           <Tag color={tree.kind === "current" ? "green" : tree.kind === "older" ? "gold" : "default"} style={{ margin: 0 }}>

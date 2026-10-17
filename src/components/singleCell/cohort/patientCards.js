@@ -10,6 +10,7 @@ import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
 import { isTertPromoterSv, TERT_SV_LABEL } from "../../../helpers/singleCell/cohortStats";
 import { driverHref, linkClick } from "../../../helpers/singleCell/driverLink";
+import TsgBadgeRow from "./tsgBadgeRow";
 
 const { Text } = Typography;
 
@@ -62,7 +63,7 @@ function DriverTag({ patient, d, withFraction = false, style }) {
 }
 
 /** Body of a patient card: cells, clone bar, clonal / subclonal drivers, signatures, burden, RNA. */
-export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }) {
+export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null, tsg = null }) {
   const { t } = useTranslation("common");
   return (
     <Space direction="vertical" size={6} style={{ width: "100%" }}>
@@ -89,6 +90,7 @@ export function PatientCardBody({ report, cloneCounts, cloneColors, rna = null }
           ))}
         </div>
       </div>
+      {tsg && <TsgBadgeRow patient={report.patient} tsg={tsg} />}
       {report.signatures.all.length > 0 && (
         <div>
           <Text type="secondary" style={{ fontSize: 13, display: "block" }}>{t("components.single-cell.cohort.card-signatures")}</Text>

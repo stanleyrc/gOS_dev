@@ -1,3 +1,5 @@
+import useTsgBadges from "../cohort/useTsgBadges";
+import TsgBadgeRow from "../cohort/tsgBadgeRow";
 import React, { useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button, Card, Drawer, Empty, Skeleton, Space, Tag, Tooltip, Typography } from "antd";
@@ -177,6 +179,9 @@ export default function PatientVignette({ patientId = null }) {
   const { status, vignettes } = useVignettes(dataset);
   const { run, drawer, closeDrawer } = useEvidenceRunner(id);
   const vignette = vignettes?.patients?.[id] || null;
+  const events = useSelector((s) => s.FilteredEvents.filteredEvents);
+  const isOpen = !patientId || patientId === patient?.caseReportId;
+  const tsg = useTsgBadges(isOpen ? dataset : null, id, isOpen ? events || null : undefined);
 
   if (status === "loading") return <Skeleton active paragraph={{ rows: 4 }} />;
   if (!vignette) return status === "ok" ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`No vignette for ${id}`} /> : null;
@@ -202,6 +207,12 @@ export default function PatientVignette({ patientId = null }) {
         <Tag bordered={false} className="sc-vignette-metatag">Clones</Tag>
         <CloneLine vignette={vignette} cloneColors={cloneColors} onRun={run} />
       </div>
+      {isOpen && (
+        <div className="sc-vignette-meta" style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+          <Tag bordered={false} className="sc-vignette-metatag">TSG hits</Tag>
+          <TsgBadgeRow patient={id} tsg={tsg} inline />
+        </div>
+      )}
       <div className="sc-vignette-meta">
         <Tag bordered={false} className="sc-vignette-metatag">Caveats</Tag>
         <Text type="secondary" style={{ fontSize: TYPE.label }}>{vignette.caveat}</Text>

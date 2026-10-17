@@ -11,6 +11,7 @@ import { SC_GUTTER_INNER } from "./density";
 import useRnaFindings from "./rna/useRnaFindings";
 import { Provenance } from "./hintLine";
 import TmbCard from "./tmbCard";
+import useTsgBadges from "./cohort/useTsgBadges";
 
 /**
  * Single-cell summary on the patient's Overall tab: the same card as the
@@ -33,6 +34,7 @@ export default function ScPatientOverview() {
         : null,
     [singleCell, patient, events, cells, snv, signatures]
   );
+  const tsgBadges = useTsgBadges(singleCell ? dataset : null, patient?.caseReportId, singleCell ? events || null : undefined);
   const rna = useRnaFindings({ dataset: singleCell ? dataset : null, patientId: patient?.caseReportId, cells, report });
   if (!singleCell || !report) return null;
   const cloneCounts = {};
@@ -72,7 +74,7 @@ export default function ScPatientOverview() {
           </Space>
         </Col>
         <Col xs={24} lg={16}>
-          <PatientCardBody report={report} cloneCounts={cloneCounts} cloneColors={cloneColors} rna={rna} />
+          <PatientCardBody report={report} cloneCounts={cloneCounts} cloneColors={cloneColors} rna={rna} tsg={tsgBadges} />
         </Col>
       </Row>
     </Card>
