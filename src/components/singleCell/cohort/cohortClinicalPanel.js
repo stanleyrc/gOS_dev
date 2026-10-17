@@ -68,7 +68,10 @@ function Grid({ grid, assays, rawFiles, width, theme }) {
         {grid.patients.map((p, j) => (
           <g key={p.id} transform={`translate(${L + j * cw},0)`}>
             <text x={cw / 2} y={14} textAnchor="middle" fill={theme.text} fontSize={TYPE.label} fontWeight={600}>{p.id}</text>
-            <text x={cw / 2} y={28} textAnchor="middle" fill={theme.muted} fontSize={TYPE.micro + 0.5}>{p.assay ? `${p.assay}${p.note ? `: ${p.note}` : ""}` : p.note || ""}</text>
+            <text x={cw / 2} y={28} textAnchor="middle" fill={theme.muted} fontSize={TYPE.micro + 0.5}>
+              <title>{`${p.assay || "no assay"}${p.note ? `: ${p.note}` : ""}`}</title>
+              {p.status === "failed" ? "failed" : p.status === "nothing detected" ? "nothing found" : p.assay || p.note || ""}
+            </text>
             {meta[j].map((f, i) => (
               <g key={f.key}>
                 <title>{f.value == null ? `${f.label}: not available (${f.why})` : `${f.label}: ${f.value}${f.sub ? ` (${f.sub})` : ""}${f.tip ? `\n${f.tip}` : ""}`}</title>
