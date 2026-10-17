@@ -7,6 +7,9 @@ import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, isRescued, passesTier, rescueSourceText, driverGeneOf } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
+import { SPLICE_SHORT, spliceSourceText, spliceSupportOf } from "../../../helpers/singleCell/spliceSupport";
+import useCohortExport from "./useCohortExport";
+import { useSelector } from "react-redux";
 import { FONT, Swatches, YAxis } from "./charts";
 import { setPendingEvent } from "../pendingEventOpener";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
@@ -33,6 +36,8 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
   const [maxTier, setMaxTier] = useState("2d"); // tiers 1-2 plus damaging tier-3 missense
   const [picked, setPicked] = useState(null);
   const { map: qcMap } = useGeneReadQc();
+  const dataset = useSelector((st) => st.Settings?.dataset);
+  const { data: spliceDoc } = useCohortExport(dataset?.dataPath ? dataset : null, "splice_support.json");
   const isFlagged = (g) => !!qcMap.get(g)?.allFlagged;
 
   // gene -> patient -> class -> { cells, fraction } (strongest event per class)
@@ -102,7 +107,14 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
       width: 150,
       render: (_, r) => {
         const byClass = agg.get(r.gene)?.get(p);
-        if (!byClass) return <Text type="secondary">–</Text>;
+        const sp = spliceSupportOf(spliceDoc, p, r.gene);
+        // RNA-only aberrant splicing of a shown gene: not a DNA event (no bar), listed here so splicing evidence is not missed
+        const rnaOnly = sp?.support === "RNA" && !byClass?.splice ? (
+          <Tooltip title={spliceSourceText(spliceDoc, sp)}>
+            <span style={{ fontSize: 12, border: `1px dashed ${CLASS_COLORS.splice}`, borderRadius: 3, padding: "0 3px", cursor: "help" }}>splicing: RNA only</span>
+          </Tooltip>
+        ) : null;
+        if (!byClass) return rnaOnly || <Text type="secondary">–</Text>;
         return (
           <Space size={2} wrap>
             {Object.entries(byClass).map(([cls, c]) => (
@@ -110,9 +122,15 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
                 <span style={{ width: 8, height: 8, background: CLASS_COLORS[cls], borderRadius: 2 }} />
                 {`${c.cells} (${pct(c.fraction)})`}
                 <CladeF1Chip value={c.f1} />
+                {cls === "splice" && (
+                  <Tooltip title={spliceSourceText(spliceDoc, sp)}>
+                    <span style={{ fontSize: 11, border: `1px solid ${CLASS_COLORS.splice}`, borderRadius: 3, padding: "0 3px", cursor: "help" }}>{spliceDoc ? SPLICE_SHORT[sp?.support] || "DNA" : "DNA"}</span>
+                  </Tooltip>
+                )}
                 {c.rescued && <Tooltip title={`${rescueSourceText(c.event)}: carriers / covered tumour cells; ${c.event.covered_tumour_cells} of ${c.event.tumour_cells} tumour cells covered`}><span>†</span></Tooltip>}
               </span>
             ))}
+            {rnaOnly}
           </Space>
         );
       },
@@ -173,7 +191,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
                       acc += v;
                       return (
                         <rect key={cls} x={x1(p)} y={yTop} width={x1.bandwidth()} height={Math.max(0, h)} fill={CLASS_COLORS[cls]} stroke={INK.panel} strokeWidth={0.5}>
-                          <title>{`${g} · ${p} · ${t(`components.single-cell.cohort.class-${cls}`)}: ${byClass[cls].cells} cells (${pct(byClass[cls].fraction)})${byClass[cls].rescued ? ` - rescued from site evidence: carriers of ${byClass[cls].event.covered_tumour_cells} covered tumour cells (${byClass[cls].event.tumour_cells} total)` : ""}`}</title>
+                          <title>{`${g} · ${p} · ${t(`components.single-cell.cohort.class-${cls}`)}: ${byClass[cls].cells} cells (${pct(byClass[cls].fraction)})${byClass[cls].rescued ? ` - rescued from site evidence: carriers of ${byClass[cls].event.covered_tumour_cells} covered tumour cells (${byClass[cls].event.tumour_cells} total)` : ""}${cls === "splice" ? ` - ${spliceSourceText(spliceDoc, spliceSupportOf(spliceDoc, p, g))}` : ""}`}</title>
                         </rect>
                       );
                     })}
@@ -193,6 +211,9 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
           <text x={width - M.right} y={M.top - 4} textAnchor="end" fontSize={FONT.axis} fill={INK.muted}>{t("components.single-cell.cohort.genes-note")}</text>
         </svg>
         <Swatches items={EVENT_CLASS_ORDER.filter((c) => c !== "other").map((c) => ({ key: c, color: CLASS_COLORS[c], label: t(`components.single-cell.cohort.class-${c}`) }))} />
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          Splice: bars are splice-site SNVs found in DNA. The table marks each as <b>DNA</b> or <b>DNA+RNA</b> (aberrant splicing at that site in the scRNA reads), and lists <b>RNA only</b> aberrant splicing of the shown genes with no DNA variant. Hover for reads and cells.
+        </Text>
         <Table size="small" rowKey="gene" columns={columns} dataSource={ranked} pagination={{ pageSize: 10, size: "small" }} scroll={{ x: true }} style={{ marginTop: 12 }} />
       </div>
     </Card>
