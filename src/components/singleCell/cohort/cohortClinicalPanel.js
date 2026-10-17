@@ -61,13 +61,14 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {}, summaries 
     return ev ? driverHref(p, ev) : null;
   };
   const hrefOf = (p, e) => href(p, e.row, e.kind === "tert" ? "tert" : e.kind);
-  const vafPts = vaf.map((p) => ({ ...p, tip: `${p.patient} ${p.label}\nclinical VAF ${(100 * p.x).toFixed(0)}%, single-cell pooled VAF ${(100 * p.y).toFixed(1)}% (${p.carriers ?? "?"} of ${p.covered ?? "?"} covered tumour cells)${p.germlineLike ? "\nalso present in normal cells (germline-like)" : ""}`, href: href(p.patient, p.row, "snv"), show: true }));
+  const vafPts = vaf.map((p) => ({ ...p, tip: `${p.patient} ${p.label}\nclinical VAF ${(100 * p.x).toFixed(0)}%, single-cell pooled VAF ${(100 * p.y).toFixed(1)}% (${p.carriers ?? "?"} of ${p.covered ?? "?"} covered tumour cells)${p.germlineLike ? "\nalso present in normal cells (germline-like)" : ""}`, href: href(p.patient, p.row, "snv"), show: p.status === "not_recovered" || p.germlineLike }));
   const cnPts = cn.map((p) => ({ ...p, show: true, tip: `${p.patient} ${p.label}\nclinical estimate ${p.x} copies; single-cell carrier-cell median CN ${p.y} (all tumour cells ${p.yAll}, mean ${p.yMean}, max ${p.yMax}); ${(100 * p.frac).toFixed(0)}% of tumour cells amplified`, href: href(p.patient, p.row, "cnv") }));
   const typeRows = counts.byClass.map((c) => ({ label: ONCO_CLASS_LABEL[c.cls], counts: c.counts, total: c.total }));
   const patRows = counts.byPatient.filter((b) => b.total > 0).map((b) => ({ label: b.id, counts: b.counts, total: b.total }));
   const assessable = KINDS.reduce((s, k) => s + summary[k].assessable, 0);
   const recovered = KINDS.reduce((s, k) => s + summary[k].recovered, 0);
   const cw = Math.min(width - 24, 560);
+  const sw = width >= 900 ? Math.floor((width - 12) / 2) - 28 : width - 28;
   const missCols = [
     { title: "Patient", dataIndex: "patient" },
     { title: "Single-cell driver", dataIndex: "gene", render: (g, r) => { const ev = eventForCell(rawFiles?.[r.patient]?.events, { gene: g, genes: [g], protein: r.variant, type: r.type === "SCNA" ? (`${r.variant}` === "AMP" ? "Amplification" : "Loss") : "" }, r.type === "SCNA" ? "cnv" : r.type === "Fusion" ? "sv" : "snv"); const txt = `${g}${r.variant ? ` ${r.variant}` : ""} (${r.type})`; return ev ? <a href={driverHref(r.patient, ev)}>{txt}</a> : txt; } },
@@ -100,16 +101,16 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {}, summaries 
               <StackedRows rows={patRows} width={cw} theme={theme} title="Recovery by patient" />
             </Space>
           </Card>
-          <Space align="start" size={12} wrap style={{ width: "100%" }}>
-            <Card size="small" title="VAF: clinical assay vs single-cell pooled reads" style={{ flex: "1 1 420px" }}>
-              <AgreementScatter points={vafPts} width={Math.min(cw, 520)} theme={theme} xLabel="Clinical VAF" yLabel="Single-cell pooled VAF" xMax={1} yMax={1} pct />
+          <div style={{ display: "grid", gridTemplateColumns: width >= 900 ? "1fr 1fr" : "1fr", gap: 12 }}>
+            <Card size="small" title="VAF: clinical assay vs single-cell pooled reads" style={{ minWidth: 0 }}>
+              <AgreementScatter points={vafPts} width={sw} theme={theme} xLabel="Clinical VAF" yLabel="Single-cell pooled VAF" xMax={1} yMax={1} pct />
               <HintLine text="Each point is a reported SNV / indel with a clinical VAF and enough single-cell coverage. Dashed line: equal VAF. Hollow points are also present in normal cells (germline-like). Clinical VAF is bulk (normal admixture, copy-number effects), so agreement is expected for clonal heterozygous variants only." />
             </Card>
-            <Card size="small" title="Copy number: clinical estimate vs single-cell CN" style={{ flex: "1 1 420px" }}>
-              {cnPts.length ? <AgreementScatter points={cnPts} width={Math.min(cw, 520)} theme={theme} logAxes xLabel="Clinical estimated copies (log)" yLabel="Single-cell median CN, carrier cells (log)" /> : <Text type="secondary">not available (no clinical amplification states copies)</Text>}
+            <Card size="small" title="Copy number: clinical estimate vs single-cell CN" style={{ minWidth: 0 }}>
+              {cnPts.length ? <AgreementScatter points={cnPts} width={sw} theme={theme} logAxes xLabel="Clinical estimated copies (log)" yLabel="Single-cell median CN, carrier cells (log)" /> : <Text type="secondary">not available (no clinical amplification states copies)</Text>}
               <HintLine text="Only amplifications whose report states 'estimated N copies'. Single-cell CN = per-cell maximum total CN over the gene interval (JaBbA graph), median over carrier cells; the bar reaches the highest cell. ecDNA-amplified genes vary widely between cells." />
             </Card>
-          </Space>
+          </div>
           <Card size="small" title="Tumour mutational burden: clinical vs single-cell">
             {tmb.length ? <TmbPaired rows={tmb} width={Math.min(width - 24, 640)} theme={theme} /> : <Text type="secondary">not available (no clinical TMB)</Text>}
             <HintLine text="Units: mutations per Mb. Clinical = Oncopanel report (gene-panel territory). Single-cell (_cohort/tmb.json) = mutations per Mb of callable diploid genome, truncal + subclonal stacked, black tick = per-cell median. Different territories, so equality is not expected. n/a = no single-cell TMB for that patient." />

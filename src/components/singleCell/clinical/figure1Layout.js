@@ -7,7 +7,9 @@ import SvgExportButton from "../svgExportButton";
 import EvoTreeSvg from "../cohort/evoTreeSvg";
 import HintLine from "../hintLine";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
-import { cohortEntries, oncoprintGrid, sortColumns, DEFAULT_ONCOPRINT } from "../../../helpers/singleCell/cohortOncoprint";
+import { cohortEntries, sortColumns, DEFAULT_ONCOPRINT } from "../../../helpers/singleCell/cohortOncoprint";
+import { DEFAULT_OC_FILTERS, annotateEntries, filterOncoprint } from "../../../helpers/singleCell/cohortOncoprintFilters";
+import { useCgcGenes } from "../drivers/useDriverLayer";
 import { groupOncoprintRows } from "../../../helpers/singleCell/cohortStats";
 import { summarizeCall } from "../../../helpers/singleCell/tsgHits";
 import { metaStrip } from "../../../helpers/singleCell/clinicalConcordance";
@@ -217,11 +219,12 @@ export default function Figure1Layout({ dataset, assays, recovery, summaries = [
   const aligned = useCohortExport(dataset, "aligned_trees.json");
   const ids = useMemo(() => Object.keys(recovery?.patients || {}).sort(), [recovery]);
   const design = useMemo(() => designCounts({ recovery, rnaCells: rna.data?.cells, patients: ids }), [recovery, rna.data, ids]);
+  const cgc = useCgcGenes();
   const entries = useMemo(
-    () => Object.fromEntries(summaries.filter((s) => rawFiles[s.caseReportId]?.events).map((s) => [s.caseReportId, cohortEntries(rawFiles[s.caseReportId].events)])),
-    [summaries, rawFiles]
+    () => Object.fromEntries(summaries.filter((s) => rawFiles[s.caseReportId]?.events).map((s) => [s.caseReportId, annotateEntries(cohortEntries(rawFiles[s.caseReportId].events), { tree: rawFiles[s.caseReportId].tree, rnaFusions: rawFiles[s.caseReportId].rnaFusions, cgc })])),
+    [summaries, rawFiles, cgc]
   );
-  const grid = useMemo(() => oncoprintGrid(entries, DEFAULT_ONCOPRINT), [entries]);
+  const grid = useMemo(() => filterOncoprint(entries, DEFAULT_ONCOPRINT, DEFAULT_OC_FILTERS).grid, [entries]);
   const patients = useMemo(() => sortColumns(grid, "exclusivity"), [grid]);
   const rows = useMemo(() => groupOncoprintRows(grid.rows, "role"), [grid]);
   const header = useMemo(() => clinicalHeader(assays, recovery, patients, metaStrip), [assays, recovery, patients]);
