@@ -46,6 +46,8 @@ import usePlotTheme from "../usePlotTheme";
 import useContainerWidth from "../useContainerWidth";
 import useAltTree from "./useAltTree";
 import useTreeSupport from "./useTreeSupport";
+import useSnvSet, { useSnvSetIndex } from "./useSnvSet";
+import { CMP_SET_PARAM, CMP_TREE_A_PARAM, CMP_TREE_B_PARAM, NO_BOOTSTRAP_TEXT, defaultSnvSet, hasTreeSupport, serializeChoice, usableSnvSets, validChoice } from "../../../helpers/singleCell/compareChoices";
 import { SUPPORT_BINS, conflictSummary, labelSupport, supportBin, supportSummary } from "../../../helpers/singleCell/treeSupport";
 import { CnLegend, CnSide, useCnShared } from "./cnCompareHeatmaps";
 import { CMPHEAT_PARAM, cnWidth, figurePad, parseCmpHeat, serializeCmpHeat, showsCn, showsSnv } from "../../../helpers/singleCell/cnCompare";
@@ -83,16 +85,43 @@ export default function CompareTreesPanel() {
   const index = useSelector((s) => s.SingleCell.altTrees?.data);
   const cells = useSelector((s) => s.SingleCell.cells);
   const cloneColors = useSelector((s) => s.SingleCell.cloneColors) || {};
-  const snv = useSelector((s) => s.SingleCell.snv);
   const snvOrder = useSelector((s) => s.SingleCell.snvOrder);
   const siteFilter = useSelector((s) => s.SingleCell.layout) || {};
   const events = useSelector((s) => s.FilteredEvents?.filteredEvents);
   const trees = useMemo(() => usableTrees(index), [index]);
   const [defA, defB] = useMemo(() => defaultPair(trees), [trees]);
-  const [nameA, setNameA] = useState(null);
-  const [nameB, setNameB] = useState(null);
-  const a = nameA || defA;
-  const b = nameB || defB;
+  // tree A / tree B / mutation set are URL params (cmpa, cmpb, cmpset); the defaults are left out of the URL
+  const urlParam = (name) => {
+    try {
+      return new URL(window.location.href).searchParams.get(name);
+    } catch (error) {
+      return null;
+    }
+  };
+  const [nameA, setNameA] = useState(() => urlParam(CMP_TREE_A_PARAM));
+  const [nameB, setNameB] = useState(() => urlParam(CMP_TREE_B_PARAM));
+  const [setChoice, setSetChoice] = useState(() => urlParam(CMP_SET_PARAM));
+  const treeNames = trees.map((t) => t.name);
+  const a = validChoice(nameA, treeNames) || defA;
+  const b = validChoice(nameB, treeNames) || defB;
+  const setIndex = useSnvSetIndex();
+  const snvSets = useMemo(() => usableSnvSets(setIndex.data), [setIndex.data]);
+  const defSet = useMemo(() => defaultSnvSet(snvSets), [snvSets]);
+  const activeSet = snvSets.find((x) => x.name === setChoice) || snvSets.find((x) => x.name === defSet) || snvSets[0];
+  const snv = useSnvSet(setIndex.done ? activeSet : null);
+  useEffect(() => {
+    if (!trees.length || !setIndex.done) return;
+    try {
+      const url = new URL(window.location.href);
+      [[CMP_TREE_A_PARAM, serializeChoice(a, defA)], [CMP_TREE_B_PARAM, serializeChoice(b, defB)], [CMP_SET_PARAM, serializeChoice(activeSet?.name, defSet)]].forEach(([k, v]) => {
+        if (v) url.searchParams.set(k, v);
+        else url.searchParams.delete(k);
+      });
+      if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
+    } catch (error) {
+      // no window / history: the choices still live in state
+    }
+  }, [a, b, defA, defB, activeSet, defSet, trees.length, setIndex.done]);
   const supportFile = useTreeSupport();
   const treeA = useAltTree(a, supportFile.data);
   const treeB = useAltTree(b, supportFile.data);
@@ -478,7 +507,12 @@ export default function CompareTreesPanel() {
         suffix={c ? <span style={{ fontSize: TYPE.tick, color: theme.muted }}>{`n=${c.n}${c.sampled ? ` of ${c.eligible} (sampled)` : ""}`}</span> : null}
       />
       {layout ? <Text type="secondary" style={{ fontSize: TYPE.tick }}>{layout.leaves.length} cells in tree</Text> : null}
-      {supportOn && sup ? (
+      {supportOn && sup && !hasTreeSupport(supportFile.data, name) ? (
+        <div>
+          <Text type="secondary" style={{ fontSize: TYPE.tick }}>{NO_BOOTSTRAP_TEXT}</Text>
+        </div>
+      ) : null}
+      {supportOn && sup && hasTreeSupport(supportFile.data, name) ? (
         <div>
           <Text style={{ fontSize: TYPE.tick }}>
             {sup.n ? `Bootstrap support: median ${Math.round(sup.median * 100)}%, ${sup.nGe70} of ${sup.n} clades >= 70%` : "Bootstrap support: not available for this tree"}
@@ -522,6 +556,7 @@ export default function CompareTreesPanel() {
         <Space wrap size="middle" style={{ marginBottom: 8 }}>
           <span>Tree A <Select style={{ width: 210 }} value={a} options={treeOpts} onChange={(v) => { setNameA(v); setPick(null); }} /></span>
           <span>Tree B <Select style={{ width: 210 }} value={b} options={treeOpts} onChange={(v) => { setNameB(v); setPick(null); }} /></span>
+          <Tooltip title="Which SNV matrix the heatmaps, tracks and concordance use. Smaller sets load faster; sets other than the full matrix are fetched when first selected."><span>Mutation set <Select style={{ width: 250 }} value={activeSet?.name} loading={snv.status === "loading"} options={snvSets.map((x) => ({ value: x.name, label: `${x.label}${x.n_variants != null ? ` (${x.n_variants.toLocaleString()} sites)` : ""}` }))} onChange={(v) => { setSetChoice(v); setPick(null); setPainted([]); }} /></span></Tooltip>
           <span>Lines <Switch checked={showLinks} onChange={setShowLinks} /></span>
           <span>Hide normal cells <Switch checked={hideNormal} onChange={setHideNormal} /></span>
           <Tooltip title={t("components.single-cell.toolbar.clip-help")}><span>Shorten long branches <Switch checked={clip} onChange={setClip} disabled={cladogram} /></span></Tooltip>
