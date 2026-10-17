@@ -7,10 +7,9 @@ import SvgExportButton from "../svgExportButton";
 import EvoTreeSvg from "../cohort/evoTreeSvg";
 import HintLine from "../hintLine";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
-import { cohortEntries, sortColumns, DEFAULT_ONCOPRINT } from "../../../helpers/singleCell/cohortOncoprint";
-import { DEFAULT_OC_FILTERS, annotateEntries, filterOncoprint } from "../../../helpers/singleCell/cohortOncoprintFilters";
-import { useCgcGenes } from "../drivers/useDriverLayer";
-import { groupOncoprintRows } from "../../../helpers/singleCell/cohortStats";
+import { sortColumns } from "../../../helpers/singleCell/cohortOncoprint";
+import { groupOncoprintRows, oncoprintEventFilter, oncoprintMatrix } from "../../../helpers/singleCell/cohortStats";
+import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { summarizeCall } from "../../../helpers/singleCell/tsgHits";
 import { metaStrip } from "../../../helpers/singleCell/clinicalConcordance";
 import {
@@ -22,6 +21,8 @@ const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", snv: "#1B9E77", complex: "#E66101" };
 const CLASS_NAMES = { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "Fusion", complex: "Complex (DM / TIC / BFB)" };
 const SHAPE = { snv: "tert", amp: "amp", homdel: "homdel", fusion: "sv", complex: "snv" };
+const CLONAL_MIN = 0.8; // carrier fraction at or above which a driver is drawn solid (clonal); below = faded (subclonal)
+const classOf = (c) => (CLASS_COLORS[c] && c !== "snv" ? c : "snv"); // eventClass values trunc / splice / missense / promoter / other draw as SNV / indel
 const STATE_COLORS = { MES: "#D55E00", AC: "#E69F00", NPC: "#0072B2", OPC: "#009E73" };
 
 /** Panel frame: letter, title, per-panel SVG export. */
@@ -114,9 +115,9 @@ function CohortOncoSvg({ grid, rows, patients, header, clinIdx, tsg, width, them
                   return (
                     <g key={p}>
                       <rect x={x0 + 1} y={1} width={cw - 2} height={rh - 2} fill={theme.panelAlt} stroke={theme.borderSoft} rx={2} />
-                      {c && c.classes.slice(0, 2).map((cls, k, arr) => (
-                        <g key={cls} opacity={c.clonal ? 1 : 0.6}>
-                          <title>{`${p} ${g.gene}: ${CLASS_NAMES[cls]}, ${Math.round(100 * c.fraction)}% of tumour cells (${c.clonal ? "clonal" : "subclonal"})${bi ? `; tumour suppressor, two hits in the same cells (${s.badge})` : ""}`}</title>
+                      {c && [...new Set(c.all.map((e) => classOf(e.class)))].slice(0, 2).map((cls, k, arr) => (
+                        <g key={cls} opacity={(c.fraction ?? 0) >= CLONAL_MIN ? 1 : 0.6}>
+                          <title>{`${p} ${g.gene}: ${CLASS_NAMES[cls]}, ${c.fraction == null ? "?" : Math.round(100 * c.fraction)}% of tumour cells (${(c.fraction ?? 0) >= CLONAL_MIN ? "clonal" : "subclonal"})${bi ? `; tumour suppressor, two hits in the same cells (${s.badge})` : ""}`}</title>
                           <ClassGlyph cls={SHAPE[cls]} cx={x0 + (cw / arr.length) * (k + 0.5)} cy={rh / 2} r={Math.min(7, cw / arr.length / 2 - 2)} color={CLASS_COLORS[cls]} status="recovered" theme={theme} />
                         </g>
                       ))}
@@ -219,12 +220,13 @@ export default function Figure1Layout({ dataset, assays, recovery, summaries = [
   const aligned = useCohortExport(dataset, "aligned_trees.json");
   const ids = useMemo(() => Object.keys(recovery?.patients || {}).sort(), [recovery]);
   const design = useMemo(() => designCounts({ recovery, rnaCells: rna.data?.cells, patients: ids }), [recovery, rna.data, ids]);
-  const cgc = useCgcGenes();
-  const entries = useMemo(
-    () => Object.fromEntries(summaries.filter((s) => rawFiles[s.caseReportId]?.events).map((s) => [s.caseReportId, annotateEntries(cohortEntries(rawFiles[s.caseReportId].events), { tree: rawFiles[s.caseReportId].tree, rnaFusions: rawFiles[s.caseReportId].rnaFusions, cgc })])),
-    [summaries, rawFiles, cgc]
+  // same selection as the Drivers oncoprint of the cohort overview: tier 1-2 plus damaging tier-3, strong events, top 40 genes
+  const eventsByPatient = useMemo(
+    () => Object.fromEntries(summaries.filter((s) => rawFiles[s.caseReportId]?.events).map((s) => [s.caseReportId, rawFiles[s.caseReportId].events])),
+    [summaries, rawFiles]
   );
-  const grid = useMemo(() => filterOncoprint(entries, DEFAULT_ONCOPRINT, DEFAULT_OC_FILTERS).grid, [entries]);
+  const matrix = useMemo(() => oncoprintMatrix(eventsByPatient, { maxTier: "2d", maxGenes: 40, filter: oncoprintEventFilter({ base: isStrongEvent }) }), [eventsByPatient]);
+  const grid = useMemo(() => ({ patients: matrix.patients, rows: matrix.genes }), [matrix]);
   const patients = useMemo(() => sortColumns(grid, "exclusivity"), [grid]);
   const rows = useMemo(() => groupOncoprintRows(grid.rows, "role"), [grid]);
   const header = useMemo(() => clinicalHeader(assays, recovery, patients, metaStrip), [assays, recovery, patients]);
@@ -253,7 +255,7 @@ export default function Figure1Layout({ dataset, assays, recovery, summaries = [
       <Panel letter="a" title="Study design" name="a-design" note={`Counts from _cohort/clinical_recovery.json (DNA cells) and _cohort/rna/cells.json (RNA cells, regions). ${nPlaced} patients.`}>
         <DesignSvg d={design} theme={theme} width={width - 24} />
       </Panel>
-      <Panel letter="b" title="Oncoprint with clinical annotation" name="b-oncoprint" note="Glyph = driver class (tier 1-2 drivers, recommended set), faded = subclonal. Dot at the top right = the gene is in the clinical report and the colour is its recovery status (green recovered, orange partial, red not recovered, grey not assessable, hollow germline-like). Bar under the glyph = tumour suppressor with two hits in the same cells. Strip: _cohort/clinical_assays.json; primary / recurrent is not in any data file. Hover for details.">
+      <Panel letter="b" title="Oncoprint with clinical annotation" name="b-oncoprint" note="Glyph = driver class (tier 1-2 plus damaging tier-3, strong events, top 40 genes: the selection of the cohort Drivers oncoprint); faded = carried by < 80% of tumour cells. Dot at the top right = the gene is in the clinical report and the colour is its recovery status (green recovered, orange partial, red not recovered, grey not assessable, hollow germline-like). Bar under the glyph = tumour suppressor with two hits in the same cells. Strip: _cohort/clinical_assays.json; primary / recurrent is not in any data file. Hover for details.">
         {patients.length ? (
           <>
             <Space wrap size={[12, 2]} style={{ marginBottom: 6, fontSize: TYPE.tick }}>
