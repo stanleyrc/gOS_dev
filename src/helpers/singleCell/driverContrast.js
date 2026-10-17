@@ -30,6 +30,7 @@ export function driverLabel(e) {
 }
 
 export function driverKey(e) {
+  if (e.source === "clinical assay" && e.clinical_key) return e.clinical_key; // clinical findings without a filtered event (clinicalEvents.js)
   return `${driverLabel(e)}|${e.Genome_Location || `${e.seqnames}:${e.start}-${e.end}`}`;
 }
 
@@ -45,6 +46,7 @@ export function subclonalDrivers(events, tumorIds, layout, { minFraction = 0.05,
   if (!tumor.size) return [];
   const byKey = new Map();
   (events || []).forEach((e) => {
+    if (e.germline_like) return; // germline-like clinical findings are not somatic subclonal drivers
     const carriers = splitIds(e.cell_ids).filter((id) => tumor.has(id));
     const fraction = carriers.length / tumor.size;
     if (carriers.length < minCells || fraction < minFraction || fraction > maxFraction) return;

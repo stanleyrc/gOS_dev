@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useMergedEvents } from "./useClinicalEvents";
 import { useSelector } from "react-redux";
 import useTreeView from "../useTreeView";
 import useDriverEvidence from "./useDriverEvidence";
@@ -49,7 +50,7 @@ export function useProgramScores(rna) {
  * @returns { bundles, summaries: [summary], tumorIds, loading }
  */
 export default function useDriverSummaries(rna, { limit = 8, knownOnly = false } = {}) {
-  const events = useSelector((s) => s.FilteredEvents.filteredEvents);
+  const events = useMergedEvents();
   const cn = useSelector((s) => s.SingleCell.cn);
   const splicing = useSelector((s) => s.SingleCell.rnaSplicing);
   const { chromoBins, genomeLength } = useSelector((s) => s.Settings);

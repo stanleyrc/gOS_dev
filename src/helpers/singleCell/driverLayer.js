@@ -14,6 +14,7 @@ import { GBM_GENES } from "./geneInfo";
 import { cladeFitScore } from "./cladeFit";
 import { binAt, snvMetricValue } from "./matrix";
 import { eventGlobalPosition } from "./eventDomains";
+import { countsAsSomatic, hasClinical, isClinicalRow, isGermlineLike } from "./clinicalEvents";
 
 export const DRIVER_PRESETS = ["recommended", "subclonal", "hotspots", "all"];
 /** Readable names of gGnome event-classifier classes (raw vartype values such as "Cpxdm"). */
@@ -62,10 +63,12 @@ export function failsF1(d, f, fits) {
   return Number.isFinite(score) && score < min;
 }
 
-export const DEFAULT_SELECTION = { preset: "recommended", add: [], remove: [], filters: DEFAULT_FILTERS };
+/** `clinical`: show the clinical-assay findings (default on; off = the clinical file is not merged, URL drvclin=0). */
+export const DEFAULT_SELECTION = { preset: "recommended", add: [], remove: [], filters: DEFAULT_FILTERS, clinical: true };
 
 /** snv | amp | homdel | fusion | complex, or null for events the layer does not draw. */
 export function driverClassOf(event) {
+  if (isClinicalRow(event) && event.clinical?.kind === "SNV") return "snv"; // noncoding / intronic clinical variants have no event class
   const c = eventClass(event);
   if (c === "trunc" || c === "splice" || c === "missense" || c === "promoter") return "snv";
   return DRIVER_CLASSES.includes(c) ? c : null;
@@ -89,15 +92,36 @@ export function snvSiteIndex(snv) {
 
 /** Plain-language class label. */
 export function classLabel(entry) {
+  if (entry.clinicalOnly && (entry.cls === "amp" || entry.cls === "homdel")) return `${CN_KIND_LABEL[entry.cnKind] || entry.cls} (clinical assay)`;
   const v = `${entry.event?.vartype || ""}`;
   if (entry.cls === "snv" && entry.rescued) return isCalledNotTree(entry.event) ? "SNV called in the joint calls, not a tree site (read-level evidence)" : "Hotspot rescued from site evidence (not in SNV calls)";
   if (entry.cls === "complex") return /^dm$/i.test(v) ? DM_HELP : /^cpxdm$/i.test(v) ? "complex DM: double minute (ecDNA) with complex structure (gGnome event classifier)" : `${v || "Complex event"} (gGnome event classifier)`;
   return { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "SV fusion" }[entry.cls] || entry.cls;
 }
 
+/** Readable name of a copy-number class (clinical: gain / loss / amplification / deep deletion). */
+export const CN_KIND_LABEL = { amp: "Amplification", gain: "Gain", loss: "Loss (one copy or more)", deep: "Homozygous deletion" };
+const CN_KIND_WORD = { amp: "amp", gain: "gain", loss: "loss", deep: "del" };
+/** Copy-number class of an amp / homdel entry: the clinical report's own class, else amp / deep. */
+export const cnKindOf = (cls, e = {}) => (cls === "amp" || cls === "homdel" ? e.cn_kind || (cls === "amp" ? "amp" : "deep") : null);
+/** Suffix of a clinical entry's label: germline-like or not found in the single cells. */
+export function clinicalLabelSuffix(e = {}) {
+  if (!hasClinical(e) || !isClinicalRow(e)) return isGermlineLike(e) ? " (germline-like)" : "";
+  if (isGermlineLike(e)) return " (germline-like)";
+  const st = e.clinical.status;
+  if (st === "not_recovered") return " (not found)";
+  if (st === "not_assessable" || st === "not_covered") return " (not assessed)";
+  return "";
+}
+
 /** Short column label. */
 export function entryLabel(entry) {
+  return `${baseLabel(entry)}${clinicalLabelSuffix(entry.event)}`;
+}
+function baseLabel(entry) {
   const e = entry.event;
+  if (isClinicalRow(e) && entry.cls === "fusion" && !`${e.fusion_genes || ""}`.includes("::")) return `${e.gene || e.Variant || "SV"} ${e.clinical?.sv_kind || "SV"}`;
+  if (entry.cls === "amp" || entry.cls === "homdel") return `${e.gene || "?"} ${CN_KIND_WORD[entry.cnKind] || (entry.cls === "amp" ? "amp" : "del")}`;
   if (entry.cls === "snv") {
     const prot = `${e.Variant || ""}`;
     // rescued hotspots: "TERT C228T (rescued)" (the variant text carries a long description after the name)
@@ -105,8 +129,6 @@ export function entryLabel(entry) {
     if (isRescued(e)) return `${e.gene || "?"} ${prot.split(" ")[0]} (rescued)`;
     return `${e.gene || "?"}${prot && prot !== "None" ? ` ${prot}` : ""}`;
   }
-  if (entry.cls === "amp") return `${e.gene || "?"} amp`;
-  if (entry.cls === "homdel") return `${e.gene || "?"} del`;
   if (entry.cls === "fusion" && isTertPromoterSv(e)) return `${TERT_SV_LABEL} (${e.fusion_genes || e.gene})`;
   if (entry.cls === "complex") return `${complexName(e.vartype)}${e.gene ? ` ${e.gene}` : ""} ${e.Genome_Location ? `chr${`${e.Genome_Location}`.split(":")[0]}` : ""}`.trim();
   return driverLabel(e);
@@ -141,6 +163,7 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
     const col = !rescued && site && siteIndex ? siteIndex.get(site) ?? null : null;
     const variant = col != null ? snv.variants[col] : null;
     const rescue = rescued ? rescueInfo(e, tumor) : null;
+    const germline = isGermlineLike(e);
     const verdict = rescued ? rescue.verdict : site && verdicts ? verdicts.get(site) || null : null;
     const upstreamOnly = e.upstream_only === true || `${e.upstream_only}` === "true";
     // rescued: carriers / covered tumour cells (a lower bound under allele dropout)
@@ -168,6 +191,11 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
       rnaCells: rnaCells && rnaCells.size ? rnaCells : null,
       rescued,
       rescue,
+      cnKind: cnKindOf(cls, e),
+      clinical: hasClinical(e) ? e.clinical : null, // clinical-assay finding behind the entry (clinicalEvents.js)
+      clinicalOnly: isClinicalRow(e), // no filtered event: the row exists only because the clinical report lists it
+      germline,
+      somatic: countsAsSomatic(e), // false: germline-like or not recovered clinical findings (not counted in tallies / TSG hits)
     };
     entry.label = entryLabel(entry);
     entry.qc = driverQc(entry);
@@ -221,6 +249,7 @@ export function rescueText(entry) {
 export function snvStateLabel(entry, v) {
   if (v === 4 || v === 3) return twoHitStatus(v);
   if (v === 2) return "mutant";
+  if (entry?.clinicalOnly) return "no alt read (per-cell coverage of clinical sites is not exported)";
   if (entry?.rescued && isPooledScan(entry.event)) return "no alt read (pooled scan keeps depth per patient, not per cell)";
   if (entry?.rescued) return v === 1 ? "no alt read (covered; may be allele dropout)" : "no coverage";
   return v === 1 ? "wild type" : "no coverage";
@@ -304,7 +333,9 @@ export function passesFilters(d, f = DEFAULT_FILTERS, fits = null) {
 export function presetEntries(entries, selection = DEFAULT_SELECTION, fits = null) {
   const test = PRESET_TEST[selection.preset] || PRESET_TEST.recommended;
   const filters = { ...DEFAULT_FILTERS, ...(selection.filters || {}) };
-  return entries.filter((d) => test(d, filters) && passesFilters(d, filters, fits));
+  // Recommended always shows every clinical finding (any tier, QC, F1 and class filter); the "Clinical findings" switch removes them
+  const clinical = selection.preset === "recommended" && selection.clinical !== false;
+  return entries.filter((d) => (clinical && d.clinical) || (test(d, filters) && passesFilters(d, filters, fits)));
 }
 
 /** Entries shown: preset + filters, plus the added ones, minus the removed ones. */
@@ -370,10 +401,11 @@ export function serializeSelection(selection = DEFAULT_SELECTION) {
   if (f.fusionSupport !== "any") parts.push(`fusion:${f.fusionSupport}`);
   if (f.minF1 > 0) parts.push(`f1:${f.minF1}`);
   if (parts.length) out.drvf = parts.join(";");
+  if (selection.clinical === false) out.drvclin = "0";
   return out;
 }
 
-export const SELECTION_PARAMS = ["drvpreset", "drvadd", "drvrm", "drvf"];
+export const SELECTION_PARAMS = ["drvpreset", "drvadd", "drvrm", "drvf", "drvclin"];
 
 /** Selection from URL search params; null when the link carries none. */
 export function parseSelection(search = "") {
@@ -401,6 +433,7 @@ export function parseSelection(search = "") {
     add: `${p.get("drvadd") || ""}`.split(SEP).filter(Boolean),
     remove: `${p.get("drvrm") || ""}`.split(SEP).filter(Boolean),
     filters,
+    clinical: p.get("drvclin") !== "0",
   };
 }
 
@@ -554,7 +587,7 @@ export function collapseColumns(entries, states, { minSame = 0.95 } = {}) {
   const columns = [];
   entries.forEach((d, i) => {
     if (d.cls === "amp" || d.cls === "homdel") {
-      const hit = columns.find((c) => c.cls === d.cls && c.mergeable && samePattern(c.states, states[i], minSame));
+      const hit = columns.find((c) => c.cls === d.cls && c.entry.cnKind === d.cnKind && c.mergeable && samePattern(c.states, states[i], minSame));
       if (hit) {
         hit.members.push(d);
         return;
@@ -567,7 +600,7 @@ export function collapseColumns(entries, states, { minSame = 0.95 } = {}) {
     c.n = Math.max(...c.members.map((m) => m.n));
     if (c.members.length > 1) {
       const chrom = `${d.event.seqnames || `${d.event.Genome_Location || ""}`.split(":")[0]}`.replace(/^chr/i, "");
-      c.label = `chr${chrom} ${d.cls === "amp" ? "amp" : "del"} (${d.genes[0]}, +${c.members.length - 1})`;
+      c.label = `chr${chrom} ${CN_KIND_WORD[d.cnKind] || (d.cls === "amp" ? "amp" : "del")} (${d.genes[0]}, +${c.members.length - 1})`;
       c.genes = c.members.flatMap((m) => m.genes);
     } else {
       c.label = d.label;

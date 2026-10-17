@@ -687,7 +687,7 @@ export default function CellHeatmapPanel() {
   // Drivers layer: label of the driver(s) arising on each branch
   const driverMarks = useMemo(() => {
     if (!(heatmapType === "drivers" || showCnDrivers) || !layout.driverBranches || !treeLayout) return null;
-    const marks = driverBranchMarks(driverLayer.shown, treeLayout);
+    const marks = driverBranchMarks(driverLayer.shown.filter((d) => d.somatic), treeLayout);
     return new Map([...marks].map(([k, v]) => [k, branchMarkText(v)]));
   }, [heatmapType, showCnDrivers, layout.driverBranches, treeLayout, driverLayer.shown]);
   const patientClades = usePatientClades();

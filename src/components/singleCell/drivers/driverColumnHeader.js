@@ -3,7 +3,12 @@ import { Tooltip } from "antd";
 import { classLabel, rescueText } from "../../../helpers/singleCell/driverLayer";
 import { columnSpan } from "../../../helpers/singleCell/driverColumns";
 import { SIGNATURE_METHOD_HINT } from "../../../helpers/singleCell/siteSignature";
-import { CLASS_TEXT } from "./driverColors";
+import { CLASS_TEXT, GERMLINE_TEXT, HIGHLIGHT_BG } from "./driverColors";
+import ClinicalTip from "./clinicalTip";
+import { isHighlighted } from "../../../helpers/singleCell/clinicalEvents";
+
+/** Header colour of a column: germline-like clinical findings have their own colour. */
+const textColor = (d) => (d.entry?.germline ? GERMLINE_TEXT : CLASS_TEXT[d.cls]);
 
 const MAX_CHARS = 26;
 const LABEL_MIN_COL = 2.5; // px per column from which names are written (narrower than a line: every k-th name)
@@ -12,6 +17,7 @@ const DriverTip = ({ d, sig, f1 }) => (
   <div>
     <div>{`${d.label} · ${classLabel(d.entry)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}${d.members.length > 1 ? ` · same CN pattern: ${d.genes.join(", ")}` : ""}`}</div>
     {f1 !== undefined && <div>{Number.isFinite(f1) ? `Clade F1 ${f1.toFixed(2)} (best-matching tree clade)` : "Clade F1: not available (no carrier cells on the tree)"}</div>}
+    <ClinicalTip event={d.entry?.event} />
     {d.entry?.rescued && <div style={{ marginTop: 4 }}>{rescueText(d.entry)}</div>}
     {d.entry?.rescued && <div style={{ opacity: 0.7, fontSize: 11 }}>Cells: mutant / no alt read (covered) / no coverage (grey); coverage is sparse, so no alt read is not wild type.</div>}
     {sig && <div style={{ marginTop: 4 }}>{`Signature: ${sig}`}</div>}
@@ -62,7 +68,9 @@ export default function DriverColumnHeader({ sigText = null, fits = null, entrie
                 fontSize: fs,
                 lineHeight: `${fs}px`,
                 cursor: "pointer",
-                color: CLASS_TEXT[d.cls],
+                color: textColor(d),
+                background: d.entry && isHighlighted(d.entry.event) ? HIGHLIGHT_BG : undefined,
+                fontStyle: d.entry?.germline ? "italic" : undefined,
                 fontWeight: d.key === hoverKey || d.key === openKey ? 700 : 400,
                 textDecoration: d.key === openKey ? "underline" : "none",
                 opacity: d.absent ? 0.4 : d.upstreamOnly ? 0.65 : 1,
@@ -85,7 +93,7 @@ export default function DriverColumnHeader({ sigText = null, fits = null, entrie
               width: Math.max(1, spans[i].width - (cw > 4 ? 1 : 0)),
               top: 0,
               bottom: 0,
-              background: d.entry?.rescued ? `repeating-linear-gradient(45deg, ${CLASS_TEXT[d.cls]} 0 2px, transparent 2px 4px)` : CLASS_TEXT[d.cls],
+              background: d.entry?.rescued || d.entry?.germline ? `repeating-linear-gradient(45deg, ${textColor(d)} 0 2px, transparent 2px 4px)` : textColor(d),
               cursor: "pointer",
               opacity: d.key === hoverKey || d.key === openKey ? 1 : 0.55,
             }}
