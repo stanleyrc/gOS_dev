@@ -8,6 +8,7 @@ import { matchRnaFusions } from "../../../helpers/singleCell/rnaFusions";
 import { parseCancerGeneList } from "../../../helpers/singleCell/geneInfo";
 import { rowMap } from "../../../helpers/singleCell/matrix";
 import usePatientTsg from "./usePatientTsg";
+import useClinicalEvents, { useMergedEvents } from "./useClinicalEvents";
 import { entryHitCount, groupMultiHitEntries } from "../../../helpers/singleCell/tsgHits";
 import { DEFAULT_SELECTION, buildDriverEntries, collapseColumns, entryFits, entryStates, entryVafs, recommendedOrder, selectDrivers } from "../../../helpers/singleCell/driverLayer";
 
@@ -46,7 +47,8 @@ export function useCgcGenes() {
  */
 export default function useDriverLayer() {
   const dispatch = useDispatch();
-  const events = useSelector((s) => s.FilteredEvents.filteredEvents);
+  const events = useMergedEvents(); // filtered events + clinical-assay findings (Clinical findings switch)
+  const clinical = useClinicalEvents();
   const { cells, snv, cn, rnaFusions, precompute, layout } = useSelector((s) => s.SingleCell);
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const { order, treeLayout } = useTreeView();
@@ -86,7 +88,9 @@ export default function useDriverLayer() {
     () => buildDriverEntries(events || [], { tumorIds, hotspots: sites.hotspots, verdicts: sites.verdicts, cgc, rnaFusionCells, snv: snvData }),
     [events, tumorIds, sites, cgc, rnaFusionCells, snvData]
   );
-  const tsg = usePatientTsg(entries, tumorIds);
+  // germline-like and not-recovered clinical findings are not somatic hits
+  const somaticEntries = useMemo(() => entries.filter((d) => d.somatic), [entries]);
+  const tsg = usePatientTsg(somaticEntries, tumorIds);
   const selection = layout.drivers || DEFAULT_SELECTION;
   const fits = useMemo(() => entryFits(entries, treeLayout), [entries, treeLayout]);
   const shown = useMemo(() => {
@@ -106,5 +110,5 @@ export default function useDriverLayer() {
     return out;
   }, [shown, order, snvData, cn, chromoBins, tsg.secondHits, tsg.calls]);
   const setSelection = useCallback((next) => dispatch(singleCellActions.updateLayout({ drivers: next })), [dispatch]);
-  return { tsg, entries, shown, fits, columns: display.columns, collapsed: display.collapsed, selection, setSelection, tumorIds, order, treeLayout, hasCgc: cgc != null, hasRna: rnaFusionCells != null, siteIds: sites.ids };
+  return { tsg, entries, shown, fits, columns: display.columns, collapsed: display.collapsed, selection, setSelection, tumorIds, order, treeLayout, hasClinical: clinical.status === "ok", clinicalCounts: clinical.data, hasCgc: cgc != null, hasRna: rnaFusionCells != null, siteIds: sites.ids };
 }

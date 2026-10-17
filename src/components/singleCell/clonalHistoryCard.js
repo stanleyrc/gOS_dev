@@ -75,6 +75,7 @@ export default function ClonalHistoryCard() {
   const placed = useMemo(() => {
     if (!treeLayout) return [];
     return driverLayer.shown
+      .filter((d) => d.somatic) // germline-like / not-recovered clinical findings are not somatic events on the tree
       .map((d) => d.event)
       .map((e) => {
         const carriers = `${e.cell_ids || ""}`.split(",").filter(Boolean);

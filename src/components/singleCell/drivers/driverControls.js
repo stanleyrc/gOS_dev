@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { driverColors } from "./driverColors";
-import { Button, Checkbox, InputNumber, Popover, Radio, Segmented, Select, Space, Tag, Tooltip, Typography } from "antd";
+import { Button, Checkbox, InputNumber, Popover, Radio, Segmented, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
 import {
   CLADE_F1_CHOICES,
@@ -15,6 +15,7 @@ import {
   effectiveMaxTier,
 } from "../../../helpers/singleCell/driverLayer";
 import { TIER_OPTIONS } from "../../../helpers/singleCell/cohortStats";
+import { clinicalHighlights, isHighlighted } from "../../../helpers/singleCell/clinicalEvents";
 
 const { Text } = Typography;
 
@@ -177,6 +178,8 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
                 <span>{d.label}</span>
                 <Text type="secondary">{`${d.n} cells`}</Text>
                 {d.tier != null && <Tag style={{ marginInlineEnd: 0 }}>{`tier ${d.tier}`}</Tag>}
+                {d.clinical && <Tag color={d.germline ? "geekblue" : "gold"} style={{ marginInlineEnd: 0 }}>{d.germline ? "clinical · germline-like" : "clinical"}</Tag>}
+                {isHighlighted(d.event) && clinicalHighlights(d.event).map((t) => <Tag key={t} color="orange" style={{ marginInlineEnd: 0 }}>{t}</Tag>)}
                 {d.upstreamOnly && <Tag color="orange" style={{ marginInlineEnd: 0 }}>upstream</Tag>}
               </Space>
             ),
@@ -188,6 +191,8 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
   const nPreset = useMemo(() => selectDrivers(entries, { ...selection, add: [], remove: [] }, fits).length, [entries, selection, fits]);
   const nF1Hidden = useMemo(() => f1HiddenCount(entries, selection, fits), [entries, selection, fits]);
   const noF1 = useMemo(() => noF1Keys(shown, fits), [shown, fits]);
+  const nClinical = entries.filter((d) => d.clinical).length;
+  const nGermline = entries.filter((d) => d.germline).length;
   const edited = (selection.add?.length || 0) + (selection.remove?.length || 0);
   return (
     <Space wrap size={[12, 6]}>
@@ -197,6 +202,14 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
         onChange={(preset) => setSelection({ ...selection, preset, add: [], remove: [] })}
         options={Object.keys(PRESET_LABELS).map((value) => ({ value, label: <Tooltip title={PRESET_HELP[value]}>{PRESET_LABELS[value]}</Tooltip> }))}
       />
+      {driverLayer.hasClinical && (
+        <Tooltip title="Show every clinical-assay finding (Oncopanel / Genexus report) in the layer, whatever its tier or the filters: SNVs and indels (germline-like ones in grey italics), copy-number genes, SVs and TERT promoter. Findings not found in the single cells have no carrier cells and say why. Germline-like and not-recovered findings are not counted as somatic drivers.">
+          <Space size={4} data-driver-clinical-switch>
+            <Switch size="small" checked={selection.clinical !== false} onChange={(on) => setSelection({ ...selection, clinical: on })} />
+            <Text type="secondary">Clinical findings</Text>
+          </Space>
+        </Tooltip>
+      )}
       {!compact && <MiniLegend />}
       <Tooltip title="Hide drivers whose carrier cells do not sit in one clade of the patient tree: best F1 between the carriers and any clade (same score as the Clade F1 column of Filtered Events). 0 = off. Applies to every class (SNVs, fusions, amplifications, deletions, complex); rescued hotspots and drivers with no carrier cells on the tree stay.">
         <Space size={4} data-driver-f1-control>
@@ -240,7 +253,7 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
           onChange={(keys) => setSelection(selectionForKeys(entries, selection, keys, fits))}
         />
       </Space>}
-      {!compact && <Text type="secondary">{`${nShown} shown of ${entries.length}${collapsed ? ` (${collapsed} collapsed into shared-CN columns)` : ""}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>}
+      {!compact && <Text type="secondary">{`${nShown} shown of ${entries.length}${nClinical ? ` (${nClinical} clinical, ${nGermline} germline-like)` : ""}${collapsed ? ` (${collapsed} collapsed into shared-CN columns)` : ""}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>}
       {selection.filters?.minF1 > 0 && noF1.size > 0 && (
         <Tooltip title={`No carrier cells on the tree, so no Clade F1 score: ${shown.filter((d) => noF1.has(d.key)).map((d) => d.label).join(", ")}`}>
           <Tag style={{ marginInlineEnd: 0 }}>{`${noF1.size} no F1`}</Tag>
