@@ -153,3 +153,14 @@ describe("broad CN-0 cells from _cohort/broad_cn0.json", () => {
     expect(c.excluded[0].label).toMatch(/50.8 Mb/);
   });
 });
+
+describe("CN-0 cells with mutant reads", () => {
+  it("count as LOH plus the mutation, not as a homozygous deletion", () => {
+    const entries = [snv("TP53", cells.slice(0, 18), 100)];
+    const loss = lossOf("TP53", code(10, LOSS_CODE.HOMDEL));
+    const [c] = twoHitCalls(entries, { tumorIds: cells, loss });
+    expect(c.homdelCells).toBe(0);
+    expect(c.biallelicCells).toBe(10);
+    expect(c.excluded.some((x) => /keep a copy/.test(x.label))).toBe(true);
+  });
+});

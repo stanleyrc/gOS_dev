@@ -208,6 +208,19 @@ function classify(s, tumorN, hasLoss, trans = new Set()) {
     const set = h.kind === "snv" ? sets.snv : h.kind === "sv" ? sets.sv : h.kind === "homdel" ? sets.homdel : sets.loss;
     h.ids.forEach((id) => set.add(id));
   });
+  // a cell called CN 0 that has reads carrying a (non-weak) mutation of the gene still holds a copy: count it as LOH, not a
+  // homozygous deletion (the per-cell CN fit can place a single remaining copy at 0)
+  let cn0WithAlt = 0;
+  s.hits.forEach((h) => {
+    if (h.kind !== "snv" || h.weak) return;
+    h.ids.forEach((id) => {
+      if (sets.homdel.has(id)) {
+        sets.homdel.delete(id);
+        sets.loss.add(id);
+        cn0WithAlt += 1;
+      }
+    });
+  });
   const cells = new Set([...sets.snv, ...sets.sv, ...sets.loss, ...sets.homdel]);
   // SNV hits per cell: two SNVs phased in trans on the same cell are two hits
   const snvHits = s.hits.filter((h) => h.kind === "snv");
@@ -258,7 +271,7 @@ function classify(s, tumorN, hasLoss, trans = new Set()) {
     vafSuggestsLoh,
     lossSource: s.lossSource || (hasLoss ? "tsg_loss.json has no entry for this gene" : "filtered events only (tsg_loss.json not available)"),
     lossIds: new Set([...sets.loss, ...sets.homdel]),
-    excluded: s.excluded || [],
+    excluded: [...(s.excluded || []), ...(cn0WithAlt ? [{ label: `${cn0WithAlt} cells called CN 0 carry mutant reads, so they keep a copy: counted as LOH, not homozygous deletion`, n: cn0WithAlt }] : [])],
   };
   call.text = describeCall(call);
   return call;
