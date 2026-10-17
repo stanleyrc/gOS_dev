@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Button, Card, Select, Space, Typography } from "antd";
 import useCohortExport from "../cohort/useCohortExport";
+import usePatientRna from "./usePatientRna";
 import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
 import SvgExportButton from "../svgExportButton";
@@ -141,34 +142,38 @@ function CohortOncoSvg({ grid, rows, patients, header, clinIdx, tsg, width, them
 }
 
 function TruncalSvg({ rows, width, theme }) {
-  const M = { l: 50, r: 10, t: 10, b: 52 };
-  const H = 250;
-  const max = Math.max(1, ...rows.map((r) => r.truncal + r.subclonal)) * 1.1;
+  const M = { l: 54, r: 10, t: 10, b: 56 };
+  const H = 260;
+  const lo = 100;
+  const hi = Math.pow(10, Math.ceil(Math.log10(Math.max(...rows.map((r) => Math.max(r.truncal, r.subclonal))) * 1.05)));
+  const L = (v) => Math.log10(Math.max(v, lo));
+  const sy = (v) => H - M.b - ((L(v) - L(lo)) / (L(hi) - L(lo))) * (H - M.t - M.b);
   const gw = (width - M.l - M.r) / rows.length;
-  const bw = Math.min(34, gw * 0.62);
-  const sy = (v) => H - M.b - (v / max) * (H - M.t - M.b);
+  const bw = Math.min(22, gw * 0.4);
+  const ticks = [];
+  for (let v = lo; v <= hi; v *= 10) ticks.push(v);
+  const fmt = (v) => (v >= 1000 ? `${v / 1000}k` : v);
   return (
-    <svg width={width} height={H} style={{ display: "block", fontSize: TYPE.tick }} role="img" aria-label="Truncal and subclonal mutation sites per patient">
-      {[0, 0.25, 0.5, 0.75, 1].map((t) => {
-        const v = Math.round((t * max) / 1000) * 1000;
-        return <g key={t}><line x1={M.l} x2={width - M.r} y1={sy(v)} y2={sy(v)} stroke={theme.grid} /><text x={M.l - 5} y={sy(v) + 4} textAnchor="end" fill={theme.muted}>{v >= 1000 ? `${v / 1000}k` : v}</text></g>;
-      })}
-      <text transform={`translate(11,${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle" fill={theme.textSecondary} fontSize={TYPE.label}>mutation sites</text>
+    <svg width={width} height={H} style={{ display: "block", fontSize: TYPE.tick }} role="img" aria-label="Truncal and subclonal mutation sites per patient, log scale">
+      {ticks.map((v) => <g key={v}><line x1={M.l} x2={width - M.r} y1={sy(v)} y2={sy(v)} stroke={theme.grid} /><text x={M.l - 5} y={sy(v) + 4} textAnchor="end" fill={theme.muted}>{fmt(v)}</text></g>)}
+      <text transform={`translate(11,${(M.t + H - M.b) / 2}) rotate(-90)`} textAnchor="middle" fill={theme.textSecondary} fontSize={TYPE.label}>mutation sites (log)</text>
       {rows.map((r, i) => {
-        const x = M.l + i * gw + (gw - bw) / 2;
+        const x = M.l + i * gw + gw / 2;
+        const meta = r.truncalSource === "current tree map";
         return (
           <g key={r.patient}>
-            <title>{`${r.patient}: ${r.truncal.toLocaleString("en-US")} truncal and ${r.subclonal.toLocaleString("en-US")} subclonal sites (${r.nCells ?? "?"} tumour cells)${r.noisy ? "; calls flagged noisy (upper bound)" : ""}`}</title>
-            <rect x={x} y={sy(r.truncal)} width={bw} height={sy(0) - sy(r.truncal)} fill={theme.ok} />
-            <rect x={x} y={sy(r.truncal + r.subclonal)} width={bw} height={sy(r.truncal) - sy(r.truncal + r.subclonal)} fill={theme.warn} fillOpacity={r.noisy ? 0.5 : 1} stroke={r.noisy ? theme.warn : "none"} strokeDasharray={r.noisy ? "3 2" : undefined} />
-            <text transform={`translate(${x + bw / 2},${H - M.b + 10}) rotate(-40)`} textAnchor="end" fill={theme.text}>{r.patient}</text>
+            <title>{`${r.patient}: ${r.truncal.toLocaleString("en-US")} truncal (${r.truncalSource}) and ${r.subclonal.toLocaleString("en-US")} subclonal sites (tmb.json; ${r.nCells ?? "?"} tumour cells)${r.noisy ? "; subclonal calls flagged noisy (upper bound)" : ""}`}</title>
+            <rect x={x - bw - 1} y={sy(r.truncal)} width={bw} height={sy(lo) - sy(r.truncal)} fill={meta ? theme.ok : theme.panel} stroke={theme.ok} strokeWidth={meta ? 0 : 1.6} />
+            <rect x={x + 1} y={sy(r.subclonal)} width={bw} height={sy(lo) - sy(r.subclonal)} fill={r.noisy ? theme.panel : theme.warn} stroke={theme.warn} strokeWidth={r.noisy ? 1.6 : 0} strokeDasharray={r.noisy ? "3 2" : undefined} />
+            <text transform={`translate(${x},${H - M.b + 10}) rotate(-40)`} textAnchor="end" fill={theme.text}>{r.patient}</text>
           </g>
         );
       })}
       <g transform={`translate(${M.l},${H - 4})`} fill={theme.textSecondary} fontSize={TYPE.micro + 0.5}>
-        <rect width={9} height={9} y={-9} fill={theme.ok} /><text x={13}>truncal</text>
-        <rect x={70} width={9} height={9} y={-9} fill={theme.warn} /><text x={83}>subclonal</text>
-        <text x={150}>dashed = flagged noisy</text>
+        <rect width={9} height={9} y={-9} fill={theme.ok} /><text x={13}>truncal (tree map)</text>
+        <rect x={110} width={9} height={9} y={-9} fill={theme.panel} stroke={theme.ok} strokeWidth={1.4} /><text x={123}>truncal (tmb.json)</text>
+        <rect x={225} width={9} height={9} y={-9} fill={theme.warn} /><text x={238}>subclonal</text>
+        <rect x={300} width={9} height={9} y={-9} fill={theme.panel} stroke={theme.warn} strokeDasharray="2 1" /><text x={313}>subclonal, noisy</text>
       </g>
     </svg>
   );
@@ -215,11 +220,12 @@ function StateSvg({ rows, width, theme }) {
 export default function Figure1Layout({ dataset, assays, recovery, summaries = [], rawFiles = {}, tsg = null, onOpenPatient }) {
   const theme = usePlotTheme();
   const [ref, width] = useContainerWidth(1000);
-  const rna = useCohortExport(dataset, "rna/cells.json");
+  const regionsX = useCohortExport(dataset, "regions.json");
   const tmb = useCohortExport(dataset, "tmb.json");
   const aligned = useCohortExport(dataset, "aligned_trees.json");
   const ids = useMemo(() => Object.keys(recovery?.patients || {}).sort(), [recovery]);
-  const design = useMemo(() => designCounts({ recovery, rnaCells: rna.data?.cells, patients: ids }), [recovery, rna.data, ids]);
+  const rna = usePatientRna(dataset, ids);
+  const design = useMemo(() => designCounts({ recovery, rnaCells: rna.cells, regions: regionsX.data, patients: ids }), [recovery, rna.cells, regionsX.data, ids]);
   // same selection as the Drivers oncoprint of the cohort overview: tier 1-2 plus damaging tier-3, strong events, top 40 genes
   const eventsByPatient = useMemo(
     () => Object.fromEntries(summaries.filter((s) => rawFiles[s.caseReportId]?.events).map((s) => [s.caseReportId, rawFiles[s.caseReportId].events])),
@@ -229,7 +235,7 @@ export default function Figure1Layout({ dataset, assays, recovery, summaries = [
   const grid = useMemo(() => ({ patients: matrix.patients, rows: matrix.genes }), [matrix]);
   const patients = useMemo(() => sortColumns(grid, "exclusivity"), [grid]);
   const rows = useMemo(() => groupOncoprintRows(grid.rows, "role"), [grid]);
-  const header = useMemo(() => clinicalHeader(assays, recovery, patients, metaStrip), [assays, recovery, patients]);
+  const header = useMemo(() => clinicalHeader(assays, recovery, patients, metaStrip, regionsX.data), [assays, recovery, patients, regionsX.data]);
   const clinIdx = useMemo(() => {
     const m = new Map();
     clinicalOncoprint(recovery, { patients: ids }).rows.forEach((r) => Object.entries(r.cells).forEach(([p, list]) => list.forEach((e) => {
@@ -238,8 +244,8 @@ export default function Figure1Layout({ dataset, assays, recovery, summaries = [
     })));
     return m;
   }, [recovery, ids]);
-  const trunc = useMemo(() => truncalSubclonal(tmb.data), [tmb.data]);
-  const states = useMemo(() => stateComposition(rna.data?.cells), [rna.data]);
+  const trunc = useMemo(() => truncalSubclonal(tmb.data, assays), [tmb.data, assays]);
+  const states = useMemo(() => stateComposition(rna.cells), [rna.cells]);
   const treePatients = useMemo(() => Object.entries(aligned.data?.patients || {}).filter(([, p]) => p.tree).map(([k]) => k).sort(), [aligned.data]);
   const [pick, setPick] = useState(null);
   const tp = pick && treePatients.includes(pick) ? pick : treePatients.includes("MGH302") ? "MGH302" : treePatients[0];
@@ -252,10 +258,10 @@ export default function Figure1Layout({ dataset, assays, recovery, summaries = [
       <Text type="secondary" style={{ fontSize: TYPE.body }}>
         Candidate layout for Figure 1, rendered from live data (the figure PDFs are untouched). Panel order follows the current figure: design (a), oncoprint with clinical strip (b), tree (c), truncal vs subclonal (d), cell states (e).
       </Text>
-      <Panel letter="a" title="Study design" name="a-design" note={`Counts from _cohort/clinical_recovery.json (DNA cells) and _cohort/rna/cells.json (RNA cells, regions). ${nPlaced} patients.`}>
+      <Panel letter="a" title="Study design" name="a-design" note={`Counts from _cohort/clinical_recovery.json (DNA cells), each patient's rna/cells.json (RNA cells) and _cohort/regions.json (regions: cell metadata region field). ${nPlaced} patients.`}>
         <DesignSvg d={design} theme={theme} width={width - 24} />
       </Panel>
-      <Panel letter="b" title="Oncoprint with clinical annotation" name="b-oncoprint" note="Glyph = driver class (tier 1-2 plus damaging tier-3, strong events, top 40 genes: the selection of the cohort Drivers oncoprint); faded = carried by < 80% of tumour cells. Dot at the top right = the gene is in the clinical report and the colour is its recovery status (green recovered, orange partial, red not recovered, grey not assessable, hollow germline-like). Bar under the glyph = tumour suppressor with two hits in the same cells. Strip: _cohort/clinical_assays.json; primary / recurrent is not in any data file. Hover for details.">
+      <Panel letter="b" title="Oncoprint with clinical annotation" name="b-oncoprint" note="Glyph = driver class (tier 1-2 plus damaging tier-3, strong events, top 40 genes: the selection of the cohort Drivers oncoprint); faded = carried by < 80% of tumour cells. Dot at the top right = the gene is in the clinical report and the colour is its recovery status (green recovered, orange partial, red not recovered, grey not assessable, hollow germline-like). Bar under the glyph = tumour suppressor with two hits in the same cells. Strip: _cohort/clinical_assays.json and _cohort/regions.json; primary / recurrent is not in any data file. Hover for details.">
         {patients.length ? (
           <>
             <Space wrap size={[12, 2]} style={{ marginBottom: 6, fontSize: TYPE.tick }}>
@@ -282,12 +288,12 @@ export default function Figure1Layout({ dataset, assays, recovery, summaries = [
             </>
           ) : <NA why={aligned.status === "loading" ? "loading" : "_cohort/aligned_trees.json not exported"} />}
         </Panel>
-        <Panel letter="d" title="Truncal vs subclonal mutations" name="d-truncal" note={`Mutation sites on the trunk vs below it, per patient (tmb.json; sorted by subclonal count). Patients flagged noisy have private-site artefacts, so their subclonal count is an upper bound. ${ids.filter((p) => !trunc.find((t) => t.patient === p)).length ? `Not in tmb.json: ${ids.filter((p) => !trunc.find((t) => t.patient === p)).join(", ")}.` : ""}`}>
+        <Panel letter="d" title="Truncal vs subclonal mutations" name="d-truncal" note={`Mutation sites per patient on a log axis, sorted by subclonal count. Subclonal: tmb.json. Truncal: "truncal mutations (current tree)" of clinical_assays.json (solid) or, where that is missing, tmb.json truncal sites (outlined). Dashed subclonal bar = patient flagged noisy (private-site artefacts), an upper bound. ${ids.filter((p) => !trunc.find((t) => t.patient === p)).length ? `Not in tmb.json: ${ids.filter((p) => !trunc.find((t) => t.patient === p)).join(", ")}.` : ""}`}>
           {trunc.length ? <TruncalSvg rows={trunc} width={pw - 8} theme={theme} /> : <NA why={tmb.status === "loading" ? "loading" : "_cohort/tmb.json not exported"} />}
         </Panel>
       </div>
-      <Panel letter="e" title="Cell-state composition" name="e-states" note={`Share of malignant RNA cells per Seurat state call (_cohort/rna/cells.json). ${noRna.length ? `No RNA for ${noRna.join(", ")}.` : ""} The quadrant plot of the current figure needs per-cell state scores that are not in the cohort export.`}>
-        {states.length ? <StateSvg rows={states} width={Math.min(width - 24, 720)} theme={theme} /> : <NA why={rna.status === "loading" ? "loading" : "_cohort/rna/cells.json not exported"} />}
+      <Panel letter="e" title="Cell-state composition" name="e-states" note={`Share of malignant RNA cells per Seurat state call (each patient's rna/cells.json). ${noRna.length ? `No RNA for ${noRna.join(", ")}.` : ""} The quadrant plot of the current figure needs per-cell AC / MES / NPC / OPC scores; rna/cells.json and rna/covariates.json only carry the state call, so it is not available.`}>
+        {states.length ? <StateSvg rows={states} width={Math.min(width - 24, 720)} theme={theme} /> : <NA why={rna.status === "loading" ? "loading" : "per-patient rna/cells.json not found"} />}
       </Panel>
     </div>
   );

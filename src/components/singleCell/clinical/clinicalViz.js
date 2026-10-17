@@ -91,6 +91,7 @@ export function HeaderStrip({ header, L, cw, y, theme, rowH = 17, showAssay = tr
     ...catKeys.map((k) => ({ key: k, label: header[0]?.fields.find((x) => x.key === k)?.label || k })),
     { key: "age", label: "Age" },
     { key: "truncal", label: "Truncal mutations" },
+    { key: "regions", label: "Regions sampled" },
     ...(showAssay ? [{ key: "assay", label: "Clinical assay" }] : []),
   ];
   const assayCol = { ok: theme.ok, failed: theme.danger, "nothing detected": theme.axis, none: theme.empty };
@@ -130,7 +131,7 @@ export function HeaderStrip({ header, L, cw, y, theme, rowH = 17, showAssay = tr
     </g>
   );
 }
-export const headerHeight = (showAssay = true, rowH = 17) => (5 + (showAssay ? 1 : 0)) * rowH;
+export const headerHeight = (showAssay = true, rowH = 17) => (6 + (showAssay ? 1 : 0)) * rowH;
 
 /**
  * Concordance oncoprint: genes x patients. `grid` from clinicalOncoprint(); `header` from clinicalHeader().
