@@ -46,7 +46,7 @@ class Connection {
       .curve(d3.curveBasis)
       .x((d) => d[0])
       .y((d) => d[1]);
-    this.color = connectionsStyleMap[con.type].color;
+    this.color = con.color || connectionsStyleMap[con.type].color;
     this.fill = "none";
     this.strokeWidth = connectionsStyleMap[con.type].strokeWidth;
     this.dash = connectionsStyleMap[con.type].dash;

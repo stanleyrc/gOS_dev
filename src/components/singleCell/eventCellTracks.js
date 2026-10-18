@@ -16,7 +16,8 @@ import { mergeLoci } from "../../helpers/singleCell/igvTracks";
 import HintLine from "./hintLine";
 import { RnaSupportSection, useRnaSupport } from "./rna/rnaSupport";
 import useCellLabels from "./useCellLabels";
-import { isComplexEvent, footprintLocation, defaultFootprintPad } from "../../helpers/singleCell/complexZoom";
+import { loadCellTrack } from "../../redux/singleCell/loaders";
+import { isComplexEvent, footprintLocation, defaultFootprintPad, firstJunctionBreakpoint } from "../../helpers/singleCell/complexZoom";
 
 const { Text } = Typography;
 const PADS = [0, 5e4, 2.5e5, 1e6, 5e6];
@@ -89,6 +90,23 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
     if (domains) dispatch(settingsActions.updateDomains(domains));
   }, [dispatch, chromoBins, location, pad, genomeLength]);
 
+  // complex SVs: IGV is centred on the first event junction's breakpoint in the first shown cell
+  const dataset = useSelector((state) => state.Settings.dataset);
+  const firstShown = (multi ? many : one ? [one] : [])[0];
+  const [junctionBp, setJunctionBp] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    setJunctionBp(null);
+    if (complexLocation && firstShown && dataset) {
+      loadCellTrack(dataset, firstShown, "total", chromoBins).then((res) => {
+        if (alive && res.status === "ok") setJunctionBp(firstJunctionBreakpoint(res.data, complexLocation));
+      });
+    }
+    return () => {
+      alive = false;
+    };
+  }, [dataset, firstShown, complexLocation, chromoBins]);
+
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
   const options = carriers.map((id) => ({
     value: id,
@@ -105,7 +123,7 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
   }
   const shown = multi ? many : one ? [one] : [];
   // IGV at the event (SNVs at the variant, fusions at both breakpoints), plus RNA slices of supporting cells
-  const igvView = shown.length || rnaSupport.rnaTracks.length ? eventIgvView(record, shown, rnaSupport.rnaTracks, rnaSupport.rnaLoci) : null;
+  const igvView = shown.length || rnaSupport.rnaTracks.length ? eventIgvView(junctionBp ? { ...record, Variant_g: `${junctionBp.chromosome}:${junctionBp.position}` } : record, shown, rnaSupport.rnaTracks, rnaSupport.rnaLoci) : null;
 
   return (
     <Space direction="vertical" size={8} style={{ width: "100%" }}>
@@ -155,6 +173,7 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
       <CellTracksPanel
         cellIds={shown}
         embedded
+        highlightLocation={complexLocation}
         title={t("components.single-cell.event-cells.title", { location: location || "" })}
         onRemove={(id) => (multi ? setMany(many.filter((c) => c !== id)) : setOne(null))}
       />

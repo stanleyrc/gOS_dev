@@ -50,31 +50,51 @@ export function defaultFootprintPad(location, pads = COMPLEX_PADS) {
   return pads.reduce((best, p) => (Math.abs(p - want) < Math.abs(best - want) ? p : best), pads[0]);
 }
 
-const idOf = (v) => Math.abs(Number(v));
+export const EVENT_JUNCTION_COLOR = "#7B4FA8";
 
 /**
- * ALT junctions of one cell's complex.json that touch the footprint: at least
- * one end on an interval overlapping a footprint interval. Returns
- * { count, weight } (weight = summed junction CN/support).
+ * The event's own junctions in one cell's complex.json: ALT connections with at
+ * least one breakpoint inside a footprint interval. A connection end with a
+ * positive sign sits at the interval's end, a negative one at its start.
+ * Returns [{ cid, weight, breakpoints: [{ chromosome, position }] }] (only the
+ * breakpoints inside the footprint), in file order.
  */
-export function junctionSupport(complex, location) {
+export function eventJunctions(complex, location) {
   const fp = parseFootprint(location);
-  if (!complex?.connections?.length || !fp.length) return { count: 0, weight: 0 };
-  const inside = new Set(
-    (complex.intervals || [])
-      .filter((iv) => fp.some((f) => `${iv.chromosome}` === `${f.chromosome}` && iv.startPoint <= f.end && iv.endPoint >= f.start))
-      .map((iv) => idOf(iv.iid))
-  );
-  let count = 0;
-  let weight = 0;
+  if (!complex?.connections?.length || !fp.length) return [];
+  const byId = new Map((complex.intervals || []).map((iv) => [Math.abs(Number(iv.iid)), iv]));
+  const endOf = (ref) => {
+    const iv = byId.get(Math.abs(Number(ref)));
+    if (!iv || !Number.isFinite(Number(ref)) || Number(ref) === 0) return null;
+    return { chromosome: `${iv.chromosome}`, position: Number(ref) > 0 ? Number(iv.endPoint) : Number(iv.startPoint) };
+  };
+  const out = [];
   complex.connections.forEach((c) => {
     if (c.type !== "ALT") return;
-    if (inside.has(idOf(c.source)) || inside.has(idOf(c.sink))) {
-      count += 1;
-      weight += Number(c.weight) || 0;
-    }
+    const inside = [endOf(c.source), endOf(c.sink)].filter((e) => e && fp.some((f) => f.chromosome === e.chromosome && e.position >= f.start && e.position <= f.end));
+    if (inside.length) out.push({ cid: c.cid, weight: Number(c.weight) || 0, breakpoints: inside });
   });
-  return { count, weight };
+  return out;
+}
+
+/** { count, weight } of the event's junctions in one cell. */
+export function junctionSupport(complex, location) {
+  const js = eventJunctions(complex, location);
+  return { count: js.length, weight: js.reduce((t, j) => t + j.weight, 0) };
+}
+
+/** First (largest weight) event junction's breakpoint { chromosome, position }, or null. */
+export function firstJunctionBreakpoint(complex, location) {
+  const js = eventJunctions(complex, location);
+  if (!js.length) return null;
+  return [...js].sort((a, b) => b.weight - a.weight)[0].breakpoints[0];
+}
+
+/** complex.json with the event's junctions coloured (connection.color); the input is not modified. */
+export function highlightEventJunctions(complex, location, color = EVENT_JUNCTION_COLOR) {
+  const ids = new Set(eventJunctions(complex, location).map((j) => j.cid));
+  if (!ids.size) return complex;
+  return { ...complex, connections: complex.connections.map((c) => (c.type === "ALT" && ids.has(c.cid) ? { ...c, color } : c)) };
 }
 
 /**
