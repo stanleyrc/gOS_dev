@@ -796,6 +796,20 @@ const Wrapper = styled.div`
     border: 1px solid var(--sc-border-soft, #f0f0f0);
     border-radius: 4px;
   }
+  .sc-umap-controls {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 4;
+    background: var(--sc-card-bg, rgba(255, 255, 255, 0.85));
+    border-radius: 4px;
+    padding: 2px;
+  }
+  .sc-umap-zoomlabel {
+    font-size: 11.5px;
+    opacity: 0.65;
+    min-width: 30px;
+  }
   .sc-umap-legend {
     display: flex;
     flex-direction: column;
