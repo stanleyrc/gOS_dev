@@ -72,7 +72,7 @@ const isDm = (e) => /^(dm|cpxdm)$/i.test(`${e?.vartype || ""}`);
 export const intervalInside = (iv, outer) => outer.some((o) => o.chromosome === iv.chromosome && o.start <= iv.start && o.end >= iv.end);
 
 /**
- * DM (ecDNA) events whose footprint contains at least one interval of this complex non-DM entry, and how many of its
+ * DM (ecDNA) events whose footprint contains every interval of this complex non-DM entry, and how many of its
  * carriers are also carriers of one of those DMs. `entries` are the patient's driver entries (event, carriers, label).
  * Returns null when there is none. { dms: [{ label, n, overlap }], overlap (carriers in any such DM), carriers }.
  */
@@ -87,7 +87,7 @@ export function dmOverlap(entry, entries = []) {
   entries.forEach((o) => {
     if (o === entry || o.cls !== "complex" || !isDm(o.event)) return;
     const theirs = parseFootprint(o.event.Genome_Location);
-    if (!mine.some((iv) => intervalInside(iv, theirs))) return;
+    if (!mine.every((iv) => intervalInside(iv, theirs))) return; // the whole footprint sits inside the DM footprint
     const shared = (o.carriers || splitIds(o.event.cell_ids)).filter((c) => carriers.has(c));
     shared.forEach((c) => union.add(c));
     dms.push({ label: o.event.Variant || o.label, n: (o.carriers || splitIds(o.event.cell_ids)).length, overlap: shared.length });
@@ -98,7 +98,7 @@ export function dmOverlap(entry, entries = []) {
 /** Chip text and one-line interpretation of a dmOverlap result (does not claim the junction is on the ecDNA). */
 export function dmOverlapText(o) {
   if (!o) return null;
-  const names = o.dms.map((d) => d.label).join(", ");
+  const names = o.dms.length > 3 ? `${o.dms.slice(0, 3).map((d) => d.label).join(", ")} +${o.dms.length - 3} more` : o.dms.map((d) => d.label).join(", ");
   return {
     chip: `inside ${names} footprint in ${o.overlap} of ${o.carriers} carriers`,
     note: `In those ${o.overlap} cells the DM call covers this junction's region, so the segment may be part of the ecDNA; in the other ${o.carriers - o.overlap} the junction is called without a DM covering it. Overlap of calls, not direct proof that the junction lies on the ecDNA.`,

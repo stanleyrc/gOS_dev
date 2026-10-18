@@ -65,5 +65,10 @@ describe("ecDNA footprint overlap", () => {
     expect(text.chip).toBe("inside DM (1,7) footprint in 2 of 4 carriers");
     expect(text.note).toMatch(/not direct proof/);
     expect(dmOverlap(mine, [mine])).toBeNull();
+    // a DM holding only one of the two intervals does not contain the footprint
+    const partial = cx({ vartype: "DM", Variant: "DM (7)", Genome_Location: "7:41978527-55927140", cell_ids: "a,b,c,d" });
+    const es = buildDriverEntries([rdd, partial]);
+    expect(dmOverlap(es.find((e) => e.event === rdd), es)).toBeNull();
+    expect(dmOverlapText({ dms: [1, 2, 3, 4].map((i) => ({ label: `DM${i}` })), overlap: 3, carriers: 5 }).chip).toBe("inside DM1, DM2, DM3 +1 more footprint in 3 of 5 carriers");
   });
 });
