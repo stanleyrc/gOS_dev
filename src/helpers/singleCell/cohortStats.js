@@ -138,8 +138,19 @@ export const EVENT_CLASS_ORDER = ["amp", "homdel", "fusion", "trunc", "splice", 
  * by how many patients carry them, then by the maximum fraction.
  */
 /** Tier-3 missense predicted damaging by both SIFT (deleterious) and PolyPhen (probably/possibly damaging), from driver_evidence. */
+/**
+ * OncoKB tier of an event as a number, or null when it has none. JSON null, "", "None" and "NA" are all "no tier":
+ * Number(null) is 0, which used to make untiered complex events "tier 0" (cancer-gene, passes every tier filter, sorts first).
+ */
+export function tierOf(e) {
+  const v = e?.Tier ?? e?.tier;
+  if (v == null || v === "" || /^(none|na|null|nan)$/i.test(`${v}`)) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function isDamagingMissense(e = {}) {
-  if (Number(e.Tier ?? e.tier) !== 3 || !/missense/i.test(`${e.type || ""}`)) return false;
+  if (tierOf(e) !== 3 || !/missense/i.test(`${e.type || ""}`)) return false;
   const ev = `${e.driver_evidence || ""}`;
   return /SIFT deleterious/i.test(ev) && /PolyPhen (probably|possibly) damaging/i.test(ev);
 }
@@ -152,8 +163,8 @@ export const TIER_OPTIONS = [
   { value: 3, label: "≤ 3" },
 ];
 export function passesTier(e, maxTier) {
-  const tier = Number(e?.Tier ?? e?.tier);
-  if (!Number.isFinite(tier)) return true;
+  const tier = tierOf(e);
+  if (tier == null) return true; // untiered (complex SV): the tier filter does not apply
   if (maxTier === "2d") return tier <= 2 || isDamagingMissense(e);
   return tier <= Number(maxTier);
 }
@@ -294,7 +305,7 @@ export function patientMetrics(summary, { variants = [], events = [], cells = []
   const tumor = cells.filter((c) => !/^normal$/i.test(`${c.clone_id || ""}`));
   const num = (k) => tumor.map((c) => Number(c[k])).filter(Number.isFinite);
   const median = (arr) => medianMad(arr).median;
-  const strong = events.filter((e) => Number(e.Tier ?? e.tier) <= 2);
+  const strong = events.filter((e) => tierOf(e) != null && tierOf(e) <= 2);
   // approximate callable territory: median breadth (% of genome covered) x 3,100 Mb
   const medianBreadth = median(num("qc_breadth"));
   const callableMb = Number.isFinite(medianBreadth) ? (medianBreadth / 100) * GENOME_MB : NaN;

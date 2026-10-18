@@ -6,7 +6,7 @@
 // - serializeSelection / parseSelection: the selection in the URL
 // - driverCellStates: per-cell state of each entry (SNV genotype, copy number, fusion support, carrier)
 // - driverBranchMarks: the tree branch where each driver arises
-import { eventClass, isCalledNotTree, isDamagingMissense, isPooledScan, isRescued, isTertPromoterSv, passesTier, rescueSourceText, TERT_SV_LABEL } from "./cohortStats";
+import { eventClass, isCalledNotTree, isDamagingMissense, isPooledScan, isRescued, isTertPromoterSv, passesTier, rescueSourceText, TERT_SV_LABEL, tierOf } from "./cohortStats";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
 import { twoHitStates, twoHitStatus } from "./twoHit";
 import { driverGenes, roleOf } from "./driverSummary";
@@ -156,7 +156,7 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
     const prev = byKey.get(key);
     if (prev && prev.carriers.length >= carriers.length) return;
     const genes = driverGenes(e);
-    const tier = Number(e.Tier);
+    const tier = tierOf(e);
     const site = cls === "snv" ? posOfSnv(e) : null;
     const rescued = cls === "snv" && isRescued(e);
     // rescued hotspots are not snv_matrix columns: their per-cell states come from the event itself (rescueInfo)

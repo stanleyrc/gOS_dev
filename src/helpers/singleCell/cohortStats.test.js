@@ -136,3 +136,16 @@ describe("groupOncoprintRows", () => {
     expect(groupOncoprintRows(genes, "none")).toHaveLength(5);
   });
 });
+
+describe("tierOf", () => {
+  const { tierOf, passesTier } = require("./cohortStats");
+  it("null / None / NA / '' are no tier, not tier 0", () => {
+    expect([null, undefined, "", "None", "NA"].map((t) => tierOf({ Tier: t }))).toEqual([null, null, null, null, null]);
+    expect(tierOf({ Tier: "1" })).toBe(1);
+    expect(tierOf({ tier: 3 })).toBe(3);
+  });
+  it("an untiered complex event is not tier <= 2 but is not dropped by the tier filter", () => {
+    expect(passesTier({ Tier: null, type: "Complex SV" }, 2)).toBe(true);
+    expect(passesTier({ Tier: 3, type: "Missense" }, 2)).toBe(false);
+  });
+});

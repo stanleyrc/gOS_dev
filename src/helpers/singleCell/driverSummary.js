@@ -3,6 +3,7 @@
 // what the gene is, what the alteration does to it, which cells carry it,
 // what differs in those cells and how strong the evidence is.
 // d3-free so jest can test it.
+import { tierOf } from "./cohortStats";
 import { GBM_GENES } from "./geneInfo";
 import { GENE_SETS } from "./geneSets";
 import { fisherExact, mannWhitney } from "./tests";
@@ -230,7 +231,8 @@ export const KEY_FIT = 0.8;
 /** True when a driver ({ event }) hits a cancer gene: OncoKB tier 1-2, a curated role, or a GBM gene. */
 export function inCancerGene(d = {}) {
   const e = d.event || {};
-  return Number(e.Tier) <= 2 || driverGenes(e).some((g) => {
+  const tier = tierOf(e);
+  return (tier != null && tier <= 2) || driverGenes(e).some((g) => {
     const b = geneBrief(g, e);
     return Boolean(b.role || b.gbm);
   });

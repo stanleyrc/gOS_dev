@@ -1,5 +1,6 @@
 // Data joins for the gene quick-look popover (d3-free): OncoKB common files, cohort driver events,
 // covariate-DE hits and TMB-association rho for one gene.
+import { tierOf } from "./cohortStats";
 import { eventClass, eventLabel } from "./cohortStats";
 import { isRobust } from "./covariateDe";
 
@@ -74,10 +75,10 @@ export function driverEventsForGene(summaries, files, gene) {
     (files?.[s.caseReportId]?.events || []).forEach((e) => {
       const label = eventLabel(e);
       if (!label || !labelHasGene(label, gene)) return;
-      out.push({ patient: s.caseReportId, summary: s, label, cls: eventClass(e), tier: Number(e.Tier ?? 9), variant: e.Variant && e.Variant !== "None" ? e.Variant : e.Variant_g || "", fraction: Number(e.cell_fraction) || 0, event: e });
+      out.push({ patient: s.caseReportId, summary: s, label, cls: eventClass(e), tier: tierOf(e), variant: e.Variant && e.Variant !== "None" ? e.Variant : e.Variant_g || "", fraction: Number(e.cell_fraction) || 0, event: e });
     });
   });
-  return out.sort((a, b) => a.tier - b.tier || b.fraction - a.fraction);
+  return out.sort((a, b) => (a.tier ?? 9) - (b.tier ?? 9) || b.fraction - a.fraction);
 }
 
 /** One patient's filtered events naming the gene: [{ label, cls, tier, variant, fraction }], strongest first. */
@@ -85,8 +86,8 @@ export function patientEventsForGene(events, gene) {
   return (events || [])
     .map((e) => ({ e, label: eventLabel(e) }))
     .filter(({ label }) => label && labelHasGene(label, gene))
-    .map(({ e, label }) => ({ label, cls: eventClass(e), tier: Number(e.Tier ?? e.tier ?? 9), variant: e.Variant && e.Variant !== "None" ? e.Variant : e.Variant_g || "", fraction: Number(e.cell_fraction) || 0 }))
-    .sort((a, b) => a.tier - b.tier || b.fraction - a.fraction);
+    .map(({ e, label }) => ({ label, cls: eventClass(e), tier: tierOf(e), variant: e.Variant && e.Variant !== "None" ? e.Variant : e.Variant_g || "", fraction: Number(e.cell_fraction) || 0 }))
+    .sort((a, b) => (a.tier ?? 9) - (b.tier ?? 9) || b.fraction - a.fraction);
 }
 
 /** Distinct event labels containing the gene, for an exact categorical gene filter in the All events table. */

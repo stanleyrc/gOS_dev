@@ -20,7 +20,7 @@
 //   none         otherwise
 // A truncal-looking SNV with VAF >= VAF_LOH and no LOH call is flagged `vafSuggestsLoh` (supporting
 // evidence only: it does not make the gene biallelic).
-import { eventClass } from "./cohortStats";
+import { eventClass, tierOf } from "./cohortStats";
 import { splitIds } from "./driverContrast";
 import { isGermlineLike } from "./clinicalEvents";
 
@@ -49,7 +49,7 @@ export function damagingSnv(event = {}) {
   const c = eventClass(event);
   if (c === "trunc" || c === "splice") return true;
   if (c === "missense") {
-    const tier = Number(event.Tier);
+    const tier = tierOf(event);
     // rescued driver-gene missense (site evidence) counts: the rescue only keeps sites in curated driver genes
     return /loss/i.test(`${event.effect || ""}`) || (Number.isFinite(tier) && tier <= 2) || /site evidence/i.test(`${event.source || ""}`);
   }
@@ -157,7 +157,7 @@ export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes 
         hit.site = `${e.seqnames}:${e.start}`;
         hit.rescued = /site evidence/i.test(`${e.source || ""}`) || /rescued/i.test(`${e.source || ""}`);
         hit.text = `${g}${hit.protein ? ` ${hit.protein}` : ""}`;
-        hit.tier = Number.isFinite(Number(e.Tier)) ? Number(e.Tier) : null;
+        hit.tier = tierOf(e);
         // a missense kept only because it was rescued from site evidence (no loss-of-function call, tier 3+) is shown but not counted as a distinct hit
         hit.weak = hit.mutation === "missense" && !(/loss/i.test(`${e.effect || ""}`) || (hit.tier != null && hit.tier <= 2));
       } else if (cls === "fusion") hit.text = `${e.gene}`;
