@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import { Alert, Typography } from "antd";
 import { SingleCellEventTracks } from "../eventCellTracks";
 import { loadCellTrack } from "../../../redux/singleCell/loaders";
-import { carrierCells, chooseCarrierCell, footprintLocation, junctionSupport, MAX_SCANNED_CARRIERS, parseFootprint } from "../../../helpers/singleCell/complexZoom";
+import { carrierCells, chooseCarrierCell, footprintLocation, junctionSupport, MAX_SCANNED_CARRIERS, parseFootprint, EVENT_JUNCTION_COLOR } from "../../../helpers/singleCell/complexZoom";
 
 const { Text } = Typography;
 
@@ -32,7 +32,7 @@ export default function ComplexCellZoom({ event }) {
       alive = false;
     };
   }, [dataset, carriers, location, chromoBins]);
-  const notes = useMemo(() => new Map([...(support || new Map())].map(([id, s]) => [id, `${s.count} ALT junction${s.count === 1 ? "" : "s"}${s.weight ? `, CN ${Math.round(s.weight * 10) / 10}` : ""}`])), [support]);
+  const notes = useMemo(() => new Map([...(support || new Map())].map(([id, s]) => [id, `${s.count} event junction${s.count === 1 ? "" : "s"}${s.weight ? `, CN ${Math.round(s.weight * 10) / 10}` : ""}`])), [support]);
   const record = useMemo(() => ({ ...event, location, actualLocation: location }), [event, location]);
   if (!carriers.length) return <Alert type="info" showIcon message="Genome graph not available (no carrier cells are listed for this event)." />;
   if (!parseFootprint(event?.Genome_Location).length) return <Alert type="info" showIcon message={`Genome graph not available (cannot read the event footprint "${event?.Genome_Location || ""}").`} />;
@@ -43,7 +43,7 @@ export default function ComplexCellZoom({ event }) {
       <Text type="secondary" style={{ display: "block", marginBottom: 6 }}>
         {`${event.vartype || "Complex event"} footprint ${parseFootprint(event.Genome_Location).map((iv) => `chr${iv.chromosome}:${iv.start.toLocaleString()}-${iv.end.toLocaleString()}`).join(", ")}. `}
         {support.size < Math.min(carriers.length, MAX_SCANNED_CARRIERS) ? `${Math.min(carriers.length, MAX_SCANNED_CARRIERS) - support.size} carrier(s) have no genome graph. ` : ""}
-        ALT junctions are the red arcs; the event's own are those touching the footprint windows.
+        <span style={{ color: EVENT_JUNCTION_COLOR, fontWeight: 600 }}>purple = this event's junctions</span> (ALT junctions with a breakpoint inside the footprint); other ALT junctions stay red, REF grey.
       </Text>
       <SingleCellEventTracks record={record} focusCell={focus} cellNotes={notes} />
     </div>

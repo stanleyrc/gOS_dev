@@ -1,3 +1,4 @@
+import { highlightEventJunctions } from "../../helpers/singleCell/complexZoom";
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -28,20 +29,18 @@ const noNotification = { status: null, heading: null, messages: [] };
 // Converted genome graphs, keyed by the raw JSON object so panels get
 // stable references (they compare props by identity).
 const genomeCache = new WeakMap();
-const toGenome = (raw, chromoBins) => {
+const toGenome = (raw, chromoBins, highlight = "") => {
   if (!raw) return null;
   let entry = genomeCache.get(raw);
   if (!entry || entry.chromoBins !== chromoBins) {
-    entry = {
-      chromoBins,
-      genome: dataToGenome(
-        { settings: raw.settings || {}, intervals: raw.intervals || [], connections: raw.connections || [] },
-        chromoBins
-      ),
-    };
+    entry = { chromoBins, byHighlight: new Map() };
     genomeCache.set(raw, entry);
   }
-  return entry.genome;
+  if (!entry.byHighlight.has(highlight)) {
+    const src = highlight ? highlightEventJunctions(raw, highlight) : raw;
+    entry.byHighlight.set(highlight, dataToGenome({ settings: src.settings || {}, intervals: src.intervals || [], connections: src.connections || [] }, chromoBins));
+  }
+  return entry.byHighlight.get(highlight);
 };
 
 function TrackNote({ status, error, label }) {
@@ -76,13 +75,13 @@ function TrackNote({ status, error, label }) {
  * graph, `coverage` / `hetsnps` the arrow scatter. Used by the cell tracks
  * panel and the cohort event drawer.
  */
-export function TrackPlot({ cellId, track, data, status = "ok", error = null, chromoBins, commonRangeY = null, height = PLOT_HEIGHT }) {
+export function TrackPlot({ cellId, track, data, status = "ok", error = null, chromoBins, commonRangeY = null, height = PLOT_HEIGHT, highlightLocation = "" }) {
   const { t } = useTranslation("common");
   const cellLabels = useCellLabels();
   const label = t(`components.single-cell.tracks.${track}`);
   if (status !== "ok" || !data) return <TrackNote status={status === "ok" ? "missing" : status} error={error} label={label} />;
   if (track === "total" || track === "mutations") {
-    const genome = toGenome(data, chromoBins);
+    const genome = toGenome(data, chromoBins, track === "total" ? highlightLocation : "");
     if (!genome) return <TrackNote status="missing" label={label} />;
     const Panel = track === "total" ? GenomePanel : MutationsPanel;
     return (
@@ -172,7 +171,7 @@ const TRACK_NESTING = { left: 35, right: 21 };
  * carrying a filtered event); `embedded` drops the heatmap alignment padding
  * and pinned genes for use inside a modal; `onRemove` replaces "deselect".
  */
-export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, embedded = false, onRemove = null, title = null }) {
+export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, embedded = false, onRemove = null, title = null, highlightLocation = "" }) {
   const { t } = useTranslation("common");
   const cellLabels = useCellLabels();
   const dispatch = useDispatch();
@@ -289,7 +288,7 @@ export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, e
     // CN tracks of a cell share its range in "per cell" mode; SNVs and het SNPs are not CN, so they stay auto.
     const perCellMode = yScaleMode === "cell";
     const cnRange = perCellMode ? cellRanges[cellId] || null : commonRangeY;
-    if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} commonRangeY={cnRange} height={height} />;
+    if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} highlightLocation={highlightLocation} commonRangeY={cnRange} height={height} />;
     if (track === "mutations") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.mutations} chromoBins={chromoBins} commonRangeY={perCellMode ? null : commonRangeY} height={height} />;
     const entry = perCell[cellId]?.[storedTrack(track, hetMode)];
     return <TrackPlot cellId={cellId} track={storedTrack(track, hetMode)} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={cnRange} height={height} />;

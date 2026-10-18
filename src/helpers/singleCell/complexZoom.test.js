@@ -1,4 +1,4 @@
-import { parseFootprint, mergeIntervals, footprintLocation, defaultFootprintPad, junctionSupport, chooseCarrierCell, carrierCells, isComplexEvent } from "./complexZoom";
+import { parseFootprint, mergeIntervals, footprintLocation, defaultFootprintPad, junctionSupport, eventJunctions, firstJunctionBreakpoint, highlightEventJunctions, chooseCarrierCell, carrierCells, isComplexEvent } from "./complexZoom";
 
 describe("complexZoom", () => {
   test("parses multiple intervals on one chromosome", () => {
@@ -31,16 +31,28 @@ describe("complexZoom", () => {
       { iid: 2, chromosome: "9", startPoint: 100, endPoint: 200 },
     ],
     connections: [
-      { source: -1, sink: 2, type: "ALT", weight: 3 },
-      { source: 1, sink: 2, type: "REF", weight: 9 },
-      { source: 2, sink: -2, type: "ALT", weight: 1 },
+      { cid: 1, source: -1, sink: 2, type: "ALT", weight: 3 },
+      { cid: 2, source: 1, sink: 2, type: "REF", weight: 9 },
+      { cid: 3, source: 2, sink: -2, type: "ALT", weight: 1 },
     ],
   };
-  test("junction support counts ALT junctions touching the footprint", () => {
-    expect(junctionSupport(cx, "6:150-160")).toEqual({ count: 1, weight: 3 });
+  test("junction support counts ALT junctions with a breakpoint in the footprint", () => {
+    expect(junctionSupport(cx, "6:90-120")).toEqual({ count: 1, weight: 3 });
+    expect(junctionSupport(cx, "6:150-160")).toEqual({ count: 0, weight: 0 });
     expect(junctionSupport(cx, "9:1-1000")).toEqual({ count: 2, weight: 4 });
     expect(junctionSupport(cx, "1:1-5")).toEqual({ count: 0, weight: 0 });
     expect(junctionSupport(null, "6:1-5")).toEqual({ count: 0, weight: 0 });
+  });
+  test("breakpoints use the connection sign and the first junction is the heaviest", () => {
+    expect(eventJunctions(cx, "9:1-1000").map((j) => j.breakpoints)).toEqual([[{ chromosome: "9", position: 200 }], [{ chromosome: "9", position: 200 }, { chromosome: "9", position: 100 }]]);
+    expect(firstJunctionBreakpoint(cx, "6:90-120|9:1-1000")).toEqual({ chromosome: "6", position: 100 });
+    expect(firstJunctionBreakpoint(cx, "1:1-5")).toBeNull();
+  });
+  test("highlight colours only the event's ALT junctions", () => {
+    const h = highlightEventJunctions(cx, "6:90-120");
+    expect(h.connections.map((c) => c.color)).toEqual(["#7B4FA8", undefined, undefined]);
+    expect(cx.connections[0].color).toBeUndefined();
+    expect(highlightEventJunctions(cx, "1:1-5")).toBe(cx);
   });
   test("carrier choice: sample if a carrier, else most junction weight, else first", () => {
     const carriers = ["a", "b", "c"];
