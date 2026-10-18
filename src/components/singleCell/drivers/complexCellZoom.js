@@ -32,6 +32,14 @@ export default function ComplexCellZoom({ event }) {
       alive = false;
     };
   }, [dataset, carriers, location, chromoBins]);
+  // the gOS plot panels measure their width on mount only; the drawer slides in and the tracks mount while
+  // it animates, so a track can stay blank until a resize. Nudge them once the layout has settled.
+  const ready = Boolean(support);
+  useEffect(() => {
+    if (!ready) return undefined;
+    const timers = [250, 1000].map((ms) => setTimeout(() => window.dispatchEvent(new Event("resize")), ms));
+    return () => timers.forEach(clearTimeout);
+  }, [ready, event]);
   const notes = useMemo(() => new Map([...(support || new Map())].map(([id, s]) => [id, `${s.count} event junction${s.count === 1 ? "" : "s"}${s.weight ? `, CN ${Math.round(s.weight * 10) / 10}` : ""}`])), [support]);
   const record = useMemo(() => ({ ...event, location, actualLocation: location }), [event, location]);
   if (!carriers.length) return <Alert type="info" showIcon message="Genome graph not available (no carrier cells are listed for this event)." />;
