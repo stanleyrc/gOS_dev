@@ -16,6 +16,7 @@ import { useDriverGeneExpression, expressionLine } from "./driverGeneExpressionC
 import TwoHitBlock from "./twoHitBlock";
 import ClinicalTip from "./clinicalTip";
 import MutationEvidencePanel from "../evidence/mutationEvidencePanel";
+import ComplexCellZoom from "./complexCellZoom";
 import RnaFusionModal, { FusionLabel, FusionTierTag } from "../rna/rnaFusionModal";
 
 const { Text } = Typography;
@@ -101,6 +102,7 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
   const items = [
     { key: "contrast", label: "Carriers vs sisters", children: <DriverContrastPanel forceDriver={driver} showBoard={false} /> },
     siteId && { key: "site", label: "Site evidence & reads", children: <MutationEvidencePanel siteId={siteId} /> },
+    entry.cls === "complex" && { key: "cell", label: "Carrier cell genome graph", children: <ComplexCellZoom event={entry.event} /> },
     entry.cls === "fusion" && { key: "rna", label: "RNA fusion reads", children: <FusionRnaTab entry={entry} /> },
   ].filter(Boolean);
   return (
