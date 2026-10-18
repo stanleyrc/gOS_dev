@@ -93,6 +93,18 @@ export async function loadRnaSummary(dataset, patientId) {
   return rnaSummaryCache.get(key);
 }
 
+const umap3dCache = new Map();
+/** A patient's rna/umap3d.json: { status: "ok", data } | { status: "missing" } | { status: "error" }, fetched once. */
+export function loadUmap3d(dataset, patientId) {
+  const key = `${dataset.dataPath}${patientId}`;
+  if (!umap3dCache.has(key)) {
+    const promise = tryGet(casePath(dataset, patientId, "rna/umap3d.json"));
+    promise.then((r) => r.status === "error" && umap3dCache.delete(key), () => umap3dCache.delete(key));
+    umap3dCache.set(key, promise);
+  }
+  return umap3dCache.get(key);
+}
+
 const rnaMatrixCache = new Map();
 /** A patient's rna/ expression matrix (about 6 MB for hundreds of cells), fetched once. */
 export async function loadRnaMatrix(dataset, patientId) {
