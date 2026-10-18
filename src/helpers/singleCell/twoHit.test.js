@@ -155,3 +155,34 @@ describe("class follows the largest cell group", () => {
     expect(biallelicSummary({ P: calls }).map((g) => g.gene)).toEqual(["PTEN"]);
   });
 });
+
+describe("germline-like variants", () => {
+  const cells = cellsOf(20);
+  const germ = (gene, extra = {}) => ({
+    key: `${gene}-germ`, cls: "snv", carriers: cells.slice(0, 18), n: 18, fraction: 0.9, germline: true,
+    event: { gene, type: "Missense", vartype: "SNV", Variant: "p.A322T", seqnames: "17", start: "100", role: "Tumor Suppressor", germline_like: true, clinical: { clinvar: { found: true, significance: "Conflicting_classifications_of_pathogenicity" } }, ...extra },
+  });
+  const loh = (gene, ids) => lossFile(cells, { [gene]: cells.map((c) => (ids.includes(c) ? LOSS_CODE.LOH : LOSS_CODE.BALANCED)) });
+  it("a germline VUS is listed, never counted, and never a somatic SNV hit", () => {
+    const [c] = twoHitCalls([germ("BRCA1")], { tumorIds: cells });
+    expect(c.state).toBe("germline");
+    expect(c.hits.map((h) => h.kind)).toEqual(["germline"]);
+    expect(c.germline[0].counted).toBe(false);
+    expect(c.snvCells).toBe(0);
+    const [c2] = twoHitCalls([germ("BRCA1")], { tumorIds: cells, loss: loh("BRCA1", cells.slice(0, 10)) });
+    expect(c2.state).toBe("monoallelic"); // LOH alone: the VUS does not make it biallelic
+  });
+  it("a damaging germline variant plus somatic LOH is biallelic in the LOH cells", () => {
+    const g = germ("BRCA1", { type: "Nonsense", Variant: "p.Q12*" });
+    const [c] = twoHitCalls([g], { tumorIds: cells, loss: loh("BRCA1", cells.slice(0, 10)) });
+    expect(c.state).toBe("biallelic");
+    expect(c.biallelicCells).toBe(10);
+    expect(c.germlineHit).toBe(true);
+    const [alone] = twoHitCalls([g], { tumorIds: cells });
+    expect(alone.state).toBe("germline");
+  });
+  it("ClinVar pathogenic missense counts; conflicting does not", () => {
+    const p = germ("BRCA1", { clinical: { clinvar: { found: true, significance: "Pathogenic/Likely_pathogenic" } } });
+    expect(twoHitCalls([p], { tumorIds: cells, loss: loh("BRCA1", cells.slice(0, 10)) })[0].state).toBe("biallelic");
+  });
+});

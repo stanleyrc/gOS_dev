@@ -6,7 +6,8 @@ import { DEFAULT_TSG_VIEW, KIND_SHORT, TSG_SOURCES, TSG_SOURCE_LABEL, summaryEve
 import useCohortExport from "./useCohortExport";
 
 const { Text } = Typography;
-export const KIND_COLOR = { snv: "#1B9E77", loh: "#E6A100", homdel: "#3B6FB6", sv: "#7B4FA8" };
+export const KIND_COLOR = { germline: "#8C6D1F", snv: "#1B9E77", loh: "#E6A100", homdel: "#3B6FB6", sv: "#7B4FA8" };
+const protein = (label) => `${label || ""}`.replace(/ \(germline.*$/, "").replace(/^\S+ /, "").replace(/^p\./, "");
 const pct = (x) => `${Math.round(100 * x)}%`;
 
 /** Coloured hit chips ("mut trunc", "LOH", "homdel", "SV"); the label of a mutation is its protein change. */
@@ -15,7 +16,7 @@ export function HitChips({ hits, max = 4 }) {
     <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 2, justifyContent: "center" }}>
       {hits.slice(0, max).map((h, i) => (
         <span key={`${h.kind}-${i}`} style={{ background: KIND_COLOR[h.kind], color: "#fff", borderRadius: 3, padding: "0 4px", fontSize: TYPE.micro, lineHeight: "15px", whiteSpace: "nowrap" }}>
-          {h.kind === "snv" ? `${h.label.replace(/^p\./, "")}` : KIND_SHORT[h.kind]}
+          {h.kind === "snv" ? `${h.label.replace(/^p\./, "")}` : h.kind === "germline" ? `germline ${protein(h.label)}` : KIND_SHORT[h.kind]}
         </span>
       ))}
       {hits.length > max && <span style={{ fontSize: TYPE.micro }}>{`+${hits.length - max}`}</span>}
@@ -28,15 +29,21 @@ function Cell({ s }) {
   const ev = summaryEvent(s);
   const body = (
     <div style={{ textAlign: "center", lineHeight: 1.25, padding: "3px 2px", borderRadius: 4, background: s.multi ? (s.state === "biallelic" ? "rgba(27,158,119,0.14)" : "rgba(230,161,0,0.14)") : "transparent", opacity: s.multi ? 1 : 0.6 }} data-tsg-cell={`${s.patient}|${s.gene}`}>
-      <div style={{ fontWeight: 700, fontSize: TYPE.label }}>{s.multi ? `×${s.nHits}` : "×1"}</div>
+      <div style={{ fontWeight: 700, fontSize: TYPE.label }}>{s.multi ? `×${s.nHits}` : `×${s.nHits}`}</div>
       <HitChips hits={s.hits} />
+      {s.germline.filter((g) => !g.counted).map((g) => (
+        // germline variant that is not a known damaging allele: listed, not counted
+        <div key={g.text} style={{ marginTop: 2 }}>
+          <span style={{ border: `1px dashed ${KIND_COLOR.germline}`, color: KIND_COLOR.germline, borderRadius: 3, padding: "0 4px", fontSize: TYPE.micro, lineHeight: "15px", whiteSpace: "nowrap" }}>{`germline ${protein(g.text)} · not counted`}</span>
+        </div>
+      ))}
       {s.multi && (
         <div style={{ fontSize: TYPE.micro, color: INK.textSecondary }}>
           {s.sameFraction > 0 ? `${pct(s.sameFraction)} same cells` : "different cells"}
           {` · ${s.clonal ? "clonal" : "subclonal"}`}
         </div>
       )}
-      {!s.multi && <div style={{ fontSize: TYPE.micro, color: INK.textSecondary }}>{`${pct(s.hits[0]?.fraction || 0)} of cells`}</div>}
+      {!s.multi && s.hits.length > 0 && <div style={{ fontSize: TYPE.micro, color: INK.textSecondary }}>{s.hits[0].kind === "germline" ? "germline: every cell" : `${pct(s.hits[0]?.fraction || 0)} of cells`}</div>}
     </div>
   );
   return (
@@ -143,7 +150,7 @@ export default function CohortTsgHitsPanel({ tsg, dataset }) {
           </div>
         )}
         <Space size={10} wrap>
-          {Object.entries({ snv: "mutation (protein change)", loh: "LOH (loss or copy-neutral)", homdel: "homozygous deletion (both copies)", sv: "SV breaking the gene" }).map(([k, label]) => (
+          {Object.entries({ germline: "germline variant (in normal cells too; counted only if truncating / splice / ClinVar P/LP, dashed = not counted)", snv: "somatic mutation (protein change)", loh: "LOH (loss or copy-neutral)", homdel: "homozygous deletion (both copies)", sv: "SV breaking the gene" }).map(([k, label]) => (
             <span key={k}>
               <Tag color={KIND_COLOR[k]} style={{ marginRight: 4 }}>{KIND_SHORT[k]}</Tag>
               <Text style={{ fontSize: TYPE.label }}>{label}</Text>

@@ -88,8 +88,8 @@ export default function useDriverLayer() {
     () => buildDriverEntries(events || [], { tumorIds, hotspots: sites.hotspots, verdicts: sites.verdicts, cgc, rnaFusionCells, snv: snvData }),
     [events, tumorIds, sites, cgc, rnaFusionCells, snvData]
   );
-  // germline-like and not-recovered clinical findings are not somatic hits
-  const somaticEntries = useMemo(() => entries.filter((d) => d.somatic), [entries]);
+  // not-recovered clinical findings are not hits; germline-like ones go in as germline hits (twoHit.js never counts them as somatic)
+  const somaticEntries = useMemo(() => entries.filter((d) => d.somatic || d.germline), [entries]);
   const tsg = usePatientTsg(somaticEntries, tumorIds);
   const selection = layout.drivers || DEFAULT_SELECTION;
   const fits = useMemo(() => entryFits(entries, treeLayout), [entries, treeLayout]);
