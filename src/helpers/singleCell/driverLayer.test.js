@@ -218,6 +218,17 @@ describe("site-evidence warn passes driverQc", () => {
   });
 });
 
+describe("broad CN-0 homdels fail driverQc", () => {
+  it("a HOMDEL flagged broad_cn0 is not Recommended; a focal one is", () => {
+    const hd = (gene, extra) => ev({ gene, vartype: "HOMDEL", type: "SCNA", Tier: 2, role: "Tumor Suppressor", cell_ids: "c1,c2,c3", ...extra });
+    const entries = buildDriverEntries([hd("CDKN2A", { broad_cn0: false, seqnames: "9", Genome_Location: "9:21967753-21995301" }), hd("NF2", { broad_cn0: true, cn0_segment_mb_median: 50.8, seqnames: "22", Genome_Location: "22:29603556-29698598" })], { tumorIds: cells });
+    const nf2 = entries.find((d) => d.genes[0] === "NF2");
+    expect(nf2.qc.pass).toBe(false);
+    expect(nf2.qc.reasons.join(" ")).toMatch(/50.8 Mb/);
+    expect(selectDrivers(entries, DEFAULT_SELECTION).map((d) => d.genes[0])).toEqual(["CDKN2A"]);
+  });
+});
+
 describe("tier limit: <= 2 + damaging missense", () => {
   const dmg = "SIFT deleterious (0.01); PolyPhen probably damaging (0.99)";
   const snvEv = (gene, extra) => ev({ gene, vartype: "SNV", type: "Missense", Tier: 3, seqnames: "3", start: "5000", end: "5000", Genome_Location: "3:5000-5000", cell_ids: "c1,c2,c3", ...extra });
