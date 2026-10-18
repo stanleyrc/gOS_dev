@@ -69,7 +69,8 @@ describe("clinical concordance", () => {
     expect(f.mgmt.why).toContain("N/A in source");
     expect(f.truncal.value).toBe("2,244");
     expect(f.truncal.sub).toBe("2,048 tree sites");
-    expect(f.recurrence.why).toContain("not in any data file");
+    expect(f.recurrence.why).toContain("not in the primary / recurrent table");
+    expect(metaStrip({ clinical_meta: { patients: { ZZ9: { disease_status: "Recurrent" } } } }, "ZZ9").find((x) => x.key === "recurrence").value).toBe("Recurrent");
     expect(JSON.stringify(metaStrip(assays, "ZZ1"))).not.toContain("4407");
     expect(Object.fromEntries(metaStrip(assays, "ZZ2").map((x) => [x.key, x])).truncal.why).toContain("no mapping");
     expect(metaStrip(null, "ZZ1").every((x) => x.value === null)).toBe(true);

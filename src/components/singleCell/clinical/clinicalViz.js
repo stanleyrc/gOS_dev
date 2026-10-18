@@ -74,11 +74,11 @@ export function entryTip(patient, e) {
 const shorten = (v) => `${v}`.replace("Unmethylated", "Unmeth.").replace("Methylated", "Meth.").replace("Multi-Focal", "Multifocal");
 
 /**
- * Per-patient clinical annotation strip rows (sex, location, MGMT, assay) + numeric rows (age, truncal mutations).
+ * Per-patient clinical annotation strip rows (sex, location, MGMT, primary / recurrent, assay) + numeric rows (age, truncal mutations).
  * Draws at x offset `L`, columns of width `cw`, starting at y. Returns nothing; use inside an <svg>.
  */
 export function HeaderStrip({ header, L, cw, y, theme, rowH = 17, showAssay = true }) {
-  const catKeys = ["sex", "location", "mgmt"];
+  const catKeys = ["sex", "location", "mgmt", "recurrence"];
   const seen = {};
   catKeys.forEach((k) => {
     seen[k] = [];
@@ -131,7 +131,7 @@ export function HeaderStrip({ header, L, cw, y, theme, rowH = 17, showAssay = tr
     </g>
   );
 }
-export const headerHeight = (showAssay = true, rowH = 17) => (6 + (showAssay ? 1 : 0)) * rowH;
+export const headerHeight = (showAssay = true, rowH = 17) => (7 + (showAssay ? 1 : 0)) * rowH;
 
 /**
  * Concordance oncoprint: genes x patients. `grid` from clinicalOncoprint(); `header` from clinicalHeader().
