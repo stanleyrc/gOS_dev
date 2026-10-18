@@ -6,6 +6,7 @@ import PatientReportCard from "../../components/singleCell/patientReportCard";
 import SingleCellWrapper from "../../components/singleCell/index.style";
 import ScEventModal from "../../components/singleCell/scEventModal";
 import ClonalHistoryCard from "../../components/singleCell/clonalHistoryCard";
+import ComplexOrderCard from "../../components/singleCell/complexOrderCard";
 import AmpTimingCard from "../../components/singleCell/ampTimingCard";
 import BranchRatesCard from "../../components/singleCell/branchRatesCard";
 import useClinicalAssays from "../../components/singleCell/clinical/useClinicalAssays";
@@ -75,6 +76,7 @@ export default function SingleCellSummaryTab() {
             children: portrait.status === "loading" ? <Skeleton active /> : <PortraitCard bare portrait={portrait.data} patient={id} features={portraitCohort.data?.matrix?.features} />,
           },
           { key: "clonal-history", label: "Clonal history", children: <ClonalHistoryCard /> },
+          { key: "event-order", label: "Event order: which complex events nest inside which", children: <ComplexOrderCard /> },
           {
             key: "timing-rates",
             label: "Amplicon timing and branch rates",
