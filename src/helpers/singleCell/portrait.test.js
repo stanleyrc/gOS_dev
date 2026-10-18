@@ -39,7 +39,7 @@ describe("portrait helpers", () => {
     expect(portraitHref(null)).toBe("#");
   });
   it("tallies verdicts over applicable patients only", () => {
-    expect(featureTally(matrix, "f1").text).toBe("2/3 consistent, 1 inconsistent, 1 n/a");
+    expect(featureTally(matrix, "f1").text).toBe("2/3 patients match, 1 does not, 1 n/a");
     expect(featureTally(matrix, "f3").counts.not_testable).toBe(3);
     expect(featureTally(null, "f1").text).toBe("not available");
   });

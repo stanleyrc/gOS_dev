@@ -41,7 +41,7 @@ export function portraitHref(link, base) {
   return url.toString();
 }
 
-/** Counts of each verdict for one matrix feature across patients, and a short text such as "6/9 consistent, 3 inconsistent". */
+/** Counts of each verdict for one matrix feature across patients, and a short text such as "6/9 patients match, 3 do not". */
 export function featureTally(matrix, key) {
   const counts = { consistent: 0, inconsistent: 0, not_testable: 0, not_applicable: 0 };
   (matrix?.patients || []).forEach((p) => {
@@ -50,8 +50,8 @@ export function featureTally(matrix, key) {
   });
   const applicable = counts.consistent + counts.inconsistent + counts.not_testable;
   const parts = [];
-  if (counts.consistent) parts.push(`${counts.consistent}/${applicable} consistent`);
-  if (counts.inconsistent) parts.push(`${counts.inconsistent} inconsistent`);
+  if (counts.consistent) parts.push(`${counts.consistent}/${applicable} patients match`);
+  if (counts.inconsistent) parts.push(`${counts.inconsistent} ${counts.inconsistent === 1 ? "does" : "do"} not`);
   if (counts.not_testable) parts.push(`${counts.not_testable} not testable`);
   if (counts.not_applicable) parts.push(`${counts.not_applicable} n/a`);
   return { counts, applicable, text: parts.join(", ") || "not available" };
