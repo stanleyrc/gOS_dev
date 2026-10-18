@@ -381,7 +381,7 @@ function MultiGroupDe({ summary, matrix, rowsFor, minPct, significant, onView, v
   );
 }
 
-export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene, onViolins }) {
+export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene, onViolins, defaultDotGroupBy = "clone" }) {
   const dispatch = useDispatch();
   const geneList = useSelector((state) => state.ScAnalysis.geneList);
   const cn = useSelector((state) => state.SingleCell.cn);
@@ -403,7 +403,7 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
     const id = setTimeout(() => setQuery(queryInput), 200);
     return () => clearTimeout(id);
   }, [queryInput]);
-  const [dotGroupBy, setDotGroupBy] = useState("clone");
+  const [dotGroupBy, setDotGroupBy] = useState(defaultDotGroupBy);
   const [nDot, setNDot] = useState(10);
   const [sets, setSets] = useState([]);
   const [setId, setSetId] = useState("hallmark");
