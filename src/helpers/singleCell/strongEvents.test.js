@@ -9,3 +9,10 @@ describe("isStrongEvent", () => {
     expect(isStrongEvent({ gene: "TP53" })).toBe(true);
   });
 });
+
+describe("broad CN-0 homdels", () => {
+  it("are never strong, however many cells", () => {
+    expect(isStrongEvent({ vartype: "HOMDEL", n_cells: 208, cell_fraction: 0.53, broad_cn0: true })).toBe(false);
+    expect(isStrongEvent({ vartype: "HOMDEL", n_cells: 208, cell_fraction: 0.53, broad_cn0: false })).toBe(true);
+  });
+});

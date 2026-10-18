@@ -255,12 +255,13 @@ export function snvStateLabel(entry, v) {
   return v === 1 ? "wild type" : "no coverage";
 }
 
-/** QC of a driver call: enough cells, not an "upstream of GENE" fusion, site evidence not artefact / germline. */
+/** QC of a driver call: enough cells, not an "upstream of GENE" fusion, site evidence not artefact / germline, not a broad CN-0 "homdel" (gos_sc_homdel_qc.py). */
 export function driverQc(entry) {
   const reasons = [];
   if (entry.n < MIN_QC_CELLS) reasons.push(`fewer than ${MIN_QC_CELLS} cells`);
   if (entry.upstreamOnly) reasons.push("fusion only upstream of the gene");
   if (entry.verdict === "artefact" || entry.verdict === "germline") reasons.push(`site evidence: ${entry.verdict}-like`);
+  if (entry.event?.broad_cn0) reasons.push(`CN 0 over ${entry.event.cn0_segment_mb_median ?? "≥ 20"} Mb (whole chromosome / arm) in the carrier cells: a copy-number fit artefact, not a focal deletion`);
   return { pass: reasons.length === 0, reasons };
 }
 
