@@ -6,6 +6,7 @@ import { loadCellTrack } from "../../../redux/singleCell/loaders";
 import { carrierCells, chooseCarrierCell, footprintLocation, junctionSupport, MAX_SCANNED_CARRIERS, parseFootprint, EVENT_JUNCTION_COLOR } from "../../../helpers/singleCell/complexZoom";
 
 const { Text } = Typography;
+const DRAWER_SETTLE_MS = 600;
 
 /**
  * "Zoom to a carrier cell" for a complex SV driver (rDelDup, DM, TIC ...):
@@ -32,19 +33,19 @@ export default function ComplexCellZoom({ event }) {
       alive = false;
     };
   }, [dataset, carriers, location, chromoBins]);
-  // the gOS plot panels measure their width on mount only; the drawer slides in and the tracks mount while
-  // it animates, so a track can stay blank until a resize. Nudge them once the layout has settled.
-  const ready = Boolean(support);
+  // The CN / coverage panels fade in only once react-in-viewport reports them visible, and that observer
+  // can miss a panel that mounts while the drawer is still sliding in (the track then stays at opacity 0).
+  // So the tracks mount after the drawer animation has ended.
+  const [settled, setSettled] = useState(false);
   useEffect(() => {
-    if (!ready) return undefined;
-    const timers = [250, 1000].map((ms) => setTimeout(() => window.dispatchEvent(new Event("resize")), ms));
-    return () => timers.forEach(clearTimeout);
-  }, [ready, event]);
+    const timer = setTimeout(() => setSettled(true), DRAWER_SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, []);
   const notes = useMemo(() => new Map([...(support || new Map())].map(([id, s]) => [id, `${s.count} event junction${s.count === 1 ? "" : "s"}${s.weight ? `, CN ${Math.round(s.weight * 10) / 10}` : ""}`])), [support]);
   const record = useMemo(() => ({ ...event, location, actualLocation: location }), [event, location]);
   if (!carriers.length) return <Alert type="info" showIcon message="Genome graph not available (no carrier cells are listed for this event)." />;
   if (!parseFootprint(event?.Genome_Location).length) return <Alert type="info" showIcon message={`Genome graph not available (cannot read the event footprint "${event?.Genome_Location || ""}").`} />;
-  if (!support) return <Text type="secondary">Scanning carrier cells' genome graphs...</Text>;
+  if (!support || !settled) return <Text type="secondary">Scanning carrier cells' genome graphs...</Text>;
   const focus = chooseCarrierCell(event, carriers, support);
   return (
     <div data-complex-zoom>
