@@ -16,6 +16,8 @@ const short = (s) => (s.length > MAX_CHARS ? `${s.slice(0, MAX_CHARS - 1)}…` :
 const DriverTip = ({ d, sig, f1 }) => (
   <div>
     <div>{`${d.label} · ${classLabel(d.entry)} · ${d.n} cells${d.upstreamOnly ? " · upstream of gene only" : ""}${d.members.length > 1 ? ` · same CN pattern: ${d.genes.join(", ")}` : ""}`}</div>
+    {d.entry?.twinTip && <div>{d.entry.twinTip}</div>}
+    {d.entry?.shortLabel && d.entry.shortLabel !== d.label && <div style={{ opacity: 0.7, fontSize: 11 }}>{`also written ${d.entry.shortLabel} (first chromosome only)`}</div>}
     {f1 !== undefined && <div>{Number.isFinite(f1) ? `Clade F1 ${f1.toFixed(2)} (best-matching tree clade)` : "Clade F1: not available (no carrier cells on the tree)"}</div>}
     <ClinicalTip event={d.entry?.event} />
     {d.entry?.rescued && <div style={{ marginTop: 4 }}>{rescueText(d.entry)}</div>}

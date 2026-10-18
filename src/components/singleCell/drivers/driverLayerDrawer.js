@@ -17,6 +17,8 @@ import TwoHitBlock from "./twoHitBlock";
 import ClinicalTip from "./clinicalTip";
 import MutationEvidencePanel from "../evidence/mutationEvidencePanel";
 import ComplexCellZoom from "./complexCellZoom";
+import JunctionEvidenceTrack from "./junctionEvidenceTrack";
+import { dmOverlap, dmOverlapText } from "../../../helpers/singleCell/complexLabels";
 import RnaFusionModal, { FusionLabel, FusionTierTag } from "../rna/rnaFusionModal";
 
 const { Text } = Typography;
@@ -96,6 +98,7 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
   const exprItems = useDriverGeneExpression(driver, entry?.carriers || [], nonCarriers, null, rna);
   const exprLine = rna.summary ? (rna.matrix ? expressionLine(exprItems) : "Expression: loading RNA...") : "Expression: not available (no matched RNA for this patient)";
   const f1 = entry ? fits?.get(entry.key) : undefined;
+  const dmText = useMemo(() => (entry?.cls === "complex" ? dmOverlapText(dmOverlap(entry, entries)) : null), [entry, entries]);
   if (!entry) return null;
   const shown = driverLayer.shown.some((d) => d.key === entry.key);
   const siteId = entry.siteId ? siteIds?.get(entry.siteId) : null;
@@ -103,6 +106,7 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
     { key: "contrast", label: "Carriers vs sisters", children: <DriverContrastPanel forceDriver={driver} showBoard={false} /> },
     siteId && { key: "site", label: "Site evidence & reads", children: <MutationEvidencePanel siteId={siteId} /> },
     entry.cls === "complex" && { key: "cell", label: "Carrier cell genome graph", children: <ComplexCellZoom event={entry.event} /> },
+    entry.cls === "complex" && { key: "junctions", label: "Junction evidence", children: <JunctionEvidenceTrack event={entry.event} carriers={entry.carriers} tumorIds={tumorIds} treeLayout={treeLayout} /> },
     entry.cls === "fusion" && { key: "rna", label: "RNA fusion reads", children: <FusionRnaTab entry={entry} /> },
   ].filter(Boolean);
   return (
@@ -150,6 +154,17 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
         <div style={{ marginBottom: 8 }} data-driver-expr-line>
           <Text strong>{exprLine.split(":")[0]}:</Text>
           <Text>{exprLine.slice(exprLine.indexOf(":") + 1)}</Text>
+        </div>
+      )}
+      {entry.twin && (
+        <div style={{ marginBottom: 8 }} data-driver-twin>
+          <Text type="secondary">{`${entry.twinTip}; shown once (same carrier cells).`}</Text>
+        </div>
+      )}
+      {dmText && (
+        <div style={{ marginBottom: 8 }} data-driver-dm-overlap>
+          <Tag color="purple">{dmText.chip}</Tag>
+          <Text type="secondary" style={{ fontSize: 12 }}>{dmText.note}</Text>
         </div>
       )}
       <TwoHitBlock call={entry.twoHit} />

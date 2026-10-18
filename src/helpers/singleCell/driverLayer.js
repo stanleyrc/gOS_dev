@@ -12,6 +12,7 @@ import { twoHitStates, twoHitStatus } from "./twoHit";
 import { driverGenes, roleOf } from "./driverSummary";
 import { GBM_GENES } from "./geneInfo";
 import { cladeFitScore } from "./cladeFit";
+import { collapseTwins, complexEntryLabel, legacyComplexLabel, TWIN_TIP } from "./complexLabels";
 import { binAt, snvMetricValue } from "./matrix";
 import { eventGlobalPosition } from "./eventDomains";
 import { countsAsSomatic, hasClinical, isClinicalRow, isGermlineLike } from "./clinicalEvents";
@@ -130,7 +131,7 @@ function baseLabel(entry) {
     return `${e.gene || "?"}${prot && prot !== "None" ? ` ${prot}` : ""}`;
   }
   if (entry.cls === "fusion" && isTertPromoterSv(e)) return `${TERT_SV_LABEL} (${e.fusion_genes || e.gene})`;
-  if (entry.cls === "complex") return `${complexName(e.vartype)}${e.gene ? ` ${e.gene}` : ""} ${e.Genome_Location ? `chr${`${e.Genome_Location}`.split(":")[0]}` : ""}`.trim();
+  if (entry.cls === "complex") return complexEntryLabel(e, entry.twin || null); // every chromosome ("rDelDup chr1↔chr7"); a twin group reads "TIC / rDelDup chr6↔chr8"
   return driverLabel(e);
 }
 
@@ -148,7 +149,9 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
   const total = tumor.size || 1;
   const siteIndex = snv ? snvSiteIndex(snv) : null;
   const byKey = new Map();
-  (events || []).forEach((e) => {
+  // twin rows (the classifier reported one junction set under two names) collapse into the first row
+  const { events: uniqueEvents, twins } = collapseTwins(events || []);
+  uniqueEvents.forEach((e) => {
     const cls = driverClassOf(e);
     if (!cls) return;
     const carriers = splitIds(e.cell_ids).filter((id) => !tumor.size || tumor.has(id));
@@ -197,6 +200,11 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
       germline,
       somatic: countsAsSomatic(e), // false: germline-like or not recovered clinical findings (not counted in tallies / TSG hits)
     };
+    if (cls === "complex") {
+      entry.twin = twins.get(e) || null;
+      entry.twinTip = entry.twin ? `${TWIN_TIP}: ${entry.twin.names.join(" and ")}` : null;
+      entry.shortLabel = legacyComplexLabel(e); // old single-chromosome form ("rDelDup chr1")
+    }
     entry.label = entryLabel(entry);
     entry.qc = driverQc(entry);
     byKey.set(key, entry);
