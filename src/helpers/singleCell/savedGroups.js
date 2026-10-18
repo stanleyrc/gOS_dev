@@ -5,8 +5,8 @@
 export const SAVED_GROUP_FIELD = "saved_group";
 export const URL_PARAM = "scgroups";
 
-const toBase64 = (text) => window.btoa(unescape(encodeURIComponent(text)));
-const fromBase64 = (b64) => decodeURIComponent(escape(window.atob(b64)));
+export const toBase64 = (text) => window.btoa(unescape(encodeURIComponent(text)));
+export const fromBase64 = (b64) => decodeURIComponent(escape(window.atob(b64)));
 
 /** URL-safe encoding of { patient: [{ name, cells }] }. */
 export function encodeGroups(groupsByPatient) {

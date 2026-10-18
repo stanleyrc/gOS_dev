@@ -20,6 +20,7 @@ import CohortDosagePanel from "./cohortDosagePanel";
 import CohortStateClonePanel from "./cohortStateClonePanel";
 import CohortGeneSetPanel from "./cohortGeneSetPanel";
 import CohortDePanel from "./cohortDePanel";
+import CohortGroupsCard from "./cohortGroupsCard";
 import CohortSplicingPanel from "./cohortSplicingPanel";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER, SC_GUTTER_INNER } from "../density";
@@ -66,6 +67,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
   const [scores, setScores] = useState(null);
   const [umapSelection, setUmapSelection] = useState(new Set());
   const [geneSplit, setGeneSplit] = useState("patient");
+  const [savedGroupKeys, setSavedGroupKeys] = useState([]); // [{ name, keys }] resolved by the cell-groups card
   const geneCardRef = useRef(null);
   const selectUmap = (keys, add) => setUmapSelection((prev) => (add ? new Set([...prev, ...keys]) : new Set(keys)));
   const datasetOf = (s) => datasets.find((d) => `${d.id}` === `${s.record.datasetId}`);
@@ -313,7 +315,10 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           </Card>
         </Col>
         <Col span={24}>
-          <CohortDePanel summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} fields={fields} umapSelection={umapSelection} onGene={runGene} />
+          <CohortGroupsCard onResolved={setSavedGroupKeys} summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} tumorOnly={tumorOnly} umapSelection={umapSelection} onSelectUmap={selectUmap} />
+        </Col>
+        <Col span={24}>
+          <CohortDePanel summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} fields={fields} umapSelection={umapSelection} onGene={runGene} savedGroups={savedGroupKeys} />
         </Col>
         <Col span={24}>
           <CohortGeneSetPanel summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} field={chosenField} sharedMarkers={sharedMarkers} onScores={setScores} />

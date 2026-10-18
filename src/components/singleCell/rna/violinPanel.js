@@ -131,10 +131,10 @@ function GeneViolins({ gene, values, groups, width, test }) {
 }
 
 /** Violin plots of chosen genes across groups (no test: distributions only). */
-export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesChange }) {
+export default function ViolinPanel({ summary, matrix, rowsFor, genes, onGenesChange, defaultGroupBy = "clone" }) {
   const { t } = useTranslation("common");
   const [ref, width] = useContainerWidth(900);
-  const [groupBy, setGroupBy] = useState("clone");
+  const [groupBy, setGroupBy] = useState(defaultGroupBy);
   const [options, setOptions] = useState([]);
   const groups = useViolinGroups(summary, rowsFor, groupBy);
   // Significance tests run after the plots have drawn (next tick), per gene.
