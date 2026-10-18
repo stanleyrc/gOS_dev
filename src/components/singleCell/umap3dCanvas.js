@@ -238,10 +238,13 @@ export default function Umap3dCanvas({
 
   /* ---- axes gizmo ---- */
   const axes = useMemo(() => {
-    const o = projectPoint(view, 0, 0, 0, 0, 0);
+    // unit axes through the orientation only (zoom and pan excluded), 30 px long
+    const unit = { ...view, zoom: 1, panX: 0, panY: 0 };
+    const side = 1 / 0.42; // baseScale(side, side) = 1 px per unit
+    const o = projectPoint(unit, 0, 0, 0, side, side);
     return [["UMAP 1", 1, 0, 0], ["UMAP 2", 0, 1, 0], ["UMAP 3", 0, 0, 1]].map(([label, x, y, z]) => {
-      const p = projectPoint(view, x, y, z, 0, 0);
-      return { label, dx: (p.sx - o.sx) * 26, dy: (p.sy - o.sy) * 26, front: p.depth >= 0 };
+      const p = projectPoint(unit, x, y, z, side, side);
+      return { label, dx: (p.sx - o.sx) * 30, dy: (p.sy - o.sy) * 30, front: p.depth >= 0 };
     });
   }, [view]);
   const hov = hoveredIndex >= 0 && hoveredIndex < proj.sx.length ? [proj.sx[hoveredIndex], proj.sy[hoveredIndex]] : null;
