@@ -48,7 +48,7 @@ const useIndexedCells = (loaded, rna, cellsOf) =>
     [loaded, rna, cellsOf]
   );
 
-function GroupEditor({ label, color, group, onChange, patients, fields, fieldOptions, levelsOf, umapSelection, count, t, allowOthers }) {
+function GroupEditor({ label, color, group, onChange, patients, fields, fieldOptions, levelsOf, umapSelection, count, t, allowOthers, savedGroups = [] }) {
   const modes = [{ value: "rules", label: t("components.single-cell.cohort.de-mode-rules") }, { value: "umap", label: t("components.single-cell.cohort.de-mode-umap") }, ...(allowOthers ? [{ value: OTHERS, label: t("components.single-cell.cohort.de-mode-others") }] : [])];
   return (
     <div style={{ border: `1px solid ${color}`, borderRadius: 6, padding: 8 }}>
@@ -56,6 +56,9 @@ function GroupEditor({ label, color, group, onChange, patients, fields, fieldOpt
         <Tag color={color} style={{ fontWeight: 600 }}>{label}</Tag>
         <Segmented size="small" value={group.mode} onChange={(mode) => onChange({ ...group, mode, keys: mode === "umap" ? [...(umapSelection || [])] : group.keys })} options={modes} />
         <Text type="secondary">{t("components.single-cell.cohort.de-n-cells", { count })}</Text>
+        {savedGroups.length > 0 && (
+          <Select size="small" allowClear value={null} style={{ width: 170 }} placeholder={t("components.single-cell.cohort.de-load-saved", { defaultValue: "Load a saved group" })} onChange={(nm) => { const g = savedGroups.find((x) => x.name === nm); if (g) onChange({ ...group, mode: "umap", keys: [...g.keys] }); }} options={savedGroups.map((g) => ({ value: g.name, label: `${g.name} (${g.keys.length})` }))} />
+        )}
       </Space>
       {group.mode === "rules" && (
         <Space wrap size={[8, 6]}>
@@ -82,7 +85,7 @@ function GroupEditor({ label, color, group, onChange, patients, fields, fieldOpt
  * inside each patient and combines (Fisher), reporting concordance. PCA runs
  * on the compared cells (or all tumour cells) over the most variable genes.
  */
-export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsOf, fields, umapSelection, onGene }) {
+export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsOf, fields, umapSelection, onGene, savedGroups = [] }) {
   const { t } = useTranslation("common");
   const theme = useSelector((s) => s.SingleCell.layout.theme);
   const [ref, width] = useContainerWidth(1000);
@@ -351,10 +354,10 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
       <div ref={ref}>
         <Row gutter={SC_GUTTER_INNER}>
           <Col xs={24} xl={12}>
-            <GroupEditor label="A" color={COLOR_UP} group={groupA} onChange={setGroupA} patients={patients} fields={fields} fieldOptions={fieldOptions} levelsOf={levelsOf} umapSelection={umapSelection} count={nA} t={t} allowOthers={false} />
+            <GroupEditor label="A" color={COLOR_UP} group={groupA} onChange={setGroupA} patients={patients} fields={fields} fieldOptions={fieldOptions} levelsOf={levelsOf} umapSelection={umapSelection} count={nA} t={t} allowOthers={false} savedGroups={savedGroups} />
           </Col>
           <Col xs={24} xl={12}>
-            <GroupEditor label="B" color={COLOR_DOWN} group={groupB} onChange={setGroupB} patients={patients} fields={fields} fieldOptions={fieldOptions} levelsOf={levelsOf} umapSelection={umapSelection} count={nB} t={t} allowOthers />
+            <GroupEditor label="B" color={COLOR_DOWN} group={groupB} onChange={setGroupB} patients={patients} fields={fields} fieldOptions={fieldOptions} levelsOf={levelsOf} umapSelection={umapSelection} count={nB} t={t} allowOthers savedGroups={savedGroups} />
           </Col>
           <Col span={24}>
             <Space wrap>
