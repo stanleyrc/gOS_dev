@@ -7,6 +7,7 @@
 //   whether the hits are in the same cells   cells with >= 2 hits (SNV+LOH, SNV+SNV in trans, SNV+SV, homdel) / tumour cells
 //   clonal vs subclonal   the biallelic cells (else the most common hit) cover >= TSG_CLONAL_FRACTION of the tumour cells
 //   hit count   distinct hits above; a homozygous deletion on its own counts 2 (both copies), next to another hit it is one hit
+//   germline    a damaging germline variant (twoHit.js) is one hit in every cell; other germline variants are listed, not counted
 import { GBM_TSG, MIN_HIT_CELLS, SUMMARY_MIN_FRACTION, HIT_LABEL } from "./twoHit";
 
 export const TSG_CLONAL_FRACTION = 0.8; // a little below 1 because allelic and read dropout hide some cells of a truncal hit
@@ -14,8 +15,8 @@ export const TSG_SOURCES = ["curated", "oncokb", "both"];
 export const TSG_SOURCE_LABEL = { curated: "curated GBM TSG list", oncokb: "OncoKB tumour-suppressor role", both: "curated list + OncoKB role" };
 export const DEFAULT_TSG_VIEW = { source: "curated", minHits: 2, minFraction: 0.1, genes: "" };
 
-const KIND_ORDER = { snv: 0, sv: 1, loh: 2, homdel: 3 };
-export const KIND_SHORT = { snv: "mut", sv: "SV", loh: "LOH", homdel: "homdel" };
+const KIND_ORDER = { germline: -1, snv: 0, sv: 1, loh: 2, homdel: 3 };
+export const KIND_SHORT = { germline: "germline", snv: "mut", sv: "SV", loh: "LOH", homdel: "homdel" };
 const pctText = (x) => `${Math.round(100 * x)}%`;
 
 /** Whether a call's gene belongs to the chosen gene list ("curated" GBM list, OncoKB role seen on its events, or either). */
@@ -36,6 +37,8 @@ export function distinctHits(call, { minFraction = DEFAULT_TSG_VIEW.minFraction 
   const out = [];
   call.hits.forEach((h) => {
     if (h.kind === "loh" || h.kind === "cnloh" || h.weak) return;
+    // constitutional: in every tumour cell, whatever the pileup coverage
+    if (h.kind === "germline") return out.push({ kind: "germline", label: h.text, n: tumorN, fraction: 1, copies: 1, mutation: h.mutation, vaf: h.vaf, key: h.key, event: h.event, clinvar: h.clinvar });
     if (!ok(h.n)) return;
     if (h.kind === "snv") out.push({ kind: "snv", label: h.protein || `${h.mutation || "SNV"} ${h.site || ""}`.trim(), n: h.n, fraction: h.n / tumorN, copies: 1, mutation: h.mutation, tier: h.tier, vaf: h.vaf, key: h.key, event: h.event, rescued: h.rescued });
     else if (h.kind === "sv") {
@@ -60,7 +63,11 @@ export function distinctHits(call, { minFraction = DEFAULT_TSG_VIEW.minFraction 
 }
 
 /** Shown, not counted: rescued tier-3 missense, and chromosome / arm-scale CN-0 calls (broad_cn0). */
-export const weakHits = (call) => [...(call.excluded || []), ... call.hits.filter((h) => h.kind === "snv" && h.weak && h.n >= MIN_HIT_CELLS).map((h) => ({ label: h.protein || h.site, n: h.n, tier: h.tier, vaf: h.vaf, event: h.event }))];
+export const weakHits = (call) => [
+  ...(call.excluded || []),
+  ...call.hits.filter((h) => h.kind === "germline" && h.weak).map((h) => ({ label: `${h.text}: germline, not a known damaging variant`, n: h.n, germline: true, event: h.event })),
+  ...call.hits.filter((h) => h.kind === "snv" && h.weak && h.n >= MIN_HIT_CELLS).map((h) => ({ label: h.protein || h.site, n: h.n, tier: h.tier, vaf: h.vaf, event: h.event })),
+];
 
 /** One gene in one patient: hits, count, same-cell fraction, clonality. */
 export function summarizeCall(call, patient, opts = {}) {
@@ -87,6 +94,7 @@ export function summarizeCall(call, patient, opts = {}) {
     clonal: clonalFraction >= TSG_CLONAL_FRACTION,
     clonalFraction,
     state: nHits >= 2 && sameFraction >= SUMMARY_MIN_FRACTION ? "biallelic" : nHits >= 2 ? "different cells" : nHits === 1 ? "one hit" : "none",
+    germline: call.germline || [], // germline-like variants of the gene (counted or not): the gene is always listed
     phased: call.phased,
     weak: weakHits(call),
   };
@@ -97,7 +105,7 @@ export function summarizeCall(call, patient, opts = {}) {
 /** "TP53 x3 (biallelic, 98%)" - the hit count and, when the hits share cells, the fraction of tumour cells with both. */
 export function badgeText(s) {
   const n = s.nHits;
-  if (n < 2) return `${s.gene} (${n ? "one hit" : "no hit"})`;
+  if (n < 2) return `${s.gene} (${n ? (s.hits?.[0]?.kind === "germline" ? "germline hit" : "one hit") : s.germline?.length ? "germline variant, not counted" : "no hit"})`;
   return `${s.gene} ×${n} (${s.state === "biallelic" ? "biallelic" : "hits in different cells"}${s.sameFraction > 0 ? `, ${pctText(s.sameFraction)}` : ""})`;
 }
 
@@ -110,7 +118,7 @@ export function summaryTitle(s) {
     tail.push(`${s.sameCells}/${t} tumour cells (${pctText(s.sameFraction)}) have two hits in the same cell${s.carrierFraction != null ? `; ${pctText(s.carrierFraction)} of the mutation carriers` : ""}`);
     tail.push(s.clonal ? "clonal" : "subclonal");
   }
-  s.weak.forEach((w) => tail.push(w.event ? `not counted: missense ${w.label} (tier ${w.tier ?? "?"}, unknown effect; ${w.n}/${t} tumour cells)` : `not counted: ${w.label}`));
+  s.weak.forEach((w) => tail.push(w.germline ? `not counted: ${w.label}` : w.event ? `not counted: missense ${w.label} (tier ${w.tier ?? "?"}, unknown effect; ${w.n}/${t} tumour cells)` : `not counted: ${w.label}`));
   if (s.phased) tail.push("two mutations phased in trans (read fragments covering both sites)");
   return [`${s.gene} in ${s.patient}`, ...lines, ...tail, `loss source: ${s.call.lossSource}`].join("\n");
 }
@@ -130,7 +138,7 @@ export function tsgHitGrid(callsByPatient = {}, view = DEFAULT_TSG_VIEW) {
       if (!inTsgSource(c, v.source)) return;
       if (wanted.length && !wanted.some((g) => c.gene.toUpperCase().startsWith(g))) return;
       const s = summarizeCall(c, patient, { minFraction: v.minFraction });
-      if (s.nHits >= 1) summaries.push(s);
+      if (s.nHits >= 1 || s.germline.length) summaries.push(s);
     });
   });
   const rowsBy = new Map();
@@ -144,7 +152,7 @@ export function tsgHitGrid(callsByPatient = {}, view = DEFAULT_TSG_VIEW) {
   });
   const all = [...rowsBy.values()];
   const rows = all
-    .filter((r) => (v.minHits >= 2 ? r.nMulti > 0 : true))
+    .filter((r) => (v.minHits >= 2 ? r.nMulti > 0 || Object.values(r.cells).some((c) => c.germline.length) : true)) // germline variants always listed
     .sort((a, b) => b.nMulti - a.nMulti || b.nBiallelic - a.nBiallelic || b.nHits - a.nHits || a.gene.localeCompare(b.gene));
   const tallies = Object.keys(callsByPatient).map((patient) => patientTally(summaries.filter((s) => s.patient === patient), patient));
   tallies.sort((a, b) => b.nMulti - a.nMulti || b.biallelic.length - a.biallelic.length || b.nHits - a.nHits || a.patient.localeCompare(b.patient));

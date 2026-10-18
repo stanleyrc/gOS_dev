@@ -1,5 +1,5 @@
 import { LOSS_CODE, isBroadCn0, twoHitCalls } from "./twoHit";
-import { badgeText, distinctHits, groupMultiHitEntries, inTsgSource, patientBadges, patientTally, summarizeCall, tsgGeneInfo, tsgHitGrid } from "./tsgHits";
+import { badgeText, distinctHits, groupMultiHitEntries, inTsgSource, patientBadges, patientTally, summarizeCall, summaryTitle, tsgGeneInfo, tsgHitGrid } from "./tsgHits";
 
 // synthetic fixtures only
 const cellsOf = (n, p = "c") => Array.from({ length: n }, (_, i) => `${p}${i}`);
@@ -162,5 +162,28 @@ describe("CN-0 cells with mutant reads", () => {
     expect(c.homdelCells).toBe(0);
     expect(c.biallelicCells).toBe(10);
     expect(c.excluded.some((x) => /keep a copy/.test(x.label))).toBe(true);
+  });
+});
+
+describe("germline hits in the TSG grid", () => {
+  const cells = Array.from({ length: 20 }, (_, i) => `c${i}`);
+  const germ = (sig, type = "Missense") => ({
+    key: "g", cls: "snv", carriers: cells, n: 20, fraction: 1, germline: true,
+    event: { gene: "BRCA1", type, vartype: "SNV", Variant: "p.A322T", seqnames: "17", start: "1", germline_like: true, clinical: { clinvar: { found: true, significance: sig } } },
+  });
+  it("a gene with only an uncounted germline variant is still listed (minHits 2)", () => {
+    const calls = twoHitCalls([germ("Uncertain_significance")], { tumorIds: cells });
+    const grid = tsgHitGrid({ P1: calls });
+    expect(grid.rows.map((r) => r.gene)).toEqual(["BRCA1"]);
+    const s = grid.rows[0].cells.P1;
+    expect(s.nHits).toBe(0);
+    expect(s.badge).toContain("germline variant, not counted");
+    expect(summaryTitle(s)).toContain("not counted");
+  });
+  it("a damaging germline variant is one hit in every cell", () => {
+    const s = summarizeCall(twoHitCalls([germ("Pathogenic")], { tumorIds: cells })[0], "P1");
+    expect(s.nHits).toBe(1);
+    expect(s.hits[0]).toMatchObject({ kind: "germline", fraction: 1 });
+    expect(s.badge).toBe("BRCA1 (germline hit)");
   });
 });

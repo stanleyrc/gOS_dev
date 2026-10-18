@@ -6,6 +6,9 @@
 //   loh      LOH by loss (minor-allele CN 0, total CN below ploidy)
 //   cnloh    copy-neutral LOH (minor-allele CN 0, total CN at ploidy)
 //   sv       fusion / SV that breaks the gene (not "upstream of GENE")
+//   germline germline-like SNV / indel in the gene (clinical_events.json, alt reads in normal cells). Constitutional, so in
+//            every cell: it adds one hit only to cells with a somatic hit, and only when damaging (truncating / splice /
+//            ClinVar pathogenic or likely pathogenic). Other germline variants (VUS, conflicting) are shown, never counted.
 // Loss calls come from tsg_loss.json (scripts/singleCell/export_tsg_loss.py: per-cell allelic.json at the
 // gene). Per patient the file gives integer codes per cell (LOSS_CODE); without it only the filtered
 // events' HOMDEL carriers are known and the call says so (`lossSource`).
@@ -19,6 +22,7 @@
 // evidence only: it does not make the gene biallelic).
 import { eventClass } from "./cohortStats";
 import { splitIds } from "./driverContrast";
+import { isGermlineLike } from "./clinicalEvents";
 
 export const MIN_HIT_CELLS = 3;
 export const VAF_LOH = 0.9;
@@ -32,8 +36,8 @@ export const GBM_TSG = ["PTEN", "NF1", "TP53", "CDKN2A", "CDKN2B", "RB1", "ATRX"
 
 /** HOMDEL event flagged by srctools gos_sc_homdel_qc as a chromosome / arm-scale CN-0 call. */
 export const isBroadCn0 = (e) => Boolean(e) && (e.broad_cn0 === true || `${e.broad_cn0}` === "true");
-export const HIT_LABEL = { snv: "SNV / indel", homdel: "homozygous deletion", loh: "LOH (loss of the other allele)", cnloh: "copy-neutral LOH", sv: "SV / fusion" };
-export const STATE_LABEL = { biallelic: "biallelic", homdel: "homozygous deletion", monoallelic: "monoallelic", none: "no hit" };
+export const HIT_LABEL = { germline: "germline variant", snv: "SNV / indel", homdel: "homozygous deletion", loh: "LOH (loss of the other allele)", cnloh: "copy-neutral LOH", sv: "SV / fusion" };
+export const STATE_LABEL = { biallelic: "biallelic", homdel: "homozygous deletion", monoallelic: "monoallelic", germline: "germline variant only", none: "no hit" };
 
 const isTrue = (v) => v === true || `${v}` === "true";
 
@@ -53,6 +57,17 @@ export function damagingSnv(event = {}) {
 }
 
 const pct = (x) => `${Math.round(x * 100)}%`;
+
+/** ClinVar significance of a clinical row (clinical_events.json), or "". */
+export const clinvarSignificance = (e = {}) => `${e?.clinical?.clinvar?.found ? e.clinical.clinvar.significance || "" : ""}`.replace(/_/g, " ");
+
+/** A germline variant that can be a first hit: truncating / splice, or ClinVar pathogenic / likely pathogenic (not conflicting). */
+export function damagingGermline(event = {}) {
+  const c = eventClass(event);
+  if (c === "trunc" || c === "splice") return true;
+  const sig = clinvarSignificance(event);
+  return /pathogenic/i.test(sig) && !/conflicting|uncertain|benign/i.test(sig);
+}
 
 /** Gene symbol(s) as TSG names of an entry: SNV/homdel use event.gene, fusion partners that are inside the gene. */
 function tsgGenesOf(entry, tsgSet) {
@@ -104,6 +119,23 @@ export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes 
     const cls = entry.cls;
     if (cls !== "snv" && cls !== "homdel" && cls !== "fusion") return;
     if (cls === "homdel" && isBroadCn0(e)) return;
+    if (entry.germline || isGermlineLike(e)) {
+      // germline-like variants are never somatic hits; SNVs / indels in a TSG are listed as a germline hit
+      if (cls !== "snv") return;
+      tsgGenesOf(entry, isTsg).forEach((g) => {
+        const ids = (entry.carriers || splitIds(e.cell_ids)).filter(keep);
+        const protein = `${e.Variant || ""}` === "None" ? "" : `${e.Variant || ""}`;
+        const sig = clinvarSignificance(e);
+        const vaf = Number(e.VAF);
+        slot(g).hits.push({
+          kind: "germline", key: entry.key, ids, n: ids.length, fraction: entry.fraction, source: "clinical assay (germline-like)", role: e.role, event: e,
+          protein, mutation: eventClass(e), site: `${e.seqnames}:${e.start}`, clinvar: sig || null, vaf: Number.isFinite(vaf) ? vaf : null,
+          weak: !damagingGermline(e),
+          text: `${g}${protein ? ` ${protein}` : ""} (germline${sig ? `, ClinVar ${sig}` : ""})`,
+        });
+      });
+      return;
+    }
     if (cls === "snv" && !damagingSnv(e)) return;
     tsgGenesOf(entry, isTsg).forEach((g) => {
       const ids = (entry.carriers || splitIds(e.cell_ids)).filter(keep);
@@ -187,7 +219,7 @@ export function twoHitCalls(entries = [], { loss = null, tumorIds = null, genes 
   return out.filter((c) => c.hits.length).sort((a, b) => ORDER[a.state] - ORDER[b.state] || a.gene.localeCompare(b.gene));
 }
 
-const ORDER = { biallelic: 0, homdel: 1, monoallelic: 2, none: 3 };
+const ORDER = { biallelic: 0, homdel: 1, monoallelic: 2, germline: 3, none: 4 };
 
 /** Set of "siteA|siteB" (both orders) of the SNV pairs a phase record calls trans. */
 function transPairs(recs) {
@@ -204,7 +236,11 @@ function transPairs(recs) {
 function classify(s, tumorN, hasLoss, trans = new Set()) {
   const per = new Map(); // cell -> hit count
   const sets = { snv: new Set(), sv: new Set(), loss: new Set(), homdel: new Set() };
+  // a damaging germline variant is in every cell: one more hit in each cell with a somatic hit
+  const germline = s.hits.filter((h) => h.kind === "germline");
+  const germlineHit = germline.some((h) => !h.weak) ? 1 : 0;
   s.hits.forEach((h) => {
+    if (h.kind === "germline") return;
     const set = h.kind === "snv" ? sets.snv : h.kind === "sv" ? sets.sv : h.kind === "homdel" ? sets.homdel : sets.loss;
     h.ids.forEach((id) => set.add(id));
   });
@@ -237,7 +273,7 @@ function classify(s, tumorN, hasLoss, trans = new Set()) {
   let monoCells = 0;
   let snvAndLoss = 0;
   cells.forEach((id) => {
-    const score = snvScore(id) + (sets.sv.has(id) ? 1 : 0) + (sets.loss.has(id) ? 1 : 0) + (sets.homdel.has(id) ? 2 : 0);
+    const score = snvScore(id) + (sets.sv.has(id) ? 1 : 0) + (sets.loss.has(id) ? 1 : 0) + (sets.homdel.has(id) ? 2 : 0) + germlineHit;
     per.set(id, score);
     if (sets.snv.has(id) && score >= 2) snvBiCells += 1;
     if (sets.homdel.has(id)) homdelCells += 1;
@@ -251,6 +287,7 @@ function classify(s, tumorN, hasLoss, trans = new Set()) {
   const top = Math.max(homdelCells, monoCells);
   if (biallelicCells >= Math.max(MIN_HIT_CELLS, BIALLELIC_MIN_FRACTION * tumorN)) state = "biallelic"; // a biallelic subclone counts
   else if (top >= MIN_HIT_CELLS) state = homdelCells === top ? "homdel" : "monoallelic";
+  else if (germline.length && !cells.size) state = "germline";
   const topSnv = [...snvHits].sort((a, b) => b.n - a.n)[0];
   const hasLossCall = s.hits.some((h) => h.kind === "loh" || h.kind === "cnloh" || h.kind === "homdel");
   const vafSuggestsLoh = Boolean(topSnv && topSnv.vaf != null && topSnv.vaf >= VAF_LOH && topSnv.n >= MIN_HIT_CELLS && !hasLossCall);
@@ -264,6 +301,8 @@ function classify(s, tumorN, hasLoss, trans = new Set()) {
     monoCells,
     snvCells: sets.snv.size,
     snvAndLossCells: snvAndLoss,
+    germlineHit: Boolean(germlineHit), // a damaging germline variant counts as the first hit
+    germline: germline.map((h) => ({ text: h.text, counted: !h.weak, clinvar: h.clinvar, n: h.n, key: h.key, event: h.event })),
     snvBiCells, // SNV carriers that have a second hit (loss, deletion, SV or a trans SNV)
     phased: [...trans].length > 0,
     role: s.hits.some((h) => roleIsTsg(h.role)) ? "Tumor Suppressor" : null,
@@ -283,13 +322,14 @@ export function describeCall(call) {
     .filter((h) => h.n >= 1)
     .map((h) => {
       const frac = `${h.n}/${call.tumorN} cells`;
+      if (h.kind === "germline") return `${h.text}${h.weak ? ", not counted" : ""}`;
       if (h.kind === "snv") return `${h.text}${h.vaf != null ? ` (VAF ${(h.vaf * 100).toFixed(1)}%, ${frac})` : ` (${frac})`}`;
       if (h.kind === "homdel") return `homozygous deletion (${frac})`;
       if (h.kind === "loh") return `LOH by loss (minor CN 0 in ${frac})`;
       if (h.kind === "cnloh") return `copy-neutral LOH (minor CN 0 in ${frac})`;
       return `${h.text} (${frac})`;
     });
-  const tail = call.state === "biallelic" ? " -> biallelic" : call.state === "homdel" ? " -> both copies lost" : call.state === "monoallelic" ? " -> monoallelic (one hit)" : "";
+  const tail = call.state === "biallelic" ? " -> biallelic" : call.state === "homdel" ? " -> both copies lost" : call.state === "monoallelic" ? " -> monoallelic (one hit)" : call.state === "germline" ? " -> germline variant only, no somatic hit" : "";
   const sup = call.vafSuggestsLoh ? "; SNV VAF near 1 is consistent with LOH, which the allelic CN did not call" : "";
   return `${call.gene}: ${parts.join(" + ")}${tail}${sup}`;
 }
@@ -360,10 +400,10 @@ export function biallelicSummary(callsByPatient = {}) {
     (calls || []).forEach((c) => {
       if (c.state !== "biallelic" && c.state !== "homdel") return;
       if ((c.state === "homdel" ? c.homdelCells : c.biallelicCells) < SUMMARY_MIN_FRACTION * c.tumorN) return;
-      const kinds = [...new Set(c.hits.filter((h) => h.n >= MIN_HIT_CELLS).map((h) => h.kind))];
+      const kinds = [...new Set(c.hits.filter((h) => h.n >= MIN_HIT_CELLS && !(h.kind === "germline" && h.weak)).map((h) => h.kind))];
       const cells = c.state === "homdel" ? c.homdelCells : c.biallelicCells;
       if (!byGene.has(c.gene)) byGene.set(c.gene, []);
-      byGene.get(c.gene).push({ patient, state: c.state, combo: kinds.map((k) => ({ snv: "SNV", homdel: "homdel", loh: "LOH", cnloh: "cnLOH", sv: "SV" }[k])).join(" + "), cells, fraction: c.tumorN ? cells / c.tumorN : 0, text: c.text });
+      byGene.get(c.gene).push({ patient, state: c.state, combo: kinds.map((k) => ({ germline: "germline", snv: "SNV", homdel: "homdel", loh: "LOH", cnloh: "cnLOH", sv: "SV" }[k])).join(" + "), cells, fraction: c.tumorN ? cells / c.tumorN : 0, text: c.text });
     });
   });
   return [...byGene.entries()]
