@@ -22,6 +22,12 @@ import useHideNa, { HideNaControl } from "./useHideNa";
 import { partitionNa } from "../../helpers/singleCell/hideNa";
 import { linkAppliesTo, readDeepLink } from "../../helpers/singleCell/deepLink";
 import useCellLabels from "./useCellLabels";
+import useUmapZoom from "./useUmapZoom";
+import UmapViewControls from "./umapViewControls";
+import Umap3dCanvas from "./umap3dCanvas";
+import { defaultView3d, indexUmap3d, parseColor, zoom3d } from "../../helpers/singleCell/umap3d";
+import { toScreen, zoomRadius } from "../../helpers/singleCell/umapZoom";
+import { loadUmap3d } from "../../redux/singleCell/loaders";
 import { ZERO_STYLE, themeKey, expressionModel, exprColor, exprDrawOrder, rampGradient } from "../../helpers/singleCell/exprColour";
 
 const readPref = (key, fallback) => {
@@ -144,6 +150,28 @@ export default function UmapPanel() {
   // the plot fills the card next to the legend; height follows the width within bounds
   const width = Math.max(240, containerWidth - LEGEND_WIDTH - 22); // 16 px gap + plot border
   const height = Math.round(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, width * 0.55)));
+  const patientId = useSelector((s) => s.SingleCell.patient?.caseReportId);
+  const zoom = useUmapZoom(width, height);
+  const zv = zoom.view;
+  // 2D drag selects with the lasso, or pans (Alt / middle button always pans)
+  const [dragMode, setDragMode] = useState("select");
+  const [dim, setDim] = useState("2d");
+  const [view3d, setView3d] = useState(defaultView3d);
+  const [hover3d, setHover3d] = useState({ index: -1, x: 0, y: 0 });
+  const dataset = useSelector((s) => s.Settings.dataset);
+  const [umap3d, setUmap3d] = useState({ status: "loading" });
+  useEffect(() => {
+    if (!dataset || !patientId) return undefined;
+    let active = true;
+    setUmap3d({ status: "loading" });
+    loadUmap3d(dataset, patientId).then(
+      (r) => active && setUmap3d(r.status === "ok" ? { status: "ok", index: indexUmap3d(r.data), method: r.data.method } : { status: r.status }),
+      () => active && setUmap3d({ status: "error" })
+    );
+    return () => {
+      active = false;
+    };
+  }, [dataset, patientId]);
   const inTree = useMemo(() => new Set(order), [order]);
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
   const selected = useMemo(() => new Set(selectedCellIds), [selectedCellIds]);
@@ -155,7 +183,6 @@ export default function UmapPanel() {
   }, [geneReady, expression.gene]);
 
   // ?umap=cn:<GENE> | gene:<GENE> | <field> opens the UMAP with that colouring, once per patient
-  const patientId = useSelector((s) => s.SingleCell.patient?.caseReportId);
   const linkedFor = useRef(null);
   useEffect(() => {
     if (!summary || !patientId || linkedFor.current === patientId) return;
@@ -172,6 +199,11 @@ export default function UmapPanel() {
       setColorBy(field);
     }
   }, [summary, patientId, dispatch]);
+
+  useEffect(() => {
+    zoom.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, clip]);
 
   const allPoints = useMemo(() => {
     if (!summary?.hasUmap) return [];
@@ -292,6 +324,74 @@ export default function UmapPanel() {
   }, [isExpr, naShown, hideZero, scale]);
   const nClipped = points.filter((p) => p.clipped).length;
 
+  /* ---- 3D ---- */
+  const dimReason = !summary?.hasUmap
+    ? null
+    : view === "dna-umap"
+    ? t("components.single-cell.umap.3d-dna-umap")
+    : umap3d.status === "ok"
+    ? null
+    : umap3d.status === "loading"
+    ? t("components.single-cell.umap.3d-loading")
+    : umap3d.status === "missing"
+    ? t("components.single-cell.umap.3d-missing")
+    : t("components.single-cell.umap.3d-error");
+  const is3d = dim === "3d" && !dimReason;
+  const pts3d = useMemo(() => {
+    if (!is3d) return [];
+    const out = [];
+    points.forEach((p) => {
+      const c = umap3d.index.get(`${p.cell.rna_id}`);
+      if (c) out.push({ src: p, x: c.x, y: c.y, z: c.z });
+    });
+    return out;
+  }, [is3d, points, umap3d]);
+  const drawn3d = useMemo(
+    () =>
+      pts3d.map((q) => {
+        const p = q.src;
+        const zero = isExpr && scale.isZero(p);
+        return {
+          x: q.x,
+          y: q.y,
+          z: q.z,
+          rgb: parseColor(scale.color(p)) || parseColor(NO_DATA),
+          hollow: !p.linked,
+          selected: p.linked && selected.has(p.cell.cell_id),
+          sizeMul: zero ? ZERO_STYLE[themeKey(pt.mode)].radius : 1,
+        };
+      }),
+    [pts3d, scale, isExpr, selected, pt.mode]
+  );
+  const hoveredIndex3d = useMemo(() => {
+    if (hover3d.index >= 0 && hover3d.index < pts3d.length) return hover3d.index;
+    return hoveredCellId == null ? -1 : pts3d.findIndex((q) => q.src.linked && q.src.cell.cell_id === hoveredCellId);
+  }, [hover3d.index, pts3d, hoveredCellId]);
+  const tip3d = useMemo(() => {
+    const q = hover3d.index >= 0 ? pts3d[hover3d.index] : null;
+    if (!q) return null;
+    const p = q.src;
+    const value = scale.value(p);
+    return {
+      left: Math.min(hover3d.x + 14, width - 200),
+      top: hover3d.y + 14,
+      lines: [
+        [t("components.single-cell.tooltip.cell"), cellLabels.full(p.id)],
+        ...(p.linked ? [] : [[t("components.single-cell.umap.rna-only"), t("components.single-cell.umap.not-in-tree")]]),
+        ...(value != null && value !== "" ? [[scale.title, typeof value === "number" ? Math.round(value * 1000) / 1000 : value]] : []),
+      ],
+    };
+  }, [hover3d, pts3d, scale, width, t, cellLabels]);
+  const on3dHover = (index, x, y) => {
+    setHover3d((h) => (h.index === index && index < 0 ? h : { index, x, y }));
+    const q = index >= 0 ? pts3d[index] : null;
+    shareHover(q && q.src.linked ? q.src.cell.cell_id : null);
+  };
+  const on3dPick = (index, event) => {
+    const q = pts3d[index];
+    if (q && q.src.linked) select([q.src.cell.cell_id], event);
+  };
+
   /* ---- drawing ---- */
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -301,10 +401,13 @@ export default function UmapPanel() {
     const ctx = canvas.getContext("2d");
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     ctx.clearRect(0, 0, width, height);
-    const r = points.length > 2000 ? 2.5 : 4;
+    const r = zoomRadius(points.length > 2000 ? 2.5 : 4, zv.k);
     // Unselected first, then selected on top, then the hovered cell.
     const zs = ZERO_STYLE[themeKey(pt.mode)];
-    const draw = (p, emphasis) => {
+    const draw = (q, emphasis) => {
+      const [sx, sy] = toScreen(zv, q.x, q.y);
+      if (sx < -r - 6 || sy < -r - 6 || sx > width + r + 6 || sy > height + r + 6) return;
+      const p = { ...q, x: sx, y: sy };
       const zero = isExpr && scale.isZero(p);
       ctx.globalAlpha = zero && !emphasis ? zs.alpha : 1;
       ctx.beginPath();
@@ -340,7 +443,7 @@ export default function UmapPanel() {
       ctx.strokeStyle = pt.hover;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(hovered.x, hovered.y, r + 4, 0, 2 * Math.PI);
+      ctx.arc(...toScreen(zv, hovered.x, hovered.y), r + 4, 0, 2 * Math.PI);
       ctx.stroke();
     }
     if (lasso && lasso.length > 1) {
@@ -353,7 +456,7 @@ export default function UmapPanel() {
       ctx.fill();
       ctx.stroke();
     }
-  }, [points, scale, isExpr, selected, hoveredCellId, lasso, width, height, pixelRatio, pt]);
+  }, [points, scale, isExpr, selected, hoveredCellId, lasso, width, height, pixelRatio, pt, zv, dim]);
 
   /* ---- interaction ---- */
   const local = (event) => {
@@ -363,11 +466,12 @@ export default function UmapPanel() {
   const nearest = (x, y) => {
     let best = null;
     let bestD = HIT_RADIUS;
-    points.forEach((p) => {
-      const d = Math.hypot(p.x - x, p.y - y);
+    points.forEach((q) => {
+      const [sx, sy] = toScreen(zv, q.x, q.y);
+      const d = Math.hypot(sx - x, sy - y);
       if (d < bestD) {
         bestD = d;
-        best = p;
+        best = q;
       }
     });
     return best;
@@ -391,14 +495,22 @@ export default function UmapPanel() {
   };
 
   const onMouseDown = (event) => {
-    if (event.button !== 0) return;
-    dragRef.current = { start: local(event), path: [local(event)], moved: false };
+    if (event.button !== 0 && event.button !== 1) return;
+    if (event.button === 1) event.preventDefault();
+    const panning = event.button === 1 || event.altKey || dragMode === "pan";
+    dragRef.current = { start: local(event), path: [local(event)], moved: false, panning, last: local(event) };
   };
   const onMouseMove = (event) => {
     const [x, y] = local(event);
     const drag = dragRef.current;
     if (drag) {
       if (!drag.moved && Math.hypot(x - drag.start[0], y - drag.start[1]) > 4) drag.moved = true;
+      if (drag.moved && drag.panning) {
+        zoom.pan(x - drag.last[0], y - drag.last[1]);
+        drag.last = [x, y];
+        setTip(null);
+        return;
+      }
       if (drag.moved) {
         drag.path.push([x, y]);
         setLasso([...drag.path]);
@@ -423,15 +535,17 @@ export default function UmapPanel() {
   const onMouseUp = (event) => {
     const drag = dragRef.current;
     dragRef.current = null;
+    if (drag?.moved && drag.panning) return;
     if (drag?.moved && drag.path.length > 2) {
       const ids = points
-        .filter((p) => p.linked && insidePolygon(p.x, p.y, drag.path))
+        .filter((p) => p.linked && insidePolygon(...toScreen(zv, p.x, p.y), drag.path))
         .map((p) => p.cell.cell_id);
       setLasso(null);
       select(ids, event);
       return;
     }
     setLasso(null);
+    if (event.button !== 0) return;
     const [x, y] = local(event);
     const p = nearest(x, y);
     if (p && p.linked) select([p.cell.cell_id], event);
@@ -553,17 +667,54 @@ export default function UmapPanel() {
           <Text type="secondary">{t("components.single-cell.umap.no-umap")}</Text>
         ) : (
           <div ref={containerRef} className="sc-umap">
-            <div className="sc-umap-plot" style={{ width, height, position: "relative" }}>
-              <canvas
-                ref={canvasRef}
-                style={{ width, height, display: "block", cursor: lasso ? "crosshair" : "default" }}
-                onMouseDown={onMouseDown}
-                onMouseMove={onMouseMove}
-                onMouseUp={onMouseUp}
-                onMouseLeave={onLeave}
+            <div className="sc-umap-plot" style={{ width, height, position: "relative", overflow: "hidden" }}>
+              <UmapViewControls
+                dim={is3d ? "3d" : "2d"}
+                onDim={setDim}
+                dimDisabledReason={dimReason}
+                mode={is3d ? null : dragMode}
+                onMode={setDragMode}
+                onZoomIn={() => (is3d ? setView3d((v) => zoom3d(v, 1.4)) : zoom.zoomBy(1.4))}
+                onZoomOut={() => (is3d ? setView3d((v) => zoom3d(v, 1 / 1.4)) : zoom.zoomBy(1 / 1.4))}
+                onReset={() => (is3d ? setView3d(defaultView3d()) : zoom.reset())}
+                zoom={is3d ? `${Math.round(view3d.zoom * 100)}%` : `${Math.round(zv.k * 100)}%`}
               />
-              <div style={{ position: "absolute", left: 6, bottom: 4, fontSize: 11.5, color: "rgba(0,0,0,0.55)", pointerEvents: "none" }}>{view === "dna-umap" ? "DNA-cell UMAP 1 → · UMAP 2 ↑ (arbitrary units)" : "UMAP 1 → · UMAP 2 ↑ (arbitrary units)"}</div>
-              {tip && (
+              {is3d ? (
+                <Umap3dCanvas
+                  points={drawn3d}
+                  width={width}
+                  height={height}
+                  view={view3d}
+                  onViewChange={setView3d}
+                  onHover={on3dHover}
+                  onPick={on3dPick}
+                  hoveredIndex={hoveredIndex3d}
+                  ink={pt.text}
+                  haloColor={pt.mode === "light" ? [0.08, 0.08, 0.08] : [0.95, 0.95, 0.95]}
+                />
+              ) : (
+                <div ref={zoom.bindRef} style={{ width, height }} onDoubleClick={zoom.reset}>
+                  <canvas
+                    ref={canvasRef}
+                    style={{ width, height, display: "block", cursor: lasso ? "crosshair" : dragMode === "pan" ? "grab" : "default" }}
+                    onMouseDown={onMouseDown}
+                    onMouseMove={onMouseMove}
+                    onMouseUp={onMouseUp}
+                    onMouseLeave={onLeave}
+                  />
+                </div>
+              )}
+              {!is3d && <div style={{ position: "absolute", left: 6, bottom: 4, fontSize: 11.5, color: "rgba(0,0,0,0.55)", pointerEvents: "none" }}>{view === "dna-umap" ? "DNA-cell UMAP 1 → · UMAP 2 ↑ (arbitrary units)" : "UMAP 1 → · UMAP 2 ↑ (arbitrary units)"}</div>}
+              {is3d && tip3d && (
+                <div className="sc-tooltip" style={{ left: tip3d.left, top: tip3d.top }}>
+                  {tip3d.lines.map(([k, v]) => (
+                    <div key={k}>
+                      <span className="sc-tooltip-key">{k}</span> {`${v}`}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!is3d && tip && (
                 <div className="sc-tooltip" style={{ left: tip.left, top: tip.top }}>
                   {tip.lines.map(([k, v]) => (
                     <div key={k}>
@@ -632,8 +783,13 @@ export default function UmapPanel() {
                 <Text type="secondary">{t("components.single-cell.umap.clip", { count: clip ? nClipped : 0 })}</Text>
               </span>
               <Text type="secondary" className="sc-hint">
-                {t("components.single-cell.umap.hint")}
+                {t("components.single-cell.umap.hint")} {t(is3d ? "components.single-cell.umap.3d-hint" : "components.single-cell.umap.zoom-hint")}
               </Text>
+              {is3d && (
+                <Text type="secondary" className="sc-hint">
+                  {t("components.single-cell.umap.3d-cells", { n: pts3d.length })}{umap3d.method ? `: ${umap3d.method}` : ""}
+                </Text>
+              )}
             </div>
           </div>
         )}
