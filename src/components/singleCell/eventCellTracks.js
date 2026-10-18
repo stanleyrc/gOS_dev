@@ -16,6 +16,7 @@ import { mergeLoci } from "../../helpers/singleCell/igvTracks";
 import HintLine from "./hintLine";
 import { RnaSupportSection, useRnaSupport } from "./rna/rnaSupport";
 import useCellLabels from "./useCellLabels";
+import { isComplexEvent, footprintLocation, defaultFootprintPad } from "../../helpers/singleCell/complexZoom";
 
 const { Text } = Typography;
 const PADS = [0, 5e4, 2.5e5, 1e6, 5e6];
@@ -25,11 +26,23 @@ const DEFAULT_MULTI = 3;
 
 const padLabel = (bp) => (bp >= 1e6 ? `${bp / 1e6} Mb` : bp ? `${bp / 1e3} kb` : "none");
 
+/** Windows merged where they overlap (complex events list several, possibly overlapping, intervals). */
+function mergeOverlapping(domains) {
+  const out = [];
+  [...domains].sort((a, b) => a[0] - b[0]).forEach(([a, b]) => {
+    const last = out[out.length - 1];
+    if (last && a <= last[1]) last[1] = Math.max(last[1], b);
+    else out.push([a, b]);
+  });
+  return out;
+}
+
 /** The event's locus (or loci, for fusions) widened by `pad` bp on each side. */
 function paddedEventDomains(chromoBins, location, pad, genomeLength) {
   if (!location) return null;
   try {
-    return padDomains(locationToDomains(chromoBins, location, { clampRanges: true }), pad, genomeLength);
+    const padded = padDomains(locationToDomains(chromoBins, location, { clampRanges: true }), pad, genomeLength);
+    return padded && mergeOverlapping(padded);
   } catch (error) {
     return null;
   }
@@ -51,7 +64,10 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
   const genesList = useSelector((state) => state.Genes?.list || []);
   const { cells, cloneColors } = useSelector((state) => state.SingleCell);
   const carriers = useMemo(() => `${record?.cell_ids || ""}`.split(",").filter(Boolean), [record]);
-  const [pad, setPad] = useState(defaultPad);
+  // complex SVs: Genome_Location lists several intervals (comma separated); the cell they were called in is the default
+  const complex = isComplexEvent(record);
+  const complexLocation = complex ? footprintLocation(record.Genome_Location || record.location) : "";
+  const [pad, setPad] = useState(complexLocation ? defaultFootprintPad(complexLocation) : defaultPad);
   const [multi, setMulti] = useState(false);
   const [one, setOne] = useState(null);
   const [many, setMany] = useState([]);
@@ -60,12 +76,14 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
   const [showIgv, setShowIgv] = useState(() => Boolean(record?.Variant_g && /^\w+:\d+/.test(`${record.Variant_g}`)) || Boolean(record?.fusion_gene_coords && record.fusion_gene_coords !== "None"));
   const [trackRef, trackWidth] = useContainerWidth(900);
   useEffect(() => {
-    const first = focusCell && carriers.includes(focusCell) ? focusCell : carriers[0] || null;
+    const wanted = focusCell || (complex ? record.sample : null);
+    const first = wanted && carriers.includes(wanted) ? wanted : carriers[0] || null;
     setOne(first);
     setMany(first ? [first, ...carriers.filter((c) => c !== first)].slice(0, DEFAULT_MULTI) : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [carriers, focusCell]);
 
-  const location = record?.actualLocation || record?.location;
+  const location = complexLocation || record?.actualLocation || record?.location;
   useEffect(() => {
     const domains = paddedEventDomains(chromoBins, location, pad, genomeLength);
     if (domains) dispatch(settingsActions.updateDomains(domains));
