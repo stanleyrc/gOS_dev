@@ -9,7 +9,7 @@ import { buildJunctionEvidence, evidenceSummary } from "../../../helpers/singleC
 const { Text } = Typography;
 const CELL_W = 6;
 const ROW_H = 16;
-const LABEL_W = 230;
+const LABEL_W = 340;
 const GAP = 14;
 const COLORS = { nograph: "#d9d9d9", zero: "#f5f5f5", low: "#c9b6e4", high: "#7B4FA8" };
 const cnColor = (cn, max) => {
@@ -104,7 +104,7 @@ export default function JunctionEvidenceTrack({ event, carriers, tumorIds, treeL
               </g>
             );
           })}
-          <text x={LABEL_W - 6} y={height - 6} textAnchor="end" fill="#666">row label: (carriers with junction / carriers with graph · non-carriers with / with graph)</text>
+          <text x={4} y={height - 6} fill="#666">row label: (carriers with junction / carriers with graph · non-carriers with / with graph)</text>
         </svg>
       </div>
     </div>
