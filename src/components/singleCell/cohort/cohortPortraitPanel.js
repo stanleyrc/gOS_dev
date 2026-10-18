@@ -31,7 +31,7 @@ function Matrix({ data, onPatient }) {
       align: "center",
       render: (_, r) => <Glyph cell={m.cells[p][r.key]} />,
     })),
-    { title: "Across patients", key: "t", width: 250, render: (_, r) => <Text style={{ fontSize: TYPE.label }}>{featureTally(m, r.key).text}</Text> },
+    { title: <Tooltip title="Each patient's single-cell data compared with the canonical GBM pattern (left column). Not a comparison with the clinical assay."><span>Across patients (single-cell vs canonical)</span></Tooltip>, key: "t", width: 250, render: (_, r) => <Text style={{ fontSize: TYPE.label }}>{featureTally(m, r.key).text}</Text> },
   ];
   return <Table size="small" rowKey="key" pagination={false} dataSource={m.features} columns={columns} scroll={{ x: true }} />;
 }
