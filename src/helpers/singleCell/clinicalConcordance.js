@@ -174,7 +174,7 @@ export function metaStrip(assays, patient, regions = null) {
       tip: "mutations on the trunk, shared by all tumour cells (sites of the current tree's mutation map placed on the root branch)",
       ...(m?.truncal_mutations_mapped != null ? { value: m.truncal_mutations_mapped.toLocaleString("en-US"), sub: m.truncal_tree_sites != null ? `${m.truncal_tree_sites.toLocaleString("en-US")} tree sites` : null } : na(m?.truncal_mutations_mapped_note || "no mapping for current tree")),
     },
-    { key: "recurrence", label: "Primary / recurrent", ...na("not in any data file") },
+    { key: "recurrence", label: "Primary / recurrent", ...(m?.disease_status ? { value: m.disease_status } : na(m ? "not in the primary / recurrent table" : "not in any data file")) },
     {
       key: "regions",
       label: "Regions sampled",
