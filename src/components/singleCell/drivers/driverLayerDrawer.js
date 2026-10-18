@@ -146,10 +146,12 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
         <ExternalLinksRow key={g} gene={g} protein={arr.length === 1 && entry.cls === "snv" ? entry.event?.Variant : null} style={{ marginBottom: 6, display: "flex" }} />
       ))}
       {entry.clinical && <div style={{ marginBottom: 8 }}><ClinicalTip event={entry.event} /></div>}
-      <div style={{ marginBottom: 8 }} data-driver-expr-line>
-        <Text strong>{exprLine.split(":")[0]}:</Text>
-        <Text>{exprLine.slice(exprLine.indexOf(":") + 1)}</Text>
-      </div>
+      {exprLine.includes(":") && (
+        <div style={{ marginBottom: 8 }} data-driver-expr-line>
+          <Text strong>{exprLine.split(":")[0]}:</Text>
+          <Text>{exprLine.slice(exprLine.indexOf(":") + 1)}</Text>
+        </div>
+      )}
       <TwoHitBlock call={entry.twoHit} />
       {entry.cls === "snv" && sigText && (
         <div style={{ marginBottom: 8 }} data-driver-signature>

@@ -167,7 +167,7 @@ function CohortSection({ gene, ctx }) {
     <>
       {section("Cohort events (filtered.events)", events.length ? (
         <Space size={[4, 4]} wrap>
-          {events.slice(0, 14).map((e, i) => <Tooltip key={i} title={`${e.label} ${e.variant} · tier ${e.tier} · ${Math.round(100 * e.fraction)}% of tumor cells`}><Tag style={{ margin: 0 }} color={e.tier <= 1 ? "volcano" : "default"}>{`${e.patient} ${e.cls}`}</Tag></Tooltip>)}
+          {events.slice(0, 14).map((e, i) => <Tooltip key={i} title={`${e.label} ${e.variant} · tier ${e.tier ?? "none"} · ${Math.round(100 * e.fraction)}% of tumor cells`}><Tag style={{ margin: 0 }} color={e.tier <= 1 ? "volcano" : "default"}>{`${e.patient} ${e.cls}`}</Tag></Tooltip>)}
           {events.length > 14 && <Text type="secondary">{`+${events.length - 14}`}</Text>}
         </Space>
       ) : <Text type="secondary">No filtered event names this gene in any patient.</Text>)}
@@ -194,7 +194,7 @@ function PatientSection({ gene }) {
   const hits = useMemo(() => patientEventsForGene(events, gene), [events, gene]);
   return section(`${report || "This patient"}: filtered events`, hits.length ? (
     <Space size={[4, 4]} wrap>
-      {hits.slice(0, 14).map((e, i) => <Tooltip key={i} title={`${e.label} ${e.variant} · tier ${e.tier}${e.fraction ? ` · ${Math.round(100 * e.fraction)}% of tumor cells` : ""}`}><Tag style={{ margin: 0 }} color={e.tier <= 1 ? "volcano" : "default"}>{`${e.cls} ${e.variant}`.trim()}</Tag></Tooltip>)}
+      {hits.slice(0, 14).map((e, i) => <Tooltip key={i} title={`${e.label} ${e.variant} · tier ${e.tier ?? "none"}${e.fraction ? ` · ${Math.round(100 * e.fraction)}% of tumor cells` : ""}`}><Tag style={{ margin: 0 }} color={e.tier <= 1 ? "volcano" : "default"}>{`${e.cls} ${e.variant}`.trim()}</Tag></Tooltip>)}
     </Space>
   ) : <Text type="secondary">No filtered event in this patient names this gene.</Text>);
 }

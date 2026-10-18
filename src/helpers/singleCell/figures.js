@@ -4,6 +4,7 @@
 // per-clone carrier fractions, gene-vs-gene fits and subclonal findings.
 // d3-free so jest can run it.
 
+import { tierOf } from "./cohortStats";
 import { cladeFitScore } from "./cladeFit";
 
 const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]).map(String).filter(Boolean);
@@ -293,8 +294,8 @@ export function subclonalFindings({ events = [], groups = [], cells = [], tree =
   // events listed once per partner pair / gene share a carrier set: one row per set
   const bySet = new Map();
   events.forEach((e) => {
-    const tier = Number(e.Tier);
-    if (Number.isFinite(tier) && tier > maxTier) return;
+    const tier = tierOf(e);
+    if (tier != null && tier > maxTier) return;
     if (!["Fusion", "SCNA", "Missense", "Trunc", "Splice", "Complex SV"].includes(e.type)) return;
     const ids = `${e.cell_ids || ""}`.split(",").filter(Boolean).sort();
     const sig = `${e.type}|${e.vartype}|${ids.join(",")}`;
