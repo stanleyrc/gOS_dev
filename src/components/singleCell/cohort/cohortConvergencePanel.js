@@ -10,10 +10,12 @@ import HintLine, { Provenance } from "../hintLine";
 import datasetsActions from "../../../redux/datasets/actions";
 import settingsActions from "../../../redux/settings/actions";
 import { CONV_PARAM, rankEventCandidates } from "../../../helpers/singleCell/convergenceEvidence";
+import { clonalityBucket } from "../../../helpers/singleCell/exportedClonality";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#E7298A", complex: "#E66101", other: "#8c8c8c" };
-const clonalityOf = (f) => (f >= 0.85 ? "clonal" : f >= 0.1 ? "subclonal" : "rare");
+// exported dropout-aware call on read-evidence rows first (cell_fraction is a lower bound there), else the fraction rule
+const clonalityOf = (f, e) => clonalityBucket(e, f, { indeterminateAs: "indeterminate" });
 
 /**
  * Convergent evolution: genes altered in several patients, with the
@@ -43,7 +45,7 @@ export default function CohortConvergencePanel({ summaries, files, onEvent }) {
     return [...byGene.entries()]
       .map(([gene, m]) => {
         const per = [...m.values()];
-        const clon = per.map((p) => clonalityOf(p.fraction));
+        const clon = per.map((p) => clonalityOf(p.fraction, p.event));
         return {
           gene,
           nPatients: per.length,
@@ -92,7 +94,7 @@ export default function CohortConvergencePanel({ summaries, files, onEvent }) {
       render: (_, r) => {
         const p = r.per.get(s.caseReportId);
         if (!p) return <Text type="secondary">–</Text>;
-        const c = clonalityOf(p.fraction);
+        const c = clonalityOf(p.fraction, p.event);
         return (
           <button type="button" className="sc-text-button" onClick={() => onEvent && onEvent(p.summary, p.event)}>
             <Text strong={c === "clonal"} type={c === "rare" ? "secondary" : undefined}>{`${t(`components.single-cell.cohort.conv-${c}`)} ${pct(p.fraction)}`}</Text>

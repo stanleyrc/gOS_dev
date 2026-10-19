@@ -6,9 +6,10 @@ export const STATUS_LABEL = {
   subclonal: "subclonal",
   clonal: "clonal",
   discordant: "fraction / tree disagree",
+  indeterminate: "indeterminate (dropout)",
   unknown: "unknown",
 };
-export const STATUS_COLOR = { subclonal: "blue", clonal: "default", discordant: "orange", unknown: "default" };
+export const STATUS_COLOR = { subclonal: "blue", clonal: "default", discordant: "orange", indeterminate: "default", unknown: "default" };
 export const CLASS_LABEL = { trunc: "truncating", splice: "splice", missense: "missense (damaging)" };
 
 /** p / q formatting: 2 significant digits, scientific below 1e-3, "1" at 1. */
@@ -25,6 +26,11 @@ export const pct = (x, d = 0) => (x == null || !Number.isFinite(Number(x)) ? "n/
 /** "clonal or subclonal" as the user reads it: carrier fraction + tree node, e.g. "29% · private node". */
 export function clonalityText(hit) {
   const node = hit?.tree?.category ? `${hit.tree.category} node` : "not on the tree";
+  const t = hit?.clonality_test; // read-evidence rows: exported dropout-aware test (detection vs truncal SNVs at the same depth)
+  if (t && t.status) {
+    const exp = t.expected_detection != null ? ` vs ${pct(t.expected_detection)} expected` : "";
+    return `${t.status} (dropout-aware: ${pct(t.observed_detection)} of ${t.n_covered} covered cells${exp}) · ${node}`;
+  }
   return `${pct(hit?.carrier_fraction)} of tumour cells · ${node}`;
 }
 

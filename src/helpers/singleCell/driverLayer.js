@@ -17,6 +17,7 @@ import { collapseTwins, complexEntryLabel, legacyComplexLabel, TWIN_TIP } from "
 import { binAt, snvMetricValue } from "./matrix";
 import { eventGlobalPosition } from "./eventDomains";
 import { countsAsSomatic, hasClinical, isClinicalRow, isGermlineLike } from "./clinicalEvents";
+import { exportedClonality, exportedClonalityText } from "./exportedClonality";
 
 export const DRIVER_PRESETS = ["recommended", "subclonal", "hotspots", "all"];
 /** Readable names of gGnome event-classifier classes (raw vartype values such as "Cpxdm"). */
@@ -185,7 +186,11 @@ export function buildDriverEntries(events, { tumorIds = [], hotspots = null, ver
       carriers,
       n: carriers.length,
       fraction,
-      subclonal: rescued ? (rescue.lowCoverage ? false : fraction <= CLONAL_FRACTION) : fraction <= CLONAL_FRACTION, // low coverage: carriers / covered is a lower bound, clonality not assessed
+      // read-evidence rows with an exported dropout-aware call use it (cell_fraction is a lower bound under allele dropout);
+      // otherwise low coverage: carriers / covered is a lower bound, clonality not assessed
+      subclonal: exportedClonality(e) ? exportedClonality(e) === "subclonal" : rescued ? (rescue.lowCoverage ? false : fraction <= CLONAL_FRACTION) : fraction <= CLONAL_FRACTION,
+      clonality: exportedClonality(e), // "clonal" | "subclonal" | "indeterminate" (dropout-aware export) or null
+      clonalityText: exportedClonalityText(e),
       inOncoKB: Boolean(roleOf(e.role)) || (Number.isFinite(tier) && tier <= 2) || Boolean(variant?.driver),
       inGbm: genes.some((g) => GBM_GENES[g]),
       inCgc: cgc ? genes.some((g) => cgc.has(g)) : null,
