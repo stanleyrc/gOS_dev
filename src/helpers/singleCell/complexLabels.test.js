@@ -72,3 +72,12 @@ describe("ecDNA footprint overlap", () => {
     expect(dmOverlapText({ dms: [1, 2, 3, 4].map((i) => ({ label: `DM${i}` })), overlap: 3, carriers: 5 }).chip).toBe("inside DM1, DM2, DM3 +1 more footprint in 3 of 5 carriers");
   });
 });
+
+describe("ecDNA naming", () => {
+  const { kindName } = require("./complexLabels");
+  it("gGnome DM is shown as ecDNA", () => {
+    expect(kindName("DM")).toBe("ecDNA");
+    expect(kindName("Cpxdm")).toBe("complex ecDNA");
+    expect(kindName("rDelDup")).toBe("rDelDup");
+  });
+});

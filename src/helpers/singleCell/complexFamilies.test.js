@@ -17,7 +17,7 @@ describe("event families", () => {
     expect(dominantMember([rdd])).toBe(rdd);
   });
   test("label: dominant classification, its chromosomes, others as subsets", () => {
-    expect(familyLabel([dm, dmSub, rdd])).toBe("DM chr7 (+chr1 in subsets)");
+    expect(familyLabel([dm, dmSub, rdd])).toBe("ecDNA chr7 (+chr1 in subsets)");
   });
   test("a 3-member family and an unresolved row collapse to 2 entries; carriers are the union", () => {
     const entries = buildDriverEntries(rows);
@@ -26,7 +26,7 @@ describe("event families", () => {
     expect(f.family.id).toBe("P:F1");
     expect(f.family.members).toHaveLength(3);
     expect(f.carriers.sort()).toEqual(["a", "b", "c", "d", "e", "f"]);
-    expect(f.label).toBe("DM chr7 (+chr1 in subsets)");
+    expect(f.label).toBe("ecDNA chr7 (+chr1 in subsets)");
     expect(f.event.junction_ids.sort()).toEqual(["j1", "j2", "j3"]);
     expect(entries.find((e) => !e.family).label).toBe("TIC chr3↔chr9");
     expect(cohortEntries(rows)).toHaveLength(2);

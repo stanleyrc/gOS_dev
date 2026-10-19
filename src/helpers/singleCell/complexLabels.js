@@ -1,8 +1,9 @@
-// d3-free helpers for complex SV labels (every chromosome involved), twin groups and ecDNA (DM) footprint overlap.
+// d3-free helpers for complex SV labels (every chromosome involved), twin groups and ecDNA footprint overlap.
+// gGnome calls circular amplicons "DM" (double minute); gOS shows them as ecDNA (the tooltip keeps the gGnome name).
 import { parseFootprint } from "./complexZoom";
 
 const splitIds = (s) => `${s || ""}`.split(",").map((x) => x.trim()).filter(Boolean);
-const NAMES = { cpxdm: "complex DM", tyfonas: "tyfonas", pyrgo: "pyrgo", rigma: "rigma", qrp: "QRP", chromoplexy: "chromoplexy", chromothripsis: "chromothripsis" };
+const NAMES = { dm: "ecDNA", cpxdm: "complex ecDNA", tyfonas: "tyfonas", pyrgo: "pyrgo", rigma: "rigma", qrp: "QRP", chromoplexy: "chromoplexy", chromothripsis: "chromothripsis" };
 export const kindName = (v) => (v ? NAMES[`${v}`.toLowerCase()] || `${v}` : "complex");
 
 /** Chromosomes of a footprint, unique, in footprint order. */

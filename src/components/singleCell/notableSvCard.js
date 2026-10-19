@@ -17,7 +17,7 @@ export const NOTE = "Classifier families (gGnome events grouped by shared juncti
 export const GenesText = ({ r }) =>
   r.genes == null ? <Text type="secondary">not available (gene annotation not loaded)</Text> : r.genes.length ? <span>{`${r.genes.join(", ")}${r.nGenes > r.genes.length ? ` +${r.nGenes - r.genes.length}` : ""}`}</span> : <Text type="secondary">none in the gOS gene track (well-cited genes only)</Text>;
 
-/** Patient Summary: the non-DM complex-SV families (rDelDup, rDel, rDup, TIC, chromoplexy ...), click opens the Drivers drawer. */
+/** Patient Summary: the complex-SV families, ecDNA first, then rDelDup, rDel, rDup, TIC, chromoplexy ...; click opens the Drivers drawer. */
 export default function NotableSvCard() {
   const dispatch = useDispatch();
   const events = useSelector((s) => s.FilteredEvents.filteredEvents);
@@ -32,7 +32,7 @@ export default function NotableSvCard() {
     const entries = buildDriverEntries(events || [], { tumorIds });
     return notableSvs(entries, { genesList: genesList.length ? genesList : null, treeLayout, tumorN: tumorIds.length });
   }, [events, tumorIds, genesList, treeLayout]);
-  if (!rows.length) return <Empty description="No non-DM complex-SV family in this patient" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+  if (!rows.length) return <Empty description="No complex-SV family in this patient" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   const open = (r) => {
     dispatch(singleCellActions.updateHeatmapType("drivers"));
     dispatch(singleCellActions.updateDriverDrawer(r.key));
