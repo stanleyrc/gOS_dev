@@ -28,7 +28,14 @@ PATIENTS = strsplit(env("PATIENTS", "BWH69,BWH70,MGH302,MGH303,MGH304,MGH305"), 
 MIN_DEPTH = as.integer(env("MIN_DEPTH", "4")); ALT_DEPTHS = setdiff(as.integer(strsplit(env("ALT_DEPTHS", "3,5"), ",")[[1]]), MIN_DEPTH)
 DENOM = env("DENOM", "auto")   # mosdepth | sites | auto: callable fraction from the CRAM (mosdepth) or from truncal-site coverage
 TERR = fread(env("TERRITORY", "/gpfs/commons/groups/imielinski_lab/projects/single_cell_GBM/analysis/tmb/out/territory_summary.tsv"))
-NOISY = list(BWH69 = "BWH69 SNV calls are noisy (many single-cell-private sites); treat its TMB as an upper-bound mixture of real mutations and artefacts.")
+## Noisy-SNV patients are data-driven: NOISY_PATIENTS (comma list, default none). CLEANED_SNV_PATIENTS (default BWH69) get a cleaned-set note.
+NOISY_PATIENTS = Filter(nzchar, trimws(strsplit(env("NOISY_PATIENTS", ""), ",")[[1]]))
+CLEANED_SNV_PATIENTS = Filter(nzchar, trimws(strsplit(env("CLEANED_SNV_PATIENTS", "BWH69"), ",")[[1]]))
+noisy_note = function(P) {
+  if (P %in% NOISY_PATIENTS) return(paste0(P, " SNV calls are noisy (many single-cell-private sites); treat its TMB as an upper-bound mixture of real mutations and artefacts."))
+  if (P == "BWH69" && P %in% CLEANED_SNV_PATIENTS) return("BWH69 SNVs use a cleaned site set (5,675 sites) after an artefact audit.")
+  NULL
+}
 PROV = "territory_bp, depth-threshold counts: mosdepth on the cell CRAM (analysis/tmb/scripts/depth_task.sh)"
 
 ## P(at least m successes) for independent Bernoulli(p_i): dynamic programme
@@ -172,8 +179,8 @@ one_patient = function(P) {
     params = list(min_depth = MIN_DEPTH, alt_min_depths = as.list(ALT_DEPTHS), mapq = 20L, callable_source = src, mosdepth_vs_truncal_site_coverage = agreement, territory = "diploid autosomal territory (see method)",
                   sites = "tree sites (cellphy_input), categories from the CellPhy mutation map"),
     method = paste("Callable Mb =", if (src == "mosdepth") paste("bases with depth >=", MIN_DEPTH, "(MAPQ >= 20, no dup/secondary/QC-fail), from the cell CRAM (mosdepth),") else paste("the fraction of truncal (true mutation) sites with depth >=", MIN_DEPTH, "in the cell x the territory (checked against mosdepth on the CRAM: see params.mosdepth_vs_truncal_site_coverage),"), "in the patient's diploid autosomal territory (CN 2 in >= 80% of tumour cells, hg38 non-N). Per-cell TMB = alt calls at tree sites with depth >=", MIN_DEPTH, "/ callable Mb. Sensitivity = alt calls / covered sites among truncal sites; corrected = raw / sensitivity. Patient and clade TMB divide site counts by territory Mb x discovery power (a site needs alt reads in >= 2 cells)."),
-    caveats = c(if (!is.null(NOISY[[P]])) NOISY[[P]], if (!has_gt) "No genotype column in snv_matrix: alt call = >= 2 alt reads.", "Private TMB is a lower bound (cell-private sites are not in the candidate set).", "Sensitivity is estimated on truncal sites, which are easier to discover than subclonal ones."),
-    noisy = !is.null(NOISY[[P]]), provenance = PROV, patient_summary = patient, clades = cl, cells = cells_out))
+    caveats = c(noisy_note(P), if (!has_gt) "No genotype column in snv_matrix: alt call = >= 2 alt reads.", "Private TMB is a lower bound (cell-private sites are not in the candidate set).", "Sensitivity is estimated on truncal sites, which are easier to discover than subclonal ones."),
+    noisy = P %in% NOISY_PATIENTS, provenance = PROV, patient_summary = patient, clades = cl, cells = cells_out))
 }
 
 dir.create(file.path(OUT, "_cohort"), recursive = TRUE, showWarnings = FALSE)
