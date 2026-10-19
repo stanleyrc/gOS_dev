@@ -61,3 +61,17 @@ describe("portrait helpers", () => {
     expect(portraitUnavailable({}, "P1")).toBeNull();
   });
 });
+
+describe("link caveats", () => {
+  const { caveatOf, glyphOf, holdsOrNot } = require("./portrait");
+  it("a consistent link with a caveat is starred and still holds", () => {
+    const link = { verdict: "consistent", caveat: "not conclusive: overall test p = 0.21" };
+    expect(glyphOf(link)).toBe("✓*");
+    expect(glyphOf({ verdict: "consistent" })).toBe("✓");
+    expect(caveatOf({ verdict: "not_testable" })).toBeNull();
+    const m = { patients: ["A"], features: [{ key: "egfr_ac" }], cells: { A: { egfr_ac: { verdict: "not_testable" } } } };
+    const r = holdsOrNot(m, { egfr_ac: link });
+    expect(r.holds.map((f) => f.key)).toEqual(["egfr_ac"]);
+    expect(r.holds[0].caveat).toMatch(/not conclusive/);
+  });
+});

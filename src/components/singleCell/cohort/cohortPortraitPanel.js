@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Alert, Card, Collapse, Empty, Skeleton, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
-import { STATUS_LABEL, VERDICTS, featureTally, holdsOrNot, sortNovel, verdictOf } from "../../../helpers/singleCell/portrait";
+import { STATUS_LABEL, VERDICTS, caveatOf, featureTally, glyphOf, holdsOrNot, sortNovel, verdictOf } from "../../../helpers/singleCell/portrait";
 import PortraitCard, { PortraitLink, VerdictTag } from "../portrait/portraitCard";
 import useCohortExport from "./useCohortExport";
 
@@ -38,9 +38,10 @@ function Matrix({ data, onPatient }) {
 
 function Summary({ data }) {
   const { holds, mixed, fails, open } = holdsOrNot(data.matrix, data.neftel_links);
-  const list = (items) => items.map((f) => `${f.label} (${f.tally.text})`).join("; ");
+  const list = (items) => items.map((f) => `${f.label}${f.caveat ? "*" : ""} (${f.tally.text})`).join("; ");
+  const starred = holds.filter((f) => f.caveat);
   const items = [];
-  if (holds.length) items.push(<li key="h"><b>Holds:</b> {list(holds)}.</li>);
+  if (holds.length) items.push(<li key="h"><b>Holds:</b> {list(holds)}.{starred.length ? <Text type="secondary"> * not conclusive: {starred.map((f) => `${f.label}: ${f.caveat}`).join("; ")}</Text> : null}</li>);
   if (mixed.length) items.push(<li key="m"><b>Mixed (about half of the decidable patients):</b> {list(mixed)}.</li>);
   if (fails.length) items.push(<li key="f"><b>Does not hold:</b> {list(fails)}.</li>);
   if (open.length) items.push(<li key="o"><b>Not decidable here (underpowered, not assessed, or absent):</b> {list(open)}.</li>);
@@ -51,7 +52,7 @@ function NeftelTable({ links }) {
   const rows = Object.entries(links).map(([key, v]) => ({ key, ...v }));
   const cols = [
     { title: "Link (Neftel 2019)", key: "c", width: 260, render: (_, r) => r.claim },
-    { title: "Verdict", key: "v", width: 150, render: (_, r) => <VerdictTag verdict={r.verdict} /> },
+    { title: "Verdict", key: "v", width: 190, render: (_, r) => <span><VerdictTag verdict={r.verdict} />{caveatOf(r) ? <Tooltip title={caveatOf(r)}><Tag color="warning" style={{ marginLeft: 4 }}>* not conclusive</Tag></Tooltip> : null}</span> },
     { title: "Pooled carriers vs non-carriers, within patients", key: "e", render: (_, r) => <span style={{ fontSize: TYPE.label }}>{r.evidence}</span> },
     { title: "Informative patients", key: "i", width: 130, render: (_, r) => `${r.n_informative} of ${r.per_patient.length} with carriers` },
     { title: "", key: "l", width: 70, render: (_, r) => <PortraitLink link={{ scview: "eventassoc", evassoc: r.event.replace(" loss", " homdel") }}>forest</PortraitLink> },
