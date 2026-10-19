@@ -2,7 +2,7 @@
 export const SUMMARY_SECTION_ORDER = ["vignette", "portrait", "clonal-history", "event-order", "timing-rates", "full-report", "story"];
 
 /** Which sections open expanded. The brief and clonal history lead; the long ones start collapsed. */
-export const SUMMARY_DEFAULT_OPEN = ["portrait", "clonal-history", "event-order", "timing-rates"];
+export const SUMMARY_DEFAULT_OPEN = ["portrait", "clonal-history", "notable-svs", "event-order", "timing-rates"];
 
 /**
  * The story part of the tab for the open patient: its own vignette chapters, and one "in the cohort" chapter
