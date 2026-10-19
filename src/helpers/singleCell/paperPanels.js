@@ -199,7 +199,7 @@ export function classCombinations(patients, { minPct = 1, minCells = 2, maxRows 
     p.classes.forEach((c) =>
       c.cells.forEach((id) => {
         if (!by.has(id)) by.set(id, []);
-        by.get(id).push(c.cls);
+        if (!by.get(id).includes(c.cls)) by.get(id).push(c.cls);
       })
     );
     const denom = p.nTumour || by.size || 1;

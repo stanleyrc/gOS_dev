@@ -558,35 +558,6 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       // heatmaps: source crop = the row window
       const blit = (img, x, w) => img && ctx.drawImage(img, 0, r0, img.width, nv, x, TOP, w, plotH);
       blit(snvImg?.canvas, L.snvX, L.snvW);
-      if (snvImg?.blocks) {
-        // block header (truncal grey, subclonal / private coloured by clade) and separators, as the PDF
-        const bx = (u) => L.snvX + (u / snvImg.nSites) * L.snvW;
-        snvImg.blocks.forEach((b, k) => {
-          if (b.block === "Unmapped") return;
-          if (b.block === "Truncal") {
-            ctx.fillStyle = "#4D4D4D";
-            ctx.fillRect(bx(b.x0), TOP - 9, bx(b.x1) - bx(b.x0), 6);
-          } else
-            b.clades.forEach((cl) => {
-              ctx.fillStyle = cloneColors[cl.clade] || (isNormalClone(cl.clade) ? "#9e9e9e" : "#bdbdbd");
-              ctx.fillRect(bx(cl.x0), TOP - 9, bx(cl.x1) - bx(cl.x0), 6);
-            });
-          textRole(ctx, c, "caption", "text");
-          ctx.textAlign = "center";
-          ctx.textBaseline = "bottom";
-          if (bx(b.x1) - bx(b.x0) > 30) ctx.fillText(b.block, (bx(b.x0) + bx(b.x1)) / 2, TOP - 11);
-          ctx.textBaseline = "middle";
-          if (k > 0) {
-            ctx.strokeStyle = "#8C8C8C";
-            ctx.lineWidth = 0.6;
-            ctx.beginPath();
-            ctx.moveTo(Math.round(bx(b.x0)) + 0.5, TOP);
-            ctx.lineTo(Math.round(bx(b.x0)) + 0.5, TOP + plotH);
-            ctx.stroke();
-            ctx.lineWidth = 1;
-          }
-        });
-      }
       blit(ecImg, L.ecX, L.ecW);
       blit(cnImg, L.cnX, L.cnW);
       // per-variant copies (shared scale, light column background, faint 50-copy guides)
@@ -647,6 +618,35 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         ctx.lineWidth = 1;
       }
       ctx.restore();
+      if (snvImg?.blocks) {
+        // block header (truncal grey, subclonal / private coloured by clade) and separators, as the PDF
+        const bx = (u) => L.snvX + (u / snvImg.nSites) * L.snvW;
+        snvImg.blocks.forEach((b, k) => {
+          if (b.block === "Unmapped") return;
+          if (b.block === "Truncal") {
+            ctx.fillStyle = "#4D4D4D";
+            ctx.fillRect(bx(b.x0), TOP - 9, bx(b.x1) - bx(b.x0), 6);
+          } else
+            b.clades.forEach((cl) => {
+              ctx.fillStyle = cloneColors[cl.clade] || (isNormalClone(cl.clade) ? "#9e9e9e" : "#bdbdbd");
+              ctx.fillRect(bx(cl.x0), TOP - 9, bx(cl.x1) - bx(cl.x0), 6);
+            });
+          textRole(ctx, c, "caption", "text");
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          if (bx(b.x1) - bx(b.x0) > 30) ctx.fillText(b.block, (bx(b.x0) + bx(b.x1)) / 2, TOP - 11);
+          ctx.textBaseline = "middle";
+          if (k > 0) {
+            ctx.strokeStyle = "#8C8C8C";
+            ctx.lineWidth = 0.6;
+            ctx.beginPath();
+            ctx.moveTo(Math.round(bx(b.x0)) + 0.5, TOP);
+            ctx.lineTo(Math.round(bx(b.x0)) + 0.5, TOP + plotH);
+            ctx.stroke();
+            ctx.lineWidth = 1;
+          }
+        });
+      }
       // frames
       ctx.strokeStyle = c.dark ? "#8c8c8c" : "#262626";
       ctx.lineWidth = 0.8;
