@@ -1,3 +1,4 @@
+import { walkLaneHeaderTip, walkLaneSummary } from "../../../helpers/singleCell/walkLaneText";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -54,7 +55,7 @@ function intervalPoints(w, h, strand) {
  * labelWidth + GAP_X like the heatmap's genomic columns. `hover` is the
  * walk hovered elsewhere (the walk chips above), marked like a hovered lane.
  */
-export default function WalksPlot({ walks, families, colorOf, focus, onFocus, hover: hoverProp = null, labelWidth, rightWidth = 0, laneHeight = 18, colorBy = "walk" }) {
+export default function WalksPlot({ walks, families, colorOf, focus, onFocus, hover: hoverProp = null, labelWidth, rightWidth = 0, laneHeight = 18, colorBy = "walk", nCells = 0 }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(1200);
@@ -288,6 +289,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, ho
           META_COLS.map((c, i) => (
             <text key={c.key} x={metaX[i]} y={HEAD_H / 2} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={INK.muted} style={headStyle}>
               {t(`components.single-cell.ecdna.lane-${c.key}`)}
+              <title>{walkLaneHeaderTip(c.key, nCells)}</title>
             </text>
           ))}
         {/* panel headers: chromosome and visible range */}
@@ -320,7 +322,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, ho
           const { opacity, focused, hovered } = laneEmphasis(w.id, { hover: hoverId, focus });
           const ncells = w.stats?.ncells ?? w.ncells ?? 0;
           const median = w.stats?.medianCn ?? w.median_cn ?? 0;
-          const meta = `${ncells} cells · median ${median.toFixed(0)} copies`;
+          const meta = walkLaneSummary(ncells, median, nCells);
           const laneLines = [
             w.label,
             `${w.circular ? "circular" : "linear"} · ${fmtSpan(w.span)} · ${w.nodes.length} segments${w.n_nodes_raw > w.nodes.length ? ` (${w.n_nodes_raw} graph nodes)` : ""} · ${w.junctions.filter((j) => j.type === "ALT").length} ALT junctions`,

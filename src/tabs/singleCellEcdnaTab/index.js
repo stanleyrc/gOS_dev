@@ -238,7 +238,7 @@ export default function SingleCellEcdnaTab() {
                 </Space>
               }
             >
-              <WalksPlot walks={shown} families={shownFamilies} colorOf={colorOf} focus={activeFocus} hover={chipHover} onFocus={(id) => setFocus((f) => (f === id ? null : id))} labelWidth={labelWidth} rightWidth={rightWidth} laneHeight={laneHeight} colorBy={colorBy} />
+              <WalksPlot walks={shown} families={shownFamilies} colorOf={colorOf} focus={activeFocus} hover={chipHover} onFocus={(id) => setFocus((f) => (f === id ? null : id))} labelWidth={labelWidth} rightWidth={rightWidth} laneHeight={laneHeight} colorBy={colorBy} nCells={cellIds.length} />
               <div ref={genesRef} style={{ position: "relative", marginLeft: labelWidth, marginRight: rightWidth, height: shown.length ? GENES_H : 0, marginTop: 4, overflow: "hidden" }}>
                 {shown.length > 0 && genesList.length > 0 && domains?.length > 0 && genesWidth > 200 && (
                   <>
