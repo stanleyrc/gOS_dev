@@ -86,5 +86,6 @@ describe("strip layout and selection", () => {
   it("groups keys by patient and names a group", () => {
     expect(keysByPatient(new Set(["A::x", "A::y", "B::z"]))).toEqual({ A: ["x", "y"], B: ["z"] });
     expect(spliceGroupName("TP53", "exon 10", "incl")).toBe("TP53 exon 10 using");
+    expect(spliceGroupName("EGFR", "EGFRvIII", "incl")).toBe("EGFRvIII using");
   });
 });
