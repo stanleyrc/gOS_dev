@@ -524,9 +524,9 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             </Row>
             <Row gutter={[24, 16]} className="sc-fig-block">
               <Col xs={24} xl={12} id="sc-fig-genepair">
-                <ExportPanel name="5E-genes" letter="H" title={paper && pooledScatter ? "Gene vs gene copy number: ecDNA vs integrated" : "Gene vs gene copy number per clone"} fig="Fig 5E" hint="ecDNA vs integrated: slope / R² per clone" extra={<><Checkbox checked={pooledScatter} onChange={(e) => setPooledScatter(e.target.checked)}>ecDNA vs CI, pooled</Checkbox><Select size="small" mode="multiple" style={{ minWidth: 180, marginLeft: 8 }} value={genePair || []} onChange={(v) => setPairGenes(v.length ? v.slice(-2) : null)} options={[...genePositions.keys(), ...(genePair || [])].filter((g, i, a) => a.indexOf(g) === i).sort().map((g) => ({ value: g, label: g }))} /></>}>
+                <ExportPanel name="5E-genes" letter="H" title={paper && pooledScatter ? "Gene vs gene copy number: ecDNA vs integrated" : "Gene vs gene copy number per clone"} fig="Fig 5E" hint="ecDNA vs integrated: slope / R² per clone" extra={<><Checkbox checked={pooledScatter} onChange={(e) => setPooledScatter(e.target.checked)}>pooled</Checkbox><Select size="small" mode="multiple" style={{ minWidth: 180, marginLeft: 8 }} value={genePair || []} onChange={(v) => setPairGenes(v.length ? v.slice(-2) : null)} options={[...genePositions.keys(), ...(genePair || [])].filter((g, i, a) => a.indexOf(g) === i).sort().map((g) => ({ value: g, label: g }))} /></>}>
                 {genePair ? (
-                  <GeneCnScatter cnEntry={cnRows[current?.patient]} genes={genePair} cloneColors={figCloneColors} cloneLabels={figCloneLabels} width={520} pooled={paper && pooledScatter} fontFamily={paper ? PAPER_FONT : null} />
+                  <GeneCnScatter cnEntry={cnRows[current?.patient]} genes={paper && pooledScatter ? [...genePair].sort() : genePair} cloneColors={figCloneColors} cloneLabels={figCloneLabels} width={520} pooled={paper && pooledScatter} fontFamily={paper ? PAPER_FONT : null} />
                 ) : (
                   <Text type="secondary" style={{ fontSize: 12 }}>Pick two genes on one amplicon (e.g. CDK4 and MDM2).</Text>
                 )}
