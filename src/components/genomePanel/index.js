@@ -59,6 +59,7 @@ class GenomePanel extends Component {
 
     // Check commonRangeY by reference (memoized in utility.js)
     if (nextProps.commonRangeY !== this.props.commonRangeY) return true;
+    if (nextProps.windowRangesY !== this.props.windowRangesY) return true;
 
     // Check data changes
     if (nextProps.genome !== this.props.genome) return true;
@@ -147,6 +148,7 @@ class GenomePanel extends Component {
       chromoBins,
       domains,
       commonRangeY,
+      windowRangesY,
     } = this.props;
     if (!visible) return null;
     const { parentWidth, height } = this.state;
@@ -249,6 +251,7 @@ class GenomePanel extends Component {
                             genome,
                             yAxisTitle,
                             commonRangeY,
+                            windowRangesY,
                           }}
                         />
                         <HoverLine

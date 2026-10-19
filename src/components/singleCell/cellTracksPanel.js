@@ -2,7 +2,7 @@ import { highlightEventJunctions } from "../../helpers/singleCell/complexZoom";
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Checkbox, Col, Empty, InputNumber, Row, Segmented, Space, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Col, Empty, InputNumber, Row, Segmented, Select, Space, Typography } from "antd";
 import { CloseOutlined, ExportOutlined, MinusOutlined, PlusOutlined, UndoOutlined } from "@ant-design/icons";
 import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
@@ -14,6 +14,7 @@ import { dataRanges, dataToGenome } from "../../helpers/utility";
 import { effectiveTracks, HET_MODES, storedTrack } from "../../helpers/singleCell/hetTracks";
 import { cellCnRange, coverageInView, effectiveRange, formatYMax, graphMaxInView, parseYMax } from "../../helpers/singleCell/cellYScale";
 import { readViewLink } from "../../helpers/singleCell/deepLink";
+import { Y_MODES, Y_MODE_LABELS, cellTrackRanges, formatYAxis, parseYAxis } from "../../helpers/singleCell/trackScale";
 import Wrapper from "./index.style";
 import { Provenance } from "./hintLine";
 import ColorTag from "./colorTag";
@@ -75,7 +76,7 @@ function TrackNote({ status, error, label }) {
  * graph, `coverage` / `hetsnps` the arrow scatter. Used by the cell tracks
  * panel and the cohort event drawer.
  */
-export function TrackPlot({ cellId, track, data, status = "ok", error = null, chromoBins, commonRangeY = null, height = PLOT_HEIGHT, highlightLocation = "" }) {
+export function TrackPlot({ cellId, track, data, status = "ok", error = null, chromoBins, commonRangeY = null, height = PLOT_HEIGHT, highlightLocation = "", windowRangesY = null }) {
   const { t } = useTranslation("common");
   const cellLabels = useCellLabels();
   const label = t(`components.single-cell.tracks.${track}`);
@@ -99,6 +100,7 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
           index: 0,
           height,
           commonRangeY,
+          windowRangesY,
         }}
       />
     );
@@ -138,6 +140,7 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
         yAxisTitle: isHets ? t("components.single-cell.tracks.hetsnps-y") : data.hasFit ? t("components.tracks-modal.coverage-copy-number") : t("components.tracks-modal.coverage-count"),
         yAxis2Title: t("components.tracks-modal.coverage-count"),
         commonRangeY: isHets ? HET_SNPS_RANGE : track === "coverage" && data.hasFit ? commonRangeY : null,
+        windowRangesY: track === "coverage" && data.hasFit ? windowRangesY : null,
       }}
     />
   );
@@ -171,7 +174,7 @@ const TRACK_NESTING = { left: 35, right: 21 };
  * carrying a filtered event); `embedded` drops the heatmap alignment padding
  * and pinned genes for use inside a modal; `onRemove` replaces "deselect".
  */
-export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, embedded = false, onRemove = null, title = null, highlightLocation = "" }) {
+export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, embedded = false, onRemove = null, title = null, highlightLocation = "", yAxisDefault = "shared" }) {
   const { t } = useTranslation("common");
   const cellLabels = useCellLabels();
   const dispatch = useDispatch();
@@ -278,6 +281,42 @@ export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, e
     [autoRanges, yMaxByCell]
   );
 
+  // Y axis of the CN / coverage tracks: shared (above), per window, per track or a custom maximum; ?yax= remembers it.
+  const [yAx, setYAx] = React.useState(() => {
+    const fromUrl = parseYAxis(readViewLink().yax);
+    const fromLayout = sc.layout.trackYAxis && Y_MODES.includes(sc.layout.trackYAxis.mode) ? sc.layout.trackYAxis : null;
+    return fromUrl || fromLayout || { mode: yAxisDefault, custom: null };
+  });
+  // the host's default can change after mount (the event windows are set by an effect): follow it until the user chooses
+  const yAxChosen = React.useRef(Boolean(parseYAxis(readViewLink().yax) || sc.layout.trackYAxis));
+  useEffect(() => {
+    if (!yAxChosen.current) setYAx({ mode: yAxisDefault, custom: null });
+  }, [yAxisDefault]);
+  const changeYAx = (next) => {
+    yAxChosen.current = true;
+    setYAx(next);
+    dispatch(singleCellActions.updateLayout({ trackYAxis: next }));
+    try {
+      const url = new URL(window.location.href);
+      if (next.mode === yAxisDefault && !embedded) url.searchParams.delete("yax");
+      else url.searchParams.set("yax", formatYAxis(next));
+      window.history.replaceState(window.history.state, "", url);
+    } catch (e) {
+      // no history access: the layout still keeps it
+    }
+  };
+  const windowRanges = useMemo(() => {
+    const out = {};
+    shown.forEach((id) => {
+      const cov = perCell[id]?.coverage?.data;
+      const r = cellTrackRanges({ intervals: totals[id]?.intervals, covX: cov?.dataPointsX, covY: cov?.dataPointsY1, hasFit: Boolean(cov?.hasFit), windows: domains || [], mode: yAx.mode, custom: yAx.custom });
+      if (r) out[id] = r;
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yAx, shown.join("|"), totals, perCell, domains]);
+  const aboveTotal = Object.values(windowRanges).reduce((t, r) => t + (r.above || 0), 0);
+
   const openCell = (cellId) =>
     patient && dispatch(datasetsActions.openCaseReport(patient.datasetId, cellId));
   const removeCell = (cellId) =>
@@ -288,10 +327,12 @@ export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, e
     // CN tracks of a cell share its range in "per cell" mode; SNVs and het SNPs are not CN, so they stay auto.
     const perCellMode = yScaleMode === "cell";
     const cnRange = perCellMode ? cellRanges[cellId] || null : commonRangeY;
-    if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} highlightLocation={highlightLocation} commonRangeY={cnRange} height={height} />;
+    const wr = windowRanges[cellId];
+    if (track === "total") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.genome} chromoBins={chromoBins} highlightLocation={highlightLocation} commonRangeY={wr ? null : cnRange} windowRangesY={wr ? wr.total : null} height={height} />;
     if (track === "mutations") return <TrackPlot cellId={cellId} track={track} data={cellFiles[cellId]?.mutations} chromoBins={chromoBins} commonRangeY={perCellMode ? null : commonRangeY} height={height} />;
     const entry = perCell[cellId]?.[storedTrack(track, hetMode)];
-    return <TrackPlot cellId={cellId} track={storedTrack(track, hetMode)} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={cnRange} height={height} />;
+    const windowed = wr && track === "coverage" && entry?.data?.hasFit;
+    return <TrackPlot cellId={cellId} track={storedTrack(track, hetMode)} data={entry?.data} status={entry?.status || "loading"} error={entry?.error} chromoBins={chromoBins} commonRangeY={windowed ? null : cnRange} windowRangesY={windowed ? wr.coverage : null} height={height} />;
   };
   const orderedTracks = SC_TRACKS.filter((track) => visibleTracks.includes(track));
 
@@ -309,6 +350,20 @@ export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, e
               onChange={setTracks}
               options={SC_TRACKS.map((track) => ({ value: track, label: label(track) }))}
             />
+            <Space size={4} className="sc-yaxis-control" data-yaxis-control>
+              <Text type="secondary">y-axis</Text>
+              <Select
+                size="small"
+                style={{ width: 150 }}
+                value={yAx.mode}
+                onChange={(mode) => changeYAx({ mode, custom: mode === "custom" ? yAx.custom || 10 : null })}
+                options={Y_MODES.map((m) => ({ value: m, label: Y_MODE_LABELS[m] }))}
+              />
+              {yAx.mode === "custom" && <InputNumber size="small" min={1} style={{ width: 70 }} value={yAx.custom} onChange={(v) => v > 0 && changeYAx({ mode: "custom", custom: v })} aria-label="custom y maximum" />}
+              {yAx.mode === "window" && <Text type="secondary" data-yaxis-note>y per window</Text>}
+              {yAx.mode === "track" && <Text type="secondary" data-yaxis-note>y per track</Text>}
+              {aboveTotal > 0 && <Text type="warning" data-yaxis-above>{`${aboveTotal} bins above ${yAx.custom} (drawn clamped / off the top)`}</Text>}
+            </Space>
             {visibleTracks.includes("hetsnps") && (
               <Segmented
                 size="small"
