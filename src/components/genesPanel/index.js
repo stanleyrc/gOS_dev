@@ -19,7 +19,7 @@ import {
 import * as htmlToImage from "html-to-image";
 import { CgArrowsBreakeH } from "react-icons/cg";
 import Wrapper from "./index.style";
-import GenesPlot from "../genesPlot";
+import GeneTrack from "../genes/geneTrack";
 import settingsActions from "../../redux/settings/actions";
 
 const { updateDomains } = settingsActions;
@@ -82,7 +82,7 @@ class GenesPanel extends Component {
   };
 
   render() {
-    const { t, genes, loading, loadingGenesData, domains, genesOptionsList } =
+    const { t, loading, loadingGenesData, domains, genesOptionsList } =
       this.props;
     let { visible } = this.state;
     return (
@@ -164,14 +164,11 @@ class GenesPanel extends Component {
                     return (
                       <Row style={{ width }} gutter={[margins.gap, 0]}>
                         <Col flex={1}>
-                          {width && height && genes && (
-                            <GenesPlot
-                              {...{
-                                width,
-                                height,
-                                domains,
-                                genes,
-                              }}
+                          {width > 0 && (
+                            <GeneTrack
+                              width={width}
+                              domains={domains}
+                              exportName="genome-view-genes"
                             />
                           )}
                         </Col>

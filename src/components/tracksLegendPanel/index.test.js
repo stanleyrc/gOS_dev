@@ -11,6 +11,7 @@ jest.mock("../../helpers/interval", () => class Interval {});
 jest.mock("html-to-image", () => ({}));
 jest.mock("./index.style", () => "Wrapper");
 jest.mock("../genesPlotHiglass", () => "GenesPlot");
+jest.mock("../genes/geneTrack", () => "GeneTrack");
 jest.mock("../cytobandsPlot", () => "CytobandsPlot");
 jest.mock("./legend-multi-brush", () => "LegendMultiBrush");
 jest.mock("./genomeRangePanel", () => "GenomeRangePanel");

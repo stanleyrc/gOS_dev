@@ -4,7 +4,7 @@ const Wrapper = styled.div`
   .ant-wrapper {
     background: white;
     padding: 0px;
-    height: 240px;
+    height: 280px;
   }
   /* pinned (compact) strip: tight card padding */
   .tracks-legend-compact.ant-card-small > .ant-card-body {

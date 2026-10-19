@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Checkbox, InputNumber, Select, Space, Typography } from "antd";
-import GenesPlot from "../../genesPlotHiglass";
+import GeneTrack from "../../genes/geneTrack";
 import WalksPlot from "../ecdna/walksPlot";
 import { TrackPlot } from "../cellTracksPanel";
 import { loadCellTrack } from "../../../redux/singleCell/loaders";
@@ -14,12 +14,11 @@ const { Text } = Typography;
 // figure's CN heatmap columns [cnX, cnX + cnW):
 //  - GenomePanel / ScatterPlotPanel: card border 1 + body padding 12, then
 //    a 50 px plot margin each side (the plot is 27 px narrower than the card).
-//  - GenesPlot (higlass): a bare plot with 50 px margins.
+//  - GeneTrack: a bare plot with 50 px margins (its mode control sits above, inside the margin).
 //  - WalksPlot: genome starts at labelWidth + 50 + 10 and is
 //    width - labelWidth - rightWidth - 100 wide.
 const CARD_LEFT = 63;
 const CARD_EXTRA = 127;
-const GENES_H = 110;
 const TRACKS = [
   { value: "genes", label: "Genes" },
   { value: "walks", label: "ecDNA walks" },
@@ -46,7 +45,6 @@ export default function GenomeTracks({ width, cnX, cnW, walks = [], colorOf, nam
   const dataset = useSelector((s) => s.Settings.dataset);
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const domains = useSelector((s) => s.Settings.domains);
-  const genesList = useSelector((s) => s.Genes?.list || []);
   // display names for the walk lanes (the paper's names where mapped)
   const lanes = useMemo(() => walks.map((w) => ({ ...w, label: nameOf ? nameOf(w) : w.label })), [walks, nameOf]);
   const families = useMemo(() => walkFamilies(lanes), [lanes]);
@@ -99,10 +97,10 @@ export default function GenomeTracks({ width, cnX, cnW, walks = [], colorOf, nam
         </Space>
         {cellNote && <Text type="secondary" style={{ fontSize: 12 }}>{cellNote}</Text>}
       </Space>
-      {tracks.includes("genes") && genesList.length > 0 && domains?.length > 0 && (
+      {tracks.includes("genes") && domains?.length > 0 && (
         // the report's gene track (50 px plot margins, like the heatmap's genomic columns)
-        <div style={{ marginLeft: Math.max(0, cnX - 50), width: cnW + 100, height: GENES_H, position: "relative" }}>
-          <GenesPlot {...{ width: cnW + 100, height: GENES_H, domains, genesList }} />
+        <div style={{ marginLeft: Math.max(0, cnX - 50), width: cnW + 100, position: "relative" }}>
+          <GeneTrack width={cnW + 100} domains={domains} exportName="figure-genes" />
         </div>
       )}
       {tracks.includes("walks") && lanes.length > 0 && (
