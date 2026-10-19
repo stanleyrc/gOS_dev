@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import * as d3 from "d3";
+import { stoufferDotLines } from "../../../helpers/singleCell/plotHover";
 import { Card, Col, Empty, Progress, Row, Segmented, Select, Space, Switch, Table, Typography } from "antd";
 import { BoxPlotOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
@@ -138,7 +139,7 @@ function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380, own =
 function StoufferDots({ rows, width, title }) {
   const ROW = 24;
   const groups = [...new Set(rows.map((r) => r.group))];
-  const M = { top: 34, right: 90, bottom: 44, left: 330 };
+  const M = { top: 48, right: 90, bottom: 78, left: 330 };
   const height = M.top + rows.length * ROW + (groups.length - 1) * 12 + M.bottom;
   const vals = rows.map((r) => r.score).filter(Number.isFinite);
   const CAP = 12;
@@ -155,7 +156,9 @@ function StoufferDots({ rows, width, title }) {
   const sig = -Math.log10(0.05);
   return (
     <svg width={width} height={height} role="img" aria-label={title}>
-      <text x={(M.left + width - M.right) / 2} y={18} textAnchor="middle" fontSize={TYPE.title} fontWeight={700} fill={INK.text}>{title}</text>
+      {title.split("; ").map((part, i) => (
+        <text key={i} x={8} y={16 + i * 16} fontSize={i ? TYPE.label : TYPE.title} fontWeight={i ? 400 : 700} fill={i ? INK.textSecondary : INK.text}>{part}</text>
+      ))}
       {[-sig, sig].map((v) => <line key={v} x1={x(v)} x2={x(v)} y1={M.top} y2={yy} stroke="#D7262B" strokeDasharray="4 3" />)}
       <line x1={x(0)} x2={x(0)} y1={M.top} y2={yy} stroke={INK.text} strokeDasharray="4 3" />
       {placed.map((r) => (
@@ -166,11 +169,11 @@ function StoufferDots({ rows, width, title }) {
             <text x={M.left - 8} y={r.y} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fontWeight={600} fill={INK.textSecondary}>{r.label}</text>
           )}
           {Number.isFinite(r.score) && Math.abs(r.score) > lim && (
-            <text x={x(Math.sign(r.score) * lim) + Math.sign(r.score) * 14} y={r.y} dy="0.35em" textAnchor={r.score > 0 ? "start" : "end"} fontSize={FONT.axis} fill={INK.textSecondary}>{`${r.score > 0 ? "→" : "←"} ${Math.abs(r.score).toFixed(0)}`}</text>
+            <text x={x(Math.sign(r.score) * lim) + Math.sign(r.score) * 14} y={r.y} dy="0.35em" textAnchor={r.score > 0 ? "start" : "end"} fontSize={FONT.axis} fill={INK.textSecondary}>{`${r.score > 0 ? "→" : "←"} off scale: ${r.score.toFixed(0)}`}</text>
           )}
           {Number.isFinite(r.score) && (
             <circle cx={x(Math.max(-lim, Math.min(lim, r.score)))} cy={r.y} r={size(Math.abs(r.rho) || 0)} fill={r.color || INK.text}>
-              <title>{`${r.label}: weighted rho ${fmtRho(r.rho)}, Stouffer ${formatP(r.p)} (${r.n} cells)`}</title>
+              <title>{stoufferDotLines({ label: r.label, group: r.group, rho: r.rho, pText: formatP(r.p), n: r.n, score: r.score, clipped: Math.abs(r.score) > lim }).join("\n")}</title>
             </circle>
           )}
         </g>
@@ -189,6 +192,8 @@ function StoufferDots({ rows, width, title }) {
         <text key={v} x={x(v)} y={yy + 16} textAnchor="middle" fontSize={FONT.axis} fill={INK.textSecondary}>{v}</text>
       ))}
       <text x={(M.left + width - M.right) / 2} y={yy + 36} textAnchor="middle" fontSize={TYPE.label} fill={INK.text}>−log10(Stouffer p) × sign(rho)</text>
+      <text x={8} y={yy + 54} fontSize={FONT.axis} fill={INK.muted}>Right of 0 = expression rises with CN. Dot size = |weighted rho|; red dashed = p 0.05.</text>
+      <text x={8} y={yy + 68} fontSize={FONT.axis} fill={INK.muted}>Dots past the axis limit sit at the edge with their value written beside them.</text>
     </svg>
   );
 }

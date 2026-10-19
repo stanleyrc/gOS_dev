@@ -33,16 +33,17 @@ const lineageColor = (() => {
 
 /** Phylogenetic signal of each state / program in each patient: z (colour only when p < 0.05) and the cross-patient summary. */
 function ConcordanceMatrix({ rows, patients, theme, focus, onCell }) {
-  const labelW = 230;
+  const labelW = 290;
   const cellW = 64;
   const sumW = 250;
   const rowH = 22;
   const headH = 22;
   const W = labelW + cellW * patients.length + sumW;
-  const H = headH + rows.length * rowH + 4;
+  const H = headH + rows.length * rowH + 24;
   return (
     <div style={{ overflowX: "auto" }}>
       <svg width={W} height={H} role="img">
+        <text x={4} y={H - 6} fontSize={TYPE.tick} fill={theme.muted}>Blue cell = the state clusters on the DNA tree in that patient (p &lt; 0.05); darker = higher z. Uncoloured = not significant; empty = not testable.</text>
         <title>Phylogenetic signal of cell states across patients</title>
         {patients.map((P, k) => (
           <text key={P} x={labelW + k * cellW + cellW / 2} y={15} textAnchor="middle" fontSize={TYPE.tick} fontWeight={600} fill={theme.text}>{P}</text>
@@ -58,7 +59,7 @@ function ConcordanceMatrix({ rows, patients, theme, focus, onCell }) {
               <g style={{ cursor: "pointer" }} onClick={() => onCell(r, null)}>
                 {r.kind === "state" && <rect x={4} y={y + 6} width={10} height={10} rx={2} fill={STATE_COLORS[r.phenotype]} />}
                 <text x={r.kind === "state" ? 20 : 4} y={y + rowH / 2} dy="0.35em" fontSize={TYPE.label} fontWeight={strong ? 700 : 400} fill={theme.text}>
-                  {r.kind === "state" ? `${r.label}-like` : r.label.length > 32 ? `${r.label.slice(0, 31)}…` : r.label}
+                  {r.kind === "state" ? `${r.label}-like` : r.label.length > 38 ? `${r.label.slice(0, 37)}…` : r.label}
                 </text>
                 <title>{r.label}</title>
               </g>
@@ -180,17 +181,17 @@ function AssocDetail({ focus, assoc, aligned, onOpen, theme, width }) {
 
 /** Lineage composition bars (state colours) of one patient. */
 function Composition({ comp, theme }) {
-  const W = 240;
+  const W = 290;
   return (
     <svg width={W} height={comp.length * 13} role="img">
       {comp.map((c, i) => {
-        let x = 84;
+        let x = 134;
         return (
           <g key={c.lineage}>
-            <text x={80} y={i * 13 + 6} dy="0.35em" textAnchor="end" fontSize={TYPE.micro} fill={theme.textSecondary}>{`${c.lineage.length > 9 ? `${c.lineage.slice(0, 8)}…` : c.lineage} (${c.n})`}</text>
+            <text x={130} y={i * 13 + 6} dy="0.35em" textAnchor="end" fontSize={TYPE.tick} fill={theme.textSecondary}>{`${c.lineage.length > 15 ? `${c.lineage.slice(0, 14)}…` : c.lineage} (${c.n})`}<title>{`${c.lineage}: ${c.n} cells with RNA`}</title></text>
             {STATES.map((s) => {
-              const w = (c.counts[s] / Math.max(1, c.n)) * (W - 86);
-              const r = <rect key={s} x={x} y={i * 13 + 1} width={Math.max(0, w - 0.5)} height={10} fill={STATE_COLORS[s]}><title>{`${c.lineage}: ${s} ${c.counts[s]}/${c.n}`}</title></rect>;
+              const w = (c.counts[s] / Math.max(1, c.n)) * (W - 136);
+              const r = <rect key={s} x={x} y={i * 13 + 1} width={Math.max(0, w - 0.5)} height={10} fill={STATE_COLORS[s]}><title>{`${c.lineage}: ${s} in ${c.counts[s]} of ${c.n} cells (${Math.round((100 * c.counts[s]) / Math.max(1, c.n))}%)`}</title></rect>;
               x += w;
               return r;
             })}
@@ -296,7 +297,7 @@ export default function CohortAssociationsPanel({ dataset, summaries = [], onOpe
                 { title: "Patient", dataIndex: "patient", width: 150, render: (P, r) => <Space size={4} style={{ whiteSpace: "nowrap" }}><Text strong>{P}</Text>{r.old_tree && <NeutralTag style={{ fontSize: TYPE.micro }}>older tree</NeutralTag>}</Space> },
                 { title: "Tumor cells with RNA", dataIndex: "n_rna", align: "right" },
                 { title: "Lineages from", dataIndex: "lineage_source", render: (x, r) => (r.skipped ? <Text type="secondary">{r.skipped}</Text> : x === "clone" ? "clone table" : "major tree clades") },
-                { title: "Composition", dataIndex: "composition", render: (c) => (c ? <Composition comp={c} theme={theme} /> : null) },
+                { title: <span>Composition <span style={{ fontWeight: 400 }}>{STATES.map((st) => <span key={st} style={{ marginLeft: 6 }}><span style={{ display: "inline-block", width: 9, height: 9, background: STATE_COLORS[st], borderRadius: 2, marginRight: 3 }} />{st}</span>)}</span></span>, dataIndex: "composition", render: (c) => (c ? <Composition comp={c} theme={theme} /> : null) },
                 { title: "Lineage × state", dataIndex: "clone_state", render: (c) => (c ? <Text strong={c.p < 0.05}>{fmtP(c.p)}</Text> : "–"), sorter: (a, b) => (a.clone_state?.p ?? 1) - (b.clone_state?.p ?? 1) },
                 { title: "Cramér's V", dataIndex: "clone_state", key: "v", align: "right", render: (c) => (c ? c.cramer_v.toFixed(2) : "–") },
                 {

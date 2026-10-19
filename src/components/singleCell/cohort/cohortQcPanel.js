@@ -10,6 +10,7 @@ import { BoxStrips, patientColor } from "./charts";
 import HintLine, { Provenance } from "../hintLine";
 import ColorTag from "../colorTag";
 import { formatValue } from "../../../helpers/singleCell/figureStyle";
+import { qcAxisTitle } from "../../../helpers/singleCell/plotHover";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
@@ -87,7 +88,7 @@ export default function CohortQcPanel({ summaries, datafiles, onOpenCell }) {
           groups={groups}
           width={Math.max(400, width - 16)}
           height={300}
-          yTitle={def?.[1]}
+          yTitle={qcAxisTitle(key, def?.[1], def?.[2])}
           log={Boolean(def?.[2])}
           flagged={flagged}
           metric={def?.[1]}

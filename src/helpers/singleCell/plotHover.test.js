@@ -40,3 +40,25 @@ describe("plotHover", () => {
     expect(carrierBarLines({ patient: "BWH69", label: "EGFR 1", nCarriers: 145, nCells: 161 })[1]).toBe("Carried by 145 of 161 cells (90%)");
   });
 });
+
+import { stoufferDotLines, withCount } from "./plotHover";
+describe("plotHover extras", () => {
+  test("stoufferDotLines", () => {
+    const l = stoufferDotLines({ label: "EGFR", group: "Gene", rho: 0.64, pText: "p < 1e-4", n: 608, score: 33, clipped: true });
+    expect(l[0]).toBe("EGFR (gene)");
+    expect(l[1]).toBe("Weighted rho: 0.64 (expression rises with copy number)");
+    expect(l[2]).toContain("drawn at the axis limit");
+    expect(l[3]).toBe("608 tumor cells");
+  });
+  test("withCount", () => {
+    expect(withCount("Pooled", 1608)).toBe("Pooled (1,608 cells)");
+    expect(withCount("X", null)).toBe("X");
+  });
+});
+
+import { qcAxisTitle } from "./plotHover";
+test("qcAxisTitle", () => {
+  expect(qcAxisTitle("ploidy", "Ploidy", false)).toBe("Ploidy (copies per genome)");
+  expect(qcAxisTitle("qc_reads", "Total reads", true)).toBe("Total reads (reads), log scale");
+  expect(qcAxisTitle("qc_breadth", "Breadth (% genome covered)", false)).toBe("Breadth (% genome covered)");
+});

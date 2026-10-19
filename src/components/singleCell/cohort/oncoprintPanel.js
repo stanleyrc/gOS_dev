@@ -99,6 +99,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
     >
       <div ref={ref} style={{ overflowX: "auto" }}>
         <svg width={svgW} height={svgH}>
+          <text x={GENE_W - 6} y={30} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>genes altered (n)</text>
           {patients.map((p, j) => {
             const x = GENE_W + j * cellW;
             const h = (perPatient[p] / barMax) * 28;
@@ -106,6 +107,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
               <g key={p} style={{ cursor: "pointer" }} onClick={() => onOpen(summaryOf(p))}>
                 <rect x={x + 4} y={32 - h} width={cellW - 8} height={h} fill="#BAB0AC" />
                 <text x={x + cellW / 2} y={30 - h - 3} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>{perPatient[p]}</text>
+                <title>{`${p}: ${perPatient[p]} altered genes shown. Click to open the patient`}</title>
                 <text x={x + cellW / 2} y={top - 10} textAnchor="middle" fontSize={FONT.label} fontWeight="600" fill={INK.text}>
                   {p}
                 </text>

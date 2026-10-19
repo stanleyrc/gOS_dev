@@ -344,13 +344,15 @@ export default function CohortOncoprintPanel({ summaries, files, tsg = null }) {
       ) : (
         <div ref={ref} style={{ overflowX: "auto", marginTop: 8 }}>
           <svg width={svgW} height={svgH}>
+            <text x={GENE_W - 6} y={top - 8} textAnchor="end" fontSize={TYPE.tick} fill={INK.muted}>genes altered (n)</text>
             {patients.map((p, j) => {
               const x = GENE_W + j * cellW;
               const h = (burden[p] / barMax) * 26;
               return (
                 <g key={p}>
                   <rect x={x + 3} y={top - 4 - h} width={cellW - 6} height={h} fill={INK.empty} />
-                  <text x={x + cellW / 2} y={top - 6 - h} textAnchor="middle" fontSize={TYPE.micro} fill={INK.textSecondary}>{burden[p]}</text>
+                  <text x={x + cellW / 2} y={top - 6 - h} textAnchor="middle" fontSize={TYPE.tick} fill={INK.textSecondary}>{burden[p]}</text>
+                  <title>{`${p}: ${burden[p]} of ${rows.length} genes altered (the genes shown after the current filters)`}</title>
                   <text x={x + cellW / 2 - 4} y={top - 38} textAnchor="start" fontSize={FONT.label} fontWeight="600" fill={INK.text} transform={`rotate(-55 ${x + cellW / 2 - 4} ${top - 38})`}>{p}</text>
                 </g>
               );
