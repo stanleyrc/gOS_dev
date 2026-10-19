@@ -181,11 +181,11 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
     const pts = data.patients || [];
     return base
       .map((r) => {
-        const ev = clusterEvents(r.cluster, clusterTranscripts(exonModel, r.cluster)).find((e) => e.type === "cassette");
+        const ev = pinnedEvents(r.cluster, data).find((e) => e.variant) || clusterEvents(r.cluster, clusterTranscripts(exonModel, r.cluster)).find((e) => e.type === "cassette");
         if (!ev) return r;
         const psi = pts.map((p, i) => (Number.isFinite(r.psi[i]) ? eventPsi(r.cluster.usage?.[p]?.counts || [], ev).psi : NaN));
         const f = psi.filter(Number.isFinite);
-        return { ...r, psi, dpsi: f.length > 1 ? Math.max(...f) - Math.min(...f) : NaN, eventLabel: ev.exonNumber != null ? `exon ${ev.exonNumber} inclusion` : "cassette exon" };
+        return { ...r, psi, dpsi: f.length > 1 ? Math.max(...f) - Math.min(...f) : NaN, eventLabel: ev.variant ? `${ev.variant} (skip)` : ev.exonNumber != null ? `exon ${ev.exonNumber} inclusion` : "cassette exon" };
       })
       .sort((a, b) => b.dpsi - a.dpsi || (a.q || 1) - (b.q || 1))
       .slice(0, 30);
