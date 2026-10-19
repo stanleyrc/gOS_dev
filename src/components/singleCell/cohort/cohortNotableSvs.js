@@ -4,11 +4,13 @@ import { Card, Empty, Table, Tag, Typography } from "antd";
 import { cohortEntries } from "../../../helpers/singleCell/cohortOncoprint";
 import { cohortNotableSvs } from "../../../helpers/singleCell/notableSvs";
 import { GenesText, NOTE } from "../notableSvCard";
+import useGeneSpans from "./useGeneSpans";
 
 const { Text } = Typography;
 
 /** Cohort Overview: one line per complex-SV family (ecDNA first) across patients, by cell fraction. Classifier families, not validated SVs. */
 export default function CohortNotableSvs({ summaries = [], files = {}, onPatient, loading = false }) {
+  const { spans: geneSpans } = useGeneSpans();
   const genesList = useSelector((s) => s.Genes?.list || []);
   const rows = useMemo(() => {
     const per = {};
@@ -16,8 +18,8 @@ export default function CohortNotableSvs({ summaries = [], files = {}, onPatient
       const ev = files[s.caseReportId]?.events;
       if (ev) per[s.caseReportId] = cohortEntries(ev);
     });
-    return cohortNotableSvs(per, { genesList: genesList.length ? genesList : null });
-  }, [summaries, files, genesList]);
+    return cohortNotableSvs(per, { geneSpans, genesList: genesList.length ? genesList : null });
+  }, [summaries, files, genesList, geneSpans]);
   const columns = [
     { title: "Patient", dataIndex: "patient", width: 90, render: (p) => <a onClick={() => onPatient && onPatient(p)}>{p}</a> },
     { title: "Type", render: (_, r) => <Text>{r.members.split(",")[0].replace(/ in \d+ cells?/, "")}</Text> },
