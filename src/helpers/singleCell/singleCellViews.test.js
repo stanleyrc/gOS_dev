@@ -11,6 +11,7 @@ import {
   snvMetricMax,
   snvMetricValue,
   treeColumnOrder,
+  calledVariants,
   vafRGBA,
 } from "./matrix";
 import { allelicRowFromAllelic, parseVariantId, snvFromSparse } from "./cellFiles";
@@ -173,6 +174,36 @@ describe("tree-ordered mutation columns", () => {
     expect(order[0]).toBe(1);
     const clade = (v) => (calls[ids[0]][v] ? "top" : "bottom");
     expect(order.slice(1).map(clade)).toEqual(["top", "bottom"]);
+  });
+
+  it("places variants on their genotype calls, not on stray alt reads", () => {
+    // ((a,b),(c,d)); synthetic: v0 has alt reads in a, b, c but is called alt only in c;
+    // v1 is called alt in a, b; v2 has no calls and falls back to its reads (c, d).
+    const layout = layoutTree(parseNewick("((a:1,b:1):1,(c:1,d:1):1);"));
+    const ids = layout.leaves;
+    const reads = { a: [1, 1, 0], b: [1, 1, 0], c: [1, 0, 1], d: [0, 0, 1] };
+    const calls = { a: [0, 1, -1], b: [0, 1, -1], c: [1, 0, -1], d: [0, 0, -1] };
+    const snv = {
+      variants: [0, 1, 2].map((index) => ({ index, id: `v${index}` })),
+      status: ids.map((id) => Int8Array.from(reads[id])),
+      gt: ids.map((id) => Int8Array.from(calls[id])),
+      alt: ids.map(() => new Float32Array(3)),
+      depth: ids.map(() => new Float32Array(3)),
+    };
+    const rows = Int32Array.from(ids, (_, k) => k);
+    // clades in depth-first order: root, (a,b), a, b, (c,d), c, d
+    expect(treeColumnOrder(snv, layout, rows)).toEqual([1, 2, 0]);
+    // without calls, v0's reads (a, b, c) put it on the root, before the (a,b) clade
+    expect(treeColumnOrder({ ...snv, gt: null }, layout, rows)[0]).toBe(0);
+    expect(Array.from(calledVariants(snv, rows))).toEqual([1, 1, 0]);
+    expect(calledVariants({ ...snv, gt: null }, rows)).toBeNull();
+  });
+
+  it("summarizes bins by genotype calls for the GT metric", () => {
+    const snv = { status: [Int8Array.from([1, 1, 0])], gt: [Int8Array.from([1, 0, -1])] };
+    expect(snvBinSummary(snv, 0, [0, 1, 2], 0, 3)).toEqual({ positive: 2, zero: 1, missing: 0 });
+    expect(snvBinSummary(snv, 0, [0, 1, 2], 0, 3, true)).toEqual({ positive: 1, zero: 1, missing: 1 });
+    expect(snvBinSummary({ ...snv, gt: null }, 0, [0, 1, 2], 0, 3, true)).toEqual({ positive: 2, zero: 1, missing: 0 });
   });
 });
 

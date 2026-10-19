@@ -748,14 +748,17 @@ export function countTicks(max) {
 /**
  * Summary of one bin of columns for row p: sites with alt reads, covered
  * sites without, and sites with no reads. The overview colour is the
- * fraction of positive sites (pgv convention), not a mean VAF.
+ * fraction of positive sites (pgv convention), not a mean VAF. With
+ * calls = true and PL genotype calls in the matrix, it counts alt calls,
+ * ref calls and no calls instead (the GT metric).
  */
-export function snvBinSummary(snv, p, columns, start, end) {
+export function snvBinSummary(snv, p, columns, start, end, calls = false) {
   let positive = 0;
   let zero = 0;
   let missing = 0;
+  const row = p < 0 ? null : calls && snv.gt ? snv.gt[p] : snv.status[p];
   for (let k = start; k < end; k += 1) {
-    const s = p < 0 ? -1 : snv.status[p][columns[k]];
+    const s = row ? row[columns[k]] : -1;
     if (s === 1) positive += 1;
     else if (s === 0) zero += 1;
     else missing += 1;
@@ -786,10 +789,32 @@ export function columnBins(count, width, range = [0, count]) {
 }
 
 /**
+ * Per variant, 1 when any of the first nLeaves display rows has a PL genotype
+ * call for it (snv.gt: 1 alt, 0 ref, -1 no call); null when the matrix has no calls.
+ */
+export function calledVariants(snv, rows, nLeaves = rows?.length ?? 0) {
+  if (!snv?.gt) return null;
+  const nVar = snv.variants.length;
+  const called = new Uint8Array(nVar);
+  for (let r = 0; r < nLeaves; r += 1) {
+    const p = rows[r];
+    const g = p >= 0 ? snv.gt[p] : null;
+    if (!g) continue;
+    for (let c = 0; c < nVar; c += 1) if (g[c] >= 0) called[c] = 1;
+  }
+  return called;
+}
+
+/**
  * Column order that follows the tree: each variant is placed on the clade
  * (contiguous leaf rows [firstLeaf, lastLeaf]) that best matches the cells
- * calling it (F1 over cells with reads), then variants are sorted by clade in
+ * calling it (F1 over cells with data), then variants are sorted by clade in
  * depth-first order with the trunk first, and by prevalence within a clade.
+ * When the matrix carries PL genotype calls (snv.gt), a variant with any call
+ * is placed on its called cells (carrier = alt call, data = any call): a
+ * single stray alt read in many cells otherwise pulls private sites onto
+ * large clades and the staircase of private / small-clade sites is lost.
+ * Variants without calls use read evidence (alt reads = carrier).
  * rows: matrix row (in snv) for each display row (rowMap of display order).
  */
 export function treeColumnOrder(snv, layout, rows) {
@@ -798,13 +823,16 @@ export function treeColumnOrder(snv, layout, rows) {
   const nLeaves = layout.leaves.length;
   const carriers = Array.from({ length: nVar }, () => []);
   const covered = Array.from({ length: nVar }, () => []);
+  const called = calledVariants(snv, rows, nLeaves);
   for (let r = 0; r < nLeaves; r += 1) {
     const p = rows[r];
     if (p < 0) continue;
     const status = snv.status[p];
+    const gt = called ? snv.gt[p] : null;
     for (let c = 0; c < nVar; c += 1) {
-      if (status[c] >= 0) covered[c].push(r);
-      if (status[c] === 1) carriers[c].push(r);
+      const s = called && called[c] ? gt[c] : status[c];
+      if (s >= 0) covered[c].push(r);
+      if (s === 1) carriers[c].push(r);
     }
   }
   const countIn = (sorted, lo, hi) => {
