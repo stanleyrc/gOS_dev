@@ -2,8 +2,8 @@ import { SUMMARY_SECTION_ORDER, SUMMARY_DEFAULT_OPEN, summaryStoryChapters } fro
 
 describe("summaryTab", () => {
   const about = (b, id) => (b.includes(id) ? [b] : []);
-  it("orders sections vignette, portrait, clonal history, event order, timing, report, story", () => {
-    expect(SUMMARY_SECTION_ORDER).toEqual(["vignette", "portrait", "clonal-history", "event-order", "timing-rates", "full-report", "story"]);
+  it("orders sections vignette, portrait, clonal history, notable SVs, event order, timing, report, story", () => {
+    expect(SUMMARY_SECTION_ORDER).toEqual(["vignette", "portrait", "clonal-history", "notable-svs", "event-order", "timing-rates", "full-report", "story"]);
     SUMMARY_DEFAULT_OPEN.forEach((k) => expect(SUMMARY_SECTION_ORDER).toContain(k));
   });
   it("keeps only cohort sentences that mention the patient and drops empty chapters", () => {
