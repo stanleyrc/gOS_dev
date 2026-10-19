@@ -47,6 +47,9 @@ import { CladeF1Context } from "./cohort/cladeF1Chip";
 import CohortScatterPanel from "./cohort/cohortScatterPanel";
 import CohortCladesPanel from "./cohort/cohortCladesPanel";
 import CohortQcPanel from "./cohort/cohortQcPanel";
+import WelcomeView from "./guide/welcomeView";
+import MethodsView from "./guide/methodsView";
+import settingsActions from "../../redux/settings/actions";
 import CohortTreeShapePanel from "./cohort/cohortTreeShapePanel";
 import CohortAlignedTreesPanel from "./cohort/cohortAlignedTreesPanel";
 import CohortMutJunctionsPanel from "./cohort/cohortMutJunctionsPanel";
@@ -72,7 +75,7 @@ import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
 import CohortFiguresPanel from "./figures/cohortFiguresPanel";
 import CohortCnExpressionPanel from "./cohort/cohortCnExpressionPanel";
 import HelpDrawer from "./helpDrawer";
-import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
+import { announceCohortView, peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
 import { passesCladeFilter } from "../../helpers/singleCell/subclonalDrivers";
 import CohortSubclonalPanel, { SubclonalHeadlineCard } from "./cohort/cohortSubclonalPanel";
@@ -89,6 +92,7 @@ import CohortCovariateDePanel from "./cohort/cohortCovariateDePanel";
 import { Provenance } from "./hintLine";
 import useCellLabels from "./useCellLabels";
 
+const WELCOME_SEEN_KEY = "gos-sc-welcome-seen";
 const { Text } = Typography;
 const LABEL_WIDTH = 160;
 const TREE_WIDTH = 140;
@@ -161,11 +165,19 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     const help = peekHelpTarget();
     if (help?.scope === "cohort" && help.view) return resolveCohortView(help.view);
     try {
-      return resolveCohortView(new URLSearchParams(window.location.search).get("scview"));
+      const linked = new URLSearchParams(window.location.search).get("scview");
+      if (linked) return resolveCohortView(linked);
+      // first visit in this browser: the Welcome page (afterwards the overview)
+      if (!window.localStorage.getItem(WELCOME_SEEN_KEY)) {
+        window.localStorage.setItem(WELCOME_SEEN_KEY, "1");
+        return "welcome";
+      }
+      return "overview";
     } catch (error) {
       return "overview";
     }
   });
+  useEffect(() => announceCohortView(view), [view]);
   useEffect(() => subscribeHelpTarget((target) => target?.scope === "cohort" && target.view && setView(resolveCohortView(target.view))), []);
   const [rnaGene, setRnaGene] = useState(null); // { gene, nonce }: opens this gene in the RNA view's expression plot
   const [deFocus, setDeFocus] = useState(null); // { id, nonce }: preselects a test in the Covariate DE view
@@ -281,6 +293,15 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const toggleNewTab = (on) => {
     setNewTab(on);
     setOpenInNewTab(on);
+  };
+  const openFinder = (card) => {
+    if (card.scope === "cohort") {
+      setView(card.view);
+      return;
+    }
+    if (!summaries[0]) return;
+    openPatient(summaries[0]);
+    if (card.tab && card.tab !== 7) setTimeout(() => dispatch(settingsActions.updateTab(`${card.tab}`)), 1200);
   };
   const openPatient = (summary) =>
     dispatch(datasetsActions.openCaseReport(summary.record.datasetId, summary.caseReportId, { allowNewTab: true }));
@@ -718,6 +739,16 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "clades" && (
           <Col span={24}>
             <CohortCladesPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} />
+          </Col>
+        )}
+        {view === "welcome" && (
+          <Col span={24}>
+            <WelcomeView onFind={openFinder} />
+          </Col>
+        )}
+        {view === "methods" && (
+          <Col span={24}>
+            <MethodsView />
           </Col>
         )}
         {view === "qc" && (
