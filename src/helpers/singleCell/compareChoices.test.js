@@ -1,4 +1,4 @@
-import { FULL_SET, defaultSnvSet, hasTreeSupport, serializeChoice, usableSnvSets, validChoice } from "./compareChoices";
+import { FULL_SET, defaultSnvSet, hasTreeSupport, serializeChoice, treeQualityNote, usableSnvSets, validChoice } from "./compareChoices";
 
 const index = [
   { name: "strict", label: "Pipeline strict (6.9k sites)", file: "snv_matrix.strict.json", n_variants: 6918 },
@@ -47,5 +47,14 @@ describe("hasTreeSupport", () => {
     expect(hasTreeSupport(support, "strict")).toBe(false);
     expect(hasTreeSupport({ available: false, trees: { gos: {} } }, "gos")).toBe(false);
     expect(hasTreeSupport(null, "gos")).toBe(false);
+  });
+});
+
+describe("treeQualityNote", () => {
+  it("reads the gos entry's note or the label suffix, else null", () => {
+    expect(treeQualityNote([{ name: "gos", label: "Pipeline (current)" }])).toBeNull();
+    expect(treeQualityNote([{ name: "gos", label: "Pipeline (current; weak: relaxed site set, 356 sites)" }])).toBe("weak: relaxed site set, 356 sites");
+    expect(treeQualityNote([{ name: "gos", label: "Pipeline (current)", note: "weak: 356 sites" }, { name: "jake_latest" }])).toBe("weak: 356 sites");
+    expect(treeQualityNote(null)).toBeNull();
   });
 });
