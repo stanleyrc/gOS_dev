@@ -1,8 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Checkbox, Col, Progress, Row, Select, Space, Switch, Tooltip, Typography } from "antd";
+import { Button, Checkbox, Col, Progress, Row, Segmented, Select, Space, Switch, Tooltip, Typography } from "antd";
 import FigureCanvas, { fitText, useFigureStyleName } from "./figureCanvas";
 import { figureStyle, isPaperStyle } from "../../../helpers/singleCell/figureStyle";
+import { parseEcdnaSnvs, snvBlockOrder } from "../../../helpers/singleCell/paperPanels";
+import { resolveAnchors } from "../../../helpers/singleCell/branchSnvs";
+import { casePath, tryGet } from "../../../redux/singleCell/loaders";
+import { paperAmpCnRgb, rgbHex, PAPER_AMPCN_STOPS } from "../../../helpers/singleCell/paperPalette";
 import { PAPER_EGFR, paperCladeLabel, paperCloneColors, paperCnCss, paperCnPacked, paperEgfrColor, paperStateColor } from "../../../helpers/singleCell/paperPalette";
 import { PanelHead, textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
@@ -21,7 +25,7 @@ import filteredEventsActions from "../../../redux/filteredEvents/actions";
 import { annotationColors, binAt, domainExtents, rowMap } from "../../../helpers/singleCell/matrix";
 import { AMP_LEGEND, ampliconCss, ampliconRGBA, binSnvMatrix, isNormalClone, snvTreeOrder } from "../../../helpers/singleCell/figures";
 import { ancestralBinary, packStoreSnv, walkDomains } from "../../../helpers/singleCell/figureMath";
-import { ampliconWindows, dominantWalk, mainAmplicons, variantGrouping } from "../../../helpers/singleCell/figureDefaults";
+import { PAPER_WALK_HEATMAP, ampliconWindows, dominantWalk, mainAmplicons, variantGrouping } from "../../../helpers/singleCell/figureDefaults";
 import settingsActions from "../../../redux/settings/actions";
 import { walkFamilies } from "../../../helpers/singleCell/walks";
 import { defaultFocusWalk } from "../../../helpers/singleCell/walkPanels";
@@ -150,6 +154,10 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const nameOf = grouping.nameOf;
 
   // bar columns: one per shown amplicon, split into the paper's variant groups where defined (BWH70: long / short EGFR); each stacks its variants
+  // copies per cell as stacked bars (Fig 4B) or a CN heatmap (Fig 5B); the paper uses the heatmap for BWH69
+  const [copyModeChoice, setCopyMode] = useState(null);
+  useEffect(() => setCopyMode(null), [patient]);
+  const copyMode = copyModeChoice || (paper && PAPER_WALK_HEATMAP[patient] ? "heatmap" : "bars");
   const columns = useMemo(() => {
     const carriers = (w) => tumorIds.reduce((k, id) => k + ((Number(w.cells?.[id]) || 0) >= 1 ? 1 : 0), 0);
     const total = (w) => tumorIds.reduce((t, id) => t + (Number(w.cells?.[id]) || 0), 0);
@@ -165,8 +173,26 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         out.push({ key: `${amp.key}:${set.label}`, label: set.label, amp, anchor: set.anchor || ws[0], parts: ws.slice(0, 6), rest: ws.slice(6) });
       });
     });
+    // Fig 5B (BWH69): the paper's named walks, one heatmap column each
+    if (copyMode === "heatmap" && paper && PAPER_WALK_HEATMAP[patient]) {
+      const cols = PAPER_WALK_HEATMAP[patient]
+        .map((spec) => {
+          const w = all.find((x) => `${x.label}` === spec.walk);
+          return w ? { key: `heat:${spec.label}`, label: spec.label, amp: null, anchor: w, parts: [w], rest: [] } : null;
+        })
+        .filter(Boolean);
+      if (cols.length) return cols;
+    }
+    // Paper style with the paper's variant groups (BWH70): only those columns, as the PDF (Short | Long)
+    if (paper && grouping.groups.length) {
+      const named = out.filter((col) => grouping.groups.some((g) => g.label === col.label));
+      if (named.length) {
+        const order = [...grouping.groups].reverse().map((g) => g.label);
+        return named.sort((a, b) => order.indexOf(a.label) - order.indexOf(b.label)).map((col) => ({ ...col, label: col.label.replace(/\s*EGFR$/i, "").replace(/^./, (ch) => ch.toUpperCase()) }));
+      }
+    }
     return out;
-  }, [shownAmps, grouping, tumorIds]);
+  }, [shownAmps, grouping, tumorIds, paper, copyMode, patient, all]);
   const ampWalks = useMemo(() => shownAmps.flatMap((x) => x.walks), [shownAmps]);
   // walk lanes for the genome tracks: the shown amplicons' walks with carriers, most carried first
   const laneWalks = useMemo(() => {
@@ -234,7 +260,23 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     const d = sc.cn.status === "ok" ? sc.cn.data : null;
     return d ? new Map(d.cells.map((id, i) => [id, d.rows[i]])) : new Map();
   }, [sc.cn]);
+  // the paper's ecDNA SNVs (<patient>/ecdna_snvs.json: filtered sites, no alt read in normal cells), when exported
+  const dataset = useSelector((st) => st.Settings?.dataset);
+  const [ecExport, setEcExport] = useState(null);
+  useEffect(() => {
+    setEcExport(null);
+    if (!dataset?.dataPath || !patient) return undefined;
+    let live = true;
+    tryGet(casePath(dataset, patient, "ecdna_snvs.json")).then((r) => live && setEcExport(r.status === "ok" ? parseEcdnaSnvs(r.data) : null));
+    return () => {
+      live = false;
+    };
+  }, [dataset, patient]);
   const ecSites = useMemo(() => {
+    if (ecExport?.length) {
+      const idx = new Map((snvData?.variants || []).map((v, i) => [`${v.id}`.replace(/^chr/, ""), i]));
+      return ecExport.map((x) => ({ ...x, index: idx.get(x.id.replace(/^chr/, "")) ?? -1, gene: `chr${x.id.split("_")[0]}:${x.pos} (no alt in ${x.normalDepth ?? "?"} normal reads)`, exported: true }));
+    }
     const pool = ampWalks.length ? ampWalks : family;
     if (!snvData || !pool.length) return [];
     const ivals = [];
@@ -248,7 +290,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       })
     );
     return snvData.variants.filter((v) => Number.isFinite(v.global) && ivals.some(([s, e]) => v.global >= s && v.global <= e)).sort((a, b) => a.global - b.global);
-  }, [snvData, ampWalks, family, chromoBins]);
+  }, [snvData, ampWalks, family, chromoBins, ecExport]);
   const stateColors = useMemo(() => {
     const base = annotationColors(sc.cells.map((c) => c.state).filter((s) => s != null && s !== ""));
     if (!paper) return base;
@@ -312,13 +354,36 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const snvImg = useMemo(() => {
     if (!packed || L.snvW < 8) return null;
     const rowOf = new Map(order.map((id, i) => [id, i]));
-    const cols0 = snvTreeOrder(packed, rowOf, snvData.variants.length);
+    let cols0 = null;
+    let blocks = null;
+    // Paper style: truncal | subclonal by mapped clade in tree order | private (srctools fig4 snv_hm), when the sites carry tree anchors
+    const anchored = snvData.variants.filter((v) => v.anchor).length;
+    if (paper && treeLayout && anchored >= snvData.variants.length * 0.5) {
+      const nodeIds = resolveAnchors(snvData.variants.map((v) => v.anchor || null), treeLayout);
+      const nodes = nodeIds.map((k) => (k == null || k < 0 ? null : treeLayout.nodes[k]));
+      const carriers = new Int32Array(snvData.variants.length);
+      Object.values(packed).forEach((p) => p.idx.forEach((j, k) => p.vaf[k] >= 25 && (carriers[j] += 1)));
+      const res = snvBlockOrder(snvData.variants, nodes, (r) => cellById.get(order[r])?.clone_id ?? null, carriers);
+      cols0 = res.cols;
+      blocks = res.blocks;
+    } else cols0 = snvTreeOrder(packed, rowOf, snvData.variants.length);
     if (!cols0.length) return null;
     const cols = Math.max(4, Math.min(Math.floor(L.snvW), cols0.length));
     const m = binSnvMatrix(packed, order, cols0, cols);
-    return { canvas: toCanvas(cols, n, (px) => px.forEach((_, k) => (px[k] = m[k] < 0 ? (dark ? DARK_BG : WHITE) : gray(m[k], dark)))), nSites: cols0.length };
-  }, [packed, snvData, order, n, L.snvW, dark]);
+    return { canvas: toCanvas(cols, n, (px) => px.forEach((_, k) => (px[k] = m[k] < 0 ? (dark ? DARK_BG : WHITE) : gray(m[k], dark)))), nSites: cols0.length, blocks };
+  }, [packed, snvData, order, n, L.snvW, dark, paper, treeLayout, cellById]);
   const ecImg = useMemo(() => {
+    if (ecSites[0]?.exported) {
+      return toCanvas(ecSites.length, n, (px) =>
+        order.forEach((id, r) =>
+          ecSites.forEach((v, c) => {
+            const rd = v.reads.get(id);
+            const d = rd ? rd[0] + rd[1] : 0;
+            px[r * ecSites.length + c] = d > 0 ? gray((250 * rd[1]) / d, dark) : dark ? DARK_BG : WHITE;
+          })
+        )
+      );
+    }
     if (!snvData || !ecSites.length) return null;
     const rows = rowMap(order, snvData.cells);
     return toCanvas(ecSites.length, n, (px) => {
@@ -493,12 +558,53 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       // heatmaps: source crop = the row window
       const blit = (img, x, w) => img && ctx.drawImage(img, 0, r0, img.width, nv, x, TOP, w, plotH);
       blit(snvImg?.canvas, L.snvX, L.snvW);
+      if (snvImg?.blocks) {
+        // block header (truncal grey, subclonal / private coloured by clade) and separators, as the PDF
+        const bx = (u) => L.snvX + (u / snvImg.nSites) * L.snvW;
+        snvImg.blocks.forEach((b, k) => {
+          if (b.block === "Unmapped") return;
+          if (b.block === "Truncal") {
+            ctx.fillStyle = "#4D4D4D";
+            ctx.fillRect(bx(b.x0), TOP - 9, bx(b.x1) - bx(b.x0), 6);
+          } else
+            b.clades.forEach((cl) => {
+              ctx.fillStyle = cloneColors[cl.clade] || (isNormalClone(cl.clade) ? "#9e9e9e" : "#bdbdbd");
+              ctx.fillRect(bx(cl.x0), TOP - 9, bx(cl.x1) - bx(cl.x0), 6);
+            });
+          textRole(ctx, c, "caption", "text");
+          ctx.textAlign = "center";
+          ctx.textBaseline = "bottom";
+          if (bx(b.x1) - bx(b.x0) > 30) ctx.fillText(b.block, (bx(b.x0) + bx(b.x1)) / 2, TOP - 11);
+          ctx.textBaseline = "middle";
+          if (k > 0) {
+            ctx.strokeStyle = "#8C8C8C";
+            ctx.lineWidth = 0.6;
+            ctx.beginPath();
+            ctx.moveTo(Math.round(bx(b.x0)) + 0.5, TOP);
+            ctx.lineTo(Math.round(bx(b.x0)) + 0.5, TOP + plotH);
+            ctx.stroke();
+            ctx.lineWidth = 1;
+          }
+        });
+      }
       blit(ecImg, L.ecX, L.ecW);
       blit(cnImg, L.cnX, L.cnW);
       // per-variant copies (shared scale, light column background, faint 50-copy guides)
       // stacked copies per cell: the column's variants (anchor first), the rest in grey
-      bars.forEach(({ parts, rest }, k) => {
+      bars.forEach(({ parts, rest, sum }, k) => {
         const x0 = L.barsX + k * (L.barW + GAP);
+        if (copyMode === "heatmap") {
+          // amplicon CN 0-100 (Fig 5B palette), white = no copies
+          for (let r = r0; r < r1; r += 1) {
+            ctx.fillStyle = rgbHex(paperAmpCnRgb(sum[r]));
+            ctx.fillRect(x0, TOP + (r - r0) * rh, L.barW, Math.max(rh, 0.6) + 0.3);
+          }
+          ctx.strokeStyle = c.text;
+          ctx.lineWidth = 0.6;
+          ctx.strokeRect(x0 + 0.5, TOP + 0.5, L.barW - 1, plotH - 1);
+          ctx.lineWidth = 1;
+          return;
+        }
         ctx.fillStyle = c.dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.022)";
         ctx.fillRect(x0, TOP, L.barW, plotH);
         const bh = Math.max(1, rh * 0.82);
@@ -596,10 +702,24 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         textRole(ctx, c, "label", "text");
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
-        ctx.fillText("Amplicon copies", L.barsX + (bars.length * (L.barW + GAP) - GAP) / 2, TOP - 18);
+        ctx.fillText(copyMode === "heatmap" ? "Amplicon CN" : "Amplicon copies", L.barsX + (bars.length * (L.barW + GAP) - GAP) / 2, TOP - 18);
         textRole(ctx, c, "tick");
         ctx.textBaseline = "bottom";
-        bars.forEach((_, k) => {
+        if (copyMode === "heatmap") {
+          // legend ramp 0-100 under the title
+          const lw = Math.min(120, bars.length * (L.barW + GAP) - GAP);
+          const lx = L.barsX + (bars.length * (L.barW + GAP) - GAP - lw) / 2;
+          for (let k = 0; k < 50; k += 1) {
+            ctx.fillStyle = rgbHex(paperAmpCnRgb((k / 49) * PAPER_AMPCN_STOPS[PAPER_AMPCN_STOPS.length - 1]));
+            ctx.fillRect(lx + (k * lw) / 50, TOP - 13, lw / 50 + 0.4, 6);
+          }
+          ctx.fillStyle = c.text;
+          ctx.textBaseline = "middle";
+          ctx.textAlign = "right";
+          ctx.fillText("0", lx - 3, TOP - 10);
+          ctx.textAlign = "left";
+          ctx.fillText("100", lx + lw + 3, TOP - 10);
+        } else bars.forEach((_, k) => {
           const x0 = L.barsX + k * (L.barW + GAP);
           ctx.textAlign = "left";
           ctx.fillText("0", x0, TOP - 3);
@@ -737,7 +857,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       ctx.textBaseline = "middle";
       return [];
     },
-    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, lostBelow, nameOf, cellById, cloneColors, stateColors, cnCss, lostInkP, keepInkP, L, snvImg, ecImg, cnImg, bars, barMax, barLabH, colorOf, hoverRow, cnGeo, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length]
+    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, lostBelow, nameOf, cellById, cloneColors, stateColors, cnCss, lostInkP, keepInkP, copyMode, L, snvImg, ecImg, cnImg, bars, barMax, barLabH, colorOf, hoverRow, cnGeo, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length]
   );
 
   // ---- interaction
@@ -806,7 +926,10 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       const p = anc?.p[h.i];
       return [`Clade of ${ids.length} cells`, ...(Number.isFinite(p) && focusWalk ? [[`${focusWalk.label || "variant"} present`, `${Math.round(100 * p)}%`]] : []), ["Click", "select the clade (Cmd adds)"], ["Double-click", "zoom to the clade"]];
     }
-    if (h.kind === "site") return [h.v.id, ["Gene", h.v.gene || "–"], ["Cell", order[h.r]], ["Click", "open the SNV site"]];
+    if (h.kind === "site") {
+      const rd = h.v.reads?.get(order[h.r]);
+      return [h.v.id, [h.v.exported ? "Site" : "Gene", h.v.gene || "–"], ["Cell", order[h.r]], ...(rd ? [["Reads (ref / alt)", `${rd[0]} / ${rd[1]}`]] : []), ["Click", h.v.index >= 0 ? "open the SNV site" : "not in the SNV matrix"]];
+    }
     const cell = cellById.get(h.id) || {};
     const lines = [h.id, ["Clone", cell.clone_id ?? "–"], ["State", cell.state ?? "–"]];
     bars.forEach(({ col, parts, sum }) => {
@@ -922,7 +1045,12 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           })}
         </div>
       )}
-      <PanelHead letter="A" title="Clonal structure of the amplicons" fig="Fig 4B · 5D" hint="hover a row for its cell · click or drag rows, or click a node, to select · scroll to zoom genome (heatmap) or rows (tree) · double-click a node for its clade (Fig 4D)" extra={<SvgExportButton containerRef={figRef} name={`figure-4B-${patient}`} title="Export SVG (vector, publication size) or PNG" />} />
+      <PanelHead letter="A" title="Clonal structure of the amplicons" fig="Fig 4B · 5D" hint="hover a row for its cell · click or drag rows, or click a node, to select · scroll to zoom genome (heatmap) or rows (tree) · double-click a node for its clade (Fig 4D)" extra={
+          <Space size={8}>
+            <Segmented size="small" value={copyMode} onChange={setCopyMode} options={[{ value: "bars", label: "Copies as bars" }, { value: "heatmap", label: "Copies as heatmap" }]} />
+            <SvgExportButton containerRef={figRef} name={`figure-4B-${patient}`} title="Export SVG (vector, publication size) or PNG" />
+          </Space>
+        } />
       <div ref={figRef}>
       <FigureCanvas
         width={width}
@@ -952,7 +1080,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
             onFocusWalk?.(h.w.id);
             select(order.filter((id) => (Number(h.w.cells?.[id]) || 0) >= 1), `${nameOf(h.w)} carriers`, event);
           } else if (h.kind === "node") select(leavesOf(h.nd), `clade of ${h.nd.lastLeaf - h.nd.firstLeaf + 1} cells`, event);
-          else if (h.kind === "site") setSiteDrawer({ c: h.v.index, row: h.r });
+          else if (h.kind === "site" && h.v.index >= 0) setSiteDrawer({ c: h.v.index, row: h.r });
           else if (h.kind === "row") {
             if (event.shiftKey && anchor.current != null) {
               const [a, b] = [Math.min(anchor.current, h.r), Math.max(anchor.current, h.r)];
