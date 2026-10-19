@@ -1,3 +1,4 @@
+import CohortNotableSvs from "./cohort/cohortNotableSvs";
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -568,6 +569,17 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                 tsg={tsg}
                 hotspots={hotspotRescue.doc}
                 onView={setView}
+                onPatient={(id) => {
+                  const s = summaries.find((x) => x.caseReportId === id);
+                  if (s) openPatient(s);
+                }}
+              />
+            </Col>
+            <Col span={24}>
+              <CohortNotableSvs
+                summaries={summaries}
+                files={files}
+                loading={cohortFiles.progress < 100}
                 onPatient={(id) => {
                   const s = summaries.find((x) => x.caseReportId === id);
                   if (s) openPatient(s);

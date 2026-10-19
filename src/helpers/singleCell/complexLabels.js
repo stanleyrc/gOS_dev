@@ -79,14 +79,14 @@ export const intervalInside = (iv, outer) => outer.some((o) => o.chromosome === 
 export function dmOverlap(entry, entries = []) {
   const e = entry?.event;
   if (!e || isDm(e)) return null;
-  const mine = parseFootprint(e.Genome_Location);
+  const mine = parseFootprint(entry.family?.dominant?.Genome_Location || e.Genome_Location);
   if (!mine.length) return null;
   const carriers = new Set(entry.carriers || splitIds(e.cell_ids));
   const dms = [];
   const union = new Set();
   entries.forEach((o) => {
     if (o === entry || o.cls !== "complex" || !isDm(o.event)) return;
-    const theirs = parseFootprint(o.event.Genome_Location);
+    const theirs = parseFootprint(o.family?.footprint || o.event.Genome_Location);
     if (!mine.every((iv) => intervalInside(iv, theirs))) return; // the whole footprint sits inside the DM footprint
     const shared = (o.carriers || splitIds(o.event.cell_ids)).filter((c) => carriers.has(c));
     shared.forEach((c) => union.add(c));
