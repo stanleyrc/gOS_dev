@@ -6,6 +6,7 @@ import { eventClass, isCalledNotTree, isRescued, isTertPromoterSv } from "./coho
 import { isStrongEvent } from "./strongEvents";
 import { snvCategoryCounts } from "./cohortStats";
 import { fisherExact } from "./tests";
+import { clonalityBucket, exportedClonality, exportedClonalityText } from "./exportedClonality";
 
 export const CLONAL_FRACTION = 0.85;
 export const RARE_FRACTION = 0.1;
@@ -118,7 +119,9 @@ export function buildPatientReport({ patient, events = [], cells = [], variants 
         cells: e.cells,
         // rescued hotspots: carriers / covered cells is a lower bound (allele dropout), so clonality is not assessed
         rescued,
-        clonality: rescued && lowCoverage ? "unassessed" : fraction >= CLONAL_FRACTION ? "clonal" : fraction >= RARE_FRACTION ? "subclonal" : "rare",
+        // exported dropout-aware call (read-evidence rows) first; indeterminate is "unassessed"
+        clonality: exportedClonality(e) ? clonalityBucket(e, fraction) : rescued && lowCoverage ? "unassessed" : fraction >= CLONAL_FRACTION ? "clonal" : fraction >= RARE_FRACTION ? "subclonal" : "rare",
+        clonalityText: exportedClonalityText(e),
         fractions: lowCoverage ? {} : fractions,
         definingClones: lowCoverage ? [] : definingClones(fractions, tumor.length),
         unverified: eventClass(e) === "fusion",
