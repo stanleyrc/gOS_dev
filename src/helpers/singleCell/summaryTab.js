@@ -1,5 +1,5 @@
 // Layout of the Summary tab (12): the former Report and Story tabs merged. Pure and deterministic; no generated text.
-export const SUMMARY_SECTION_ORDER = ["vignette", "portrait", "clonal-history", "event-order", "timing-rates", "full-report", "story"];
+export const SUMMARY_SECTION_ORDER = ["vignette", "portrait", "clonal-history", "notable-svs", "event-order", "timing-rates", "full-report", "story"];
 
 /** Which sections open expanded. The brief and clonal history lead; the long ones start collapsed. */
 export const SUMMARY_DEFAULT_OPEN = ["portrait", "clonal-history", "notable-svs", "event-order", "timing-rates"];
