@@ -3,6 +3,7 @@ import * as d3 from "d3";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { styleFontSize, styleFontWeight } from "../../../helpers/singleCell/figureStyle";
 import { XBaseline, YAxis } from "../chartAxes";
+import { boxPointLines, boxSummaryLines, fmtPct } from "../../../helpers/singleCell/plotHover";
 import { useFigureStyle } from "../figures/figureCanvas";
 
 // Small SVG building blocks shared by the cohort panels; they follow the
@@ -59,9 +60,13 @@ export function Swatches({ items, style }) {
 
 /**
  * Box-and-strip plot of numeric values per group.
- * groups: [{ key, label, color, values: number[] , ids?: string[] }]
+ * groups: [{ key, label, color, values: number[] , ids?: string[], bar?: { fraction, title? } }]
+ * Hover cards: point = id, group, value with unit, group median and n,
+ * outlier flag, click hint (when onPoint is given); box = n of total, median,
+ * IQR. `bar` per group draws a share-of-cells bar row aligned under each box.
+ * `metric` / `unit` / `noun` / `clickHint` shape the hover text.
  */
-export function BoxStrips({ groups, width, height = 220, yTitle, onPoint, log = false, flagged = null }) {
+export function BoxStrips({ groups, width, height = 220, yTitle, onPoint, log = false, flagged = null, metric, unit = "", noun = "cells", clickHint = "Click to open the cell", barTitle = "Share of cells" }) {
   const M = { top: 12, right: 12, bottom: 30, left: 70 };
   const all = groups.flatMap((g) => g.values).filter(Number.isFinite);
   if (!all.length) return null;
@@ -71,7 +76,10 @@ export function BoxStrips({ groups, width, height = 220, yTitle, onPoint, log = 
   // slanted group names hang below the axis: grow the svg by their drop instead of squeezing the plot
   const longest = Math.max(0, ...groups.map((g) => `${g.label ?? g.key}`.length));
   const drop = rotate ? Math.min(90, Math.round(longest * 12 * 0.58 * 0.92 + 6)) : 0;
-  const svgHeight = height + Math.max(0, drop - (M.bottom - 18));
+  const hasBars = groups.some((g) => g.bar);
+  const BAR_H = 56;
+  const svgHeight = height + Math.max(0, drop - (M.bottom - 18)) + (hasBars ? BAR_H + 8 : 0);
+  const barTop = svgHeight - BAR_H;
   const y = (log ? d3.scaleLog() : d3.scaleLinear()).domain([lo, d3.max(all) || 1]).nice().range([height - M.bottom, M.top]);
   const half = Math.min(28, x.bandwidth() / 2);
   const jitter = (k) => ((((Math.sin(k * 12.9898) * 43758.5453) % 1) + 1) % 1) - 0.5;
@@ -103,15 +111,26 @@ export function BoxStrips({ groups, width, height = 220, yTitle, onPoint, log = 
                   style={{ cursor: onPoint ? "pointer" : undefined }}
                   onClick={onPoint ? () => onPoint(g, k) : undefined}
                 >
-                  <title>{`${g.ids?.[k] ?? g.label}: ${d3.format("~g")(val)}`}</title>
+                  <title>{boxPointLines({ id: g.ids?.[k], group: g.label ?? g.key, metric: metric || yTitle, value: val, unit, flagged: Boolean(flagged && flagged.has(g.ids?.[k])), median: med, n: v.length, clickHint: onPoint ? clickHint : "" }).join("\n")}</title>
                 </circle>
               ) : null
             )}
-            <title>{`${g.label}: n=${v.length}, median ${d3.format("~g")(med)}, IQR ${d3.format("~g")(q1)}–${d3.format("~g")(q3)}`}</title>
+            <title>{boxSummaryLines({ group: g.label ?? g.key, metric: metric || yTitle, n: v.length, total: g.total, median: med, q1, q3, unit, noun }).join("\n")}</title>
+            {g.bar && (
+              <g>
+                <rect x={cx - half} y={barTop + 18 + (1 - g.bar.fraction) * 34} width={half * 2} height={g.bar.fraction * 34} fill={INK.faint} />
+                <text x={cx} y={barTop + 14 + (1 - g.bar.fraction) * 34} textAnchor="middle" fontSize={FONT.axis} fill={INK.text}>{fmtPct(g.bar.fraction)}</text>
+                {g.bar.title && <title>{g.bar.title}</title>}
+              </g>
+            )}
           </g>
         );
       })}
       <XBandLabels scale={x} y={height - M.bottom + 18} rotate={rotate} labels={Object.fromEntries(groups.map((g) => [g.key, g.label ?? g.key]))} />
+      <text x={width - M.right} y={M.top - 2} textAnchor="end" fontSize={FONT.axis} fill={INK.muted}>{`box = IQR, line = median${flagged ? ", red = outlier" : ""}`}</text>
+      {hasBars && (
+        <text x={M.left - 8} y={barTop + 40} textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{barTitle}</text>
+      )}
     </svg>
   );
 }
