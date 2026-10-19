@@ -88,3 +88,23 @@ describe("walk copies panel helpers", () => {
     expect(cellWalkLines([sEGFR], "f")).toEqual([]);
   });
 });
+
+describe("per-walk measured cells", () => {
+  const { groupValues: gv, cloneSummary: cs, walkMeasured: wm, unmeasuredWalks: uw } = require("./walkCopies");
+  const old = { id: "a", label: "EGFR", cells: { c1: 10 }, measuredSet: new Set(["c1", "c2"]) };
+  const added = { id: "b", label: "FOXO1", cells: { c3: 4, c4: 2 } };
+  it("excludes cells a walk was not counted in from group means", () => {
+    const col = { key: "a", type: "walk", walks: [old] };
+    expect(gv(col, ["c1", "c2", "c3", "c4"]).total).toBe(5); // mean over c1,c2 only
+  });
+  it("walks without a measured set count everywhere", () => {
+    expect(wm(added, "c1")).toBe(true);
+    expect(uw([old, added], "c3").map((w) => w.id)).toEqual(["a"]);
+  });
+  it("clone summary fractions use per-column denominators", () => {
+    const blocks = [{ columns: [{ key: "a", type: "walk", walks: [old] }, { key: "b", type: "walk", walks: [added] }] }];
+    const [s] = cs(blocks, ["c1", "c2", "c3", "c4"], () => "K");
+    expect(s.stats[0]).toMatchObject({ fraction: 0.5, measured: 2 });
+    expect(s.stats[1]).toMatchObject({ fraction: 0.5, measured: 4 });
+  });
+});

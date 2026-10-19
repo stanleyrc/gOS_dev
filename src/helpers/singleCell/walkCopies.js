@@ -10,6 +10,19 @@ const num = (v) => {
 
 export const copiesOf = (walk, id) => num(walk?.cells?.[id]);
 
+/**
+ * Whether a walk was counted in a cell. Walks may carry their own measured-cell set (`measuredSet`, built from walks.json
+ * `measured_cells`) when they were counted over a different cell set than the patient-level `cells` list (e.g. an amplicon
+ * added later over more cells). Without one, every cell the panel treats as measured counts.
+ */
+export const walkMeasured = (walk, id) => !walk?.measuredSet || walk.measuredSet.has(id);
+
+/** The ids in which every walk of a column was counted. */
+export const columnMeasured = (col, ids) => ids.filter((id) => col.walks.every((w) => walkMeasured(w, id)));
+
+/** Walks that were not counted in this cell (for the tooltip). */
+export const unmeasuredWalks = (walks, id) => walks.filter((w) => !walkMeasured(w, id));
+
 /** Number of `ids` carrying the walk (copies > 0). */
 export function carrierCount(walk, ids) {
   let n = 0;
@@ -82,7 +95,8 @@ export function columnValue(col, id) {
 }
 
 /** Mean of columnValue over a group of cells (per-clone / per-clade rows); per walk for stacking. */
-export function groupValues(col, ids) {
+export function groupValues(col, idsIn) {
+  const ids = columnMeasured(col, idsIn);
   const n = Math.max(1, ids.length);
   const per = col.walks.map((w) => ids.reduce((a, id) => a + copiesOf(w, id), 0) / n);
   return { per, total: col.type === "rare" ? ids.filter((id) => columnValue(col, id) > 0).length / n : per.reduce((a, b) => a + b, 0) };
@@ -145,8 +159,9 @@ export function cloneSummary(blocks, order, cloneOf, hasData = () => true) {
   return [...byClone.entries()].map(([clone, ids]) => {
     const measured = ids.filter(hasData);
     const stats = cols.map((col) => {
-      const vals = measured.map((id) => columnValue(col, id)).filter((v) => v > 0);
-      return { key: col.key, fraction: measured.length ? vals.length / measured.length : 0, median: col.type === "rare" ? vals.length : median(vals) };
+      const m = columnMeasured(col, measured);
+      const vals = m.map((id) => columnValue(col, id)).filter((v) => v > 0);
+      return { key: col.key, fraction: m.length ? vals.length / m.length : 0, measured: m.length, median: col.type === "rare" ? vals.length : median(vals) };
     });
     return { clone, n: ids.length, measured: measured.length, stats };
   });
