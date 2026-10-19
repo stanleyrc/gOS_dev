@@ -145,7 +145,16 @@ export default class SvgContext {
     this.transform(c, s, -s, c, 0, 0);
   }
 
-  // ---- paths (kept in local coordinates; elements carry the matrix)
+  // ---- paths: points are transformed when added (as a canvas does), so paths carry no matrix
+  tp(x, y) {
+    const m = this.m;
+    return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+  }
+
+  pt([x, y]) {
+    return `${num(x)} ${num(y)}`;
+  }
+
   beginPath() {
     this.path = [];
     this.cur = null;
@@ -153,15 +162,17 @@ export default class SvgContext {
   }
 
   moveTo(x, y) {
-    this.path.push(`M${num(x)} ${num(y)}`);
-    this.cur = [x, y];
-    this.start = [x, y];
+    const p = this.tp(x, y);
+    this.path.push(`M${this.pt(p)}`);
+    this.cur = p;
+    this.start = p;
   }
 
   lineTo(x, y) {
     if (!this.cur) return this.moveTo(x, y);
-    this.path.push(`L${num(x)} ${num(y)}`);
-    this.cur = [x, y];
+    const p = this.tp(x, y);
+    this.path.push(`L${this.pt(p)}`);
+    this.cur = p;
     return undefined;
   }
 
@@ -172,53 +183,59 @@ export default class SvgContext {
   }
 
   rect(x, y, w, h) {
-    this.moveTo(x, y);
-    this.path.push(`h${num(w)}v${num(h)}h${num(-w)}Z`);
-    this.cur = [x, y];
+    const p = [this.tp(x, y), this.tp(x + w, y), this.tp(x + w, y + h), this.tp(x, y + h)];
+    this.path.push(`M${this.pt(p[0])}L${this.pt(p[1])}L${this.pt(p[2])}L${this.pt(p[3])}Z`);
+    this.cur = p[0];
+    this.start = p[0];
   }
 
   quadraticCurveTo(cx, cy, x, y) {
     if (!this.cur) this.moveTo(cx, cy);
-    this.path.push(`Q${num(cx)} ${num(cy)} ${num(x)} ${num(y)}`);
-    this.cur = [x, y];
+    const c = this.tp(cx, cy);
+    const p = this.tp(x, y);
+    this.path.push(`Q${this.pt(c)} ${this.pt(p)}`);
+    this.cur = p;
   }
 
   bezierCurveTo(c1x, c1y, c2x, c2y, x, y) {
     if (!this.cur) this.moveTo(c1x, c1y);
-    this.path.push(`C${num(c1x)} ${num(c1y)} ${num(c2x)} ${num(c2y)} ${num(x)} ${num(y)}`);
-    this.cur = [x, y];
+    const p = this.tp(x, y);
+    this.path.push(`C${this.pt(this.tp(c1x, c1y))} ${this.pt(this.tp(c2x, c2y))} ${this.pt(p)}`);
+    this.cur = p;
   }
 
+  /** Elliptical arc as cubic Béziers (<= 90 degrees each), exact under any transform. */
   ellipse(x, y, rx, ry, rot, a0, a1, ccw = false) {
-    const pt = (a) => {
-      const c = Math.cos(rot);
-      const s = Math.sin(rot);
-      const px = rx * Math.cos(a);
-      const py = ry * Math.sin(a);
-      return [x + px * c - py * s, y + px * s + py * c];
-    };
-    let d = a1 - a0;
     const TAU = 2 * Math.PI;
-    const full = Math.abs(d) >= TAU - 1e-9;
-    if (!full) {
-      if (!ccw) d = ((d % TAU) + TAU) % TAU;
-      else d = -((((a0 - a1) % TAU) + TAU) % TAU);
-    }
-    const p0 = pt(a0);
+    let d = a1 - a0;
+    if (Math.abs(d) >= TAU - 1e-9) d = ccw ? -TAU : TAU;
+    else if (!ccw) d = ((d % TAU) + TAU) % TAU;
+    else d = -((((a0 - a1) % TAU) + TAU) % TAU);
+    const cr = Math.cos(rot);
+    const sr = Math.sin(rot);
+    const P = (t) => {
+      const px = rx * Math.cos(t);
+      const py = ry * Math.sin(t);
+      return [x + px * cr - py * sr, y + px * sr + py * cr];
+    };
+    const D = (t) => {
+      const dx = -rx * Math.sin(t);
+      const dy = ry * Math.cos(t);
+      return [dx * cr - dy * sr, dx * sr + dy * cr];
+    };
+    const p0 = P(a0);
     if (this.cur) this.lineTo(p0[0], p0[1]);
     else this.moveTo(p0[0], p0[1]);
-    const rdeg = num((rot * 180) / Math.PI);
-    const sweep = ccw ? 0 : 1;
-    if (full) {
-      const mid = pt(a0 + (ccw ? -Math.PI : Math.PI));
-      this.path.push(`A${num(rx)} ${num(ry)} ${rdeg} 0 ${sweep} ${num(mid[0])} ${num(mid[1])}`);
-      this.path.push(`A${num(rx)} ${num(ry)} ${rdeg} 0 ${sweep} ${num(p0[0])} ${num(p0[1])}`);
-      this.cur = p0;
-      return;
+    const n = Math.max(1, Math.ceil(Math.abs(d) / (Math.PI / 2) - 1e-9));
+    const step = d / n;
+    const k = (4 / 3) * Math.tan(step / 4);
+    for (let i = 0; i < n; i += 1) {
+      const t0 = a0 + i * step;
+      const t1 = t0 + step;
+      const [q0, q1] = [P(t0), P(t1)];
+      const [d0, d1] = [D(t0), D(t1)];
+      this.bezierCurveTo(q0[0] + k * d0[0], q0[1] + k * d0[1], q1[0] - k * d1[0], q1[1] - k * d1[1], q1[0], q1[1]);
     }
-    const p1 = pt(a0 + d);
-    this.path.push(`A${num(rx)} ${num(ry)} ${rdeg} ${Math.abs(d) > Math.PI ? 1 : 0} ${sweep} ${num(p1[0])} ${num(p1[1])}`);
-    this.cur = p1;
   }
 
   arc(x, y, r, a0, a1, ccw = false) {
@@ -226,7 +243,12 @@ export default class SvgContext {
   }
 
   arcTo(x1, y1, x2, y2, r) {
-    const p0 = this.cur || [x1, y1];
+    // in user space: invert the current point
+    const m = this.m;
+    const det = m[0] * m[3] - m[1] * m[2] || 1;
+    const p0 = this.cur
+      ? [(m[3] * (this.cur[0] - m[4]) - m[2] * (this.cur[1] - m[5])) / det, (-m[1] * (this.cur[0] - m[4]) + m[0] * (this.cur[1] - m[5])) / det]
+      : [x1, y1];
     const v1 = [p0[0] - x1, p0[1] - y1];
     const v2 = [x2 - x1, y2 - y1];
     const l1 = Math.hypot(...v1);
@@ -234,16 +256,23 @@ export default class SvgContext {
     if (!(l1 > 0 && l2 > 0 && r > 0)) return this.lineTo(x1, y1);
     const u1 = [v1[0] / l1, v1[1] / l1];
     const u2 = [v2[0] / l2, v2[1] / l2];
-    const cos = Math.max(-1, Math.min(1, u1[0] * u2[0] + u1[1] * u2[1]));
-    const theta = Math.acos(cos);
+    const theta = Math.acos(Math.max(-1, Math.min(1, u1[0] * u2[0] + u1[1] * u2[1])));
     if (theta < 1e-6 || Math.abs(Math.PI - theta) < 1e-6) return this.lineTo(x1, y1);
     const dist = r / Math.tan(theta / 2);
     const t1 = [x1 + u1[0] * dist, y1 + u1[1] * dist];
     const t2 = [x1 + u2[0] * dist, y1 + u2[1] * dist];
-    const cross = u1[0] * u2[1] - u1[1] * u2[0];
+    // circle centre: from t1 along the normal towards the corner bisector
+    const bis = [u1[0] + u2[0], u1[1] + u2[1]];
+    const bl = Math.hypot(...bis) || 1;
+    const h = r / Math.sin(theta / 2);
+    const c = [x1 + (bis[0] / bl) * h, y1 + (bis[1] / bl) * h];
+    const s0 = Math.atan2(t1[1] - c[1], t1[0] - c[0]);
+    const s1 = Math.atan2(t2[1] - c[1], t2[0] - c[0]);
+    let sweep = s1 - s0;
+    while (sweep > Math.PI) sweep -= 2 * Math.PI;
+    while (sweep < -Math.PI) sweep += 2 * Math.PI;
     this.lineTo(t1[0], t1[1]);
-    this.path.push(`A${num(r)} ${num(r)} 0 0 ${cross > 0 ? 0 : 1} ${num(t2[0])} ${num(t2[1])}`);
-    this.cur = t2;
+    this.ellipse(c[0], c[1], r, r, 0, s0, s1, sweep < 0);
     return undefined;
   }
 
@@ -251,7 +280,7 @@ export default class SvgContext {
     if (!this.path.length) return;
     const id = `clip${(this.ids += 1)}`;
     const inner = this.clipId ? ` clip-path="url(#${this.clipId})"` : "";
-    this.defs.push(`<clipPath id="${id}"${inner}><path d="${this.path.join("")}"${this.mAttr()}/></clipPath>`);
+    this.defs.push(`<clipPath id="${id}"${inner}><path d="${this.path.join("")}"/></clipPath>`);
     this.clipId = id;
   }
 
@@ -283,11 +312,18 @@ export default class SvgContext {
   }
 
   fill() {
-    if (this.path.length) this.emit(`<path d="${this.path.join("")}"${this.paintAttr("fill")}${this.mAttr()}/>`);
+    if (this.path.length) this.emit(`<path d="${this.path.join("")}"${this.paintAttr("fill")}/>`);
   }
 
   stroke() {
-    if (this.path.length) this.emit(`<path d="${this.path.join("")}"${this.paintAttr("stroke")}${this.mAttr()}/>`);
+    if (!this.path.length) return;
+    // the path is in page units: scale the line width as the canvas would
+    const m = this.m;
+    const k = Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2])) || 1;
+    const lw = this.lineWidth;
+    this.lineWidth = lw * k;
+    this.emit(`<path d="${this.path.join("")}"${this.paintAttr("stroke")}/>`);
+    this.lineWidth = lw;
   }
 
   fillRect(x, y, w, h) {
