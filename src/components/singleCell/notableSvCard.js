@@ -15,7 +15,7 @@ export const NOTE = "Classifier families (gGnome events grouped by shared juncti
 
 /** Genes line: driver genes first; "not available" without the gene annotation. */
 export const GenesText = ({ r }) =>
-  r.genes == null ? <Text type="secondary">not available (gene annotation not loaded)</Text> : r.genes.length ? <span>{`${r.genes.join(", ")}${r.nGenes > r.genes.length ? ` +${r.nGenes - r.genes.length}` : ""}`}</span> : <Text type="secondary">no protein-coding gene</Text>;
+  r.genes == null ? <Text type="secondary">not available (gene annotation not loaded)</Text> : r.genes.length ? <span>{`${r.genes.join(", ")}${r.nGenes > r.genes.length ? ` +${r.nGenes - r.genes.length}` : ""}`}</span> : <Text type="secondary">none in the gOS gene track (well-cited genes only)</Text>;
 
 /** Patient Summary: the non-DM complex-SV families (rDelDup, rDel, rDup, TIC, chromoplexy ...), click opens the Drivers drawer. */
 export default function NotableSvCard() {
