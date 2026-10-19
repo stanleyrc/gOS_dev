@@ -65,6 +65,7 @@ class GenomePlot extends Component {
       defaultDomain,
       genome,
       commonRangeY,
+      windowRangesY,
     } = this.props;
     const { intervals, frameConnections } = genome;
     let stageWidth = width - 2 * margins.gapX;
@@ -106,7 +107,10 @@ class GenomePlot extends Component {
         .on("end", (event) => this.zoomEnded(event, index));
       let intervalMax = d3.max(filteredIntervals, (d) => d.y);
       let offsetPerc = 2;
-      let yScale = commonRangeY
+      const windowRange = windowRangesY && windowRangesY[index];
+      let yScale = windowRange
+        ? d3.scaleLinear().domain(windowRange).range([panelHeight, 0]).clamp(true)
+        : commonRangeY
         ? d3
             .scaleLinear()
             .domain(commonRangeY)
@@ -261,7 +265,8 @@ class GenomePlot extends Component {
     const commonYScaleChanged =
       nextProps.commonYScale !== this.props.commonYScale;
     const commonRangeYChanged =
-      nextProps.commonRangeY !== this.props.commonRangeY;
+      nextProps.commonRangeY !== this.props.commonRangeY ||
+      nextProps.windowRangesY !== this.props.windowRangesY;
 
     return (
       genomeChanged ||

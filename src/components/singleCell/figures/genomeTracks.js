@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-import { Checkbox, Space, Typography } from "antd";
+import { Checkbox, InputNumber, Select, Space, Typography } from "antd";
 import GenesPlot from "../../genesPlotHiglass";
 import WalksPlot from "../ecdna/walksPlot";
 import { TrackPlot } from "../cellTracksPanel";
 import { loadCellTrack } from "../../../redux/singleCell/loaders";
 import { walkFamilies } from "../../../helpers/singleCell/walks";
+import { Y_MODES, Y_MODE_LABELS, cellTrackRanges, parseYAxis } from "../../../helpers/singleCell/trackScale";
 
 const { Text } = Typography;
 
@@ -35,6 +36,13 @@ const TRACKS = [
  */
 export default function GenomeTracks({ width, cnX, cnW, walks = [], colorOf, nameOf, cells = [], cellNote, focusId, onFocus }) {
   const [tracks, setTracks] = useState(["genes", "walks", "total"]);
+  const [yAx, setYAx] = useState(() => {
+    try {
+      return parseYAxis(new URLSearchParams(window.location.search).get("yax")) || { mode: "shared", custom: null };
+    } catch (e) {
+      return { mode: "shared", custom: null };
+    }
+  });
   const dataset = useSelector((s) => s.Settings.dataset);
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const domains = useSelector((s) => s.Settings.domains);
@@ -68,12 +76,27 @@ export default function GenomeTracks({ width, cnX, cnW, walks = [], colorOf, nam
     return () => cancelAnimationFrame(frame);
   }, [cnX, cnW, width, tracks.length, cellKey]);
 
+  const rangesFor = (id) => {
+    const raw = data[`${id}/total`]?.data;
+    const cov = data[`${id}/coverage`]?.data;
+    const intervals = raw?.intervals?.map((iv) => {
+      const bin = chromoBins?.[`${iv.chromosome}`];
+      return bin ? { startPlace: bin.startPlace + iv.startPoint - 1, endPlace: bin.startPlace + iv.endPoint - 1, y: iv.y } : null;
+    }).filter(Boolean);
+    return cellTrackRanges({ intervals, covX: cov?.dataPointsX, covY: cov?.dataPointsY1, hasFit: Boolean(cov?.hasFit), windows: domains || [], mode: yAx.mode, custom: yAx.custom });
+  };
   const cardStyle = { marginLeft: Math.max(0, cnX - CARD_LEFT), width: cnW + CARD_EXTRA, maxWidth: "100%" };
   const commonRangeY = null;
   return (
     <div className="sc-fig-gtracks">
       <Space size={12} wrap style={{ marginBottom: 6 }}>
         <Checkbox.Group value={tracks} onChange={setTracks} options={TRACKS} />
+        <Space size={4} data-yaxis-control>
+          <Text type="secondary" style={{ fontSize: 12 }}>y-axis</Text>
+          <Select size="small" style={{ width: 140 }} value={yAx.mode} onChange={(mode) => setYAx({ mode, custom: mode === "custom" ? yAx.custom || 10 : null })} options={Y_MODES.map((m) => ({ value: m, label: Y_MODE_LABELS[m] }))} />
+          {yAx.mode === "custom" && <InputNumber size="small" min={1} style={{ width: 70 }} value={yAx.custom} onChange={(v) => v > 0 && setYAx({ mode: "custom", custom: v })} />}
+          {yAx.mode === "window" && <Text type="secondary" style={{ fontSize: 12 }}>y per window</Text>}
+        </Space>
         {cellNote && <Text type="secondary" style={{ fontSize: 12 }}>{cellNote}</Text>}
       </Space>
       {tracks.includes("genes") && genesList.length > 0 && domains?.length > 0 && (
@@ -92,9 +115,10 @@ export default function GenomeTracks({ width, cnX, cnW, walks = [], colorOf, nam
           .filter((t) => tracks.includes(t))
           .map((t) => {
             const res = data[`${id}/${t}`];
+            const wr = rangesFor(id);
             return (
               <div key={`${id}/${t}`} style={{ ...cardStyle, marginTop: 6 }} title={why}>
-                <TrackPlot cellId={id} track={t} data={res?.data} status={res ? res.status : "loading"} error={res?.error} chromoBins={chromoBins} commonRangeY={commonRangeY} height={150} />
+                <TrackPlot cellId={id} track={t} data={res?.data} status={res ? res.status : "loading"} error={res?.error} chromoBins={chromoBins} commonRangeY={wr ? null : commonRangeY} windowRangesY={wr ? wr[t] : null} height={150} />
               </div>
             );
           })
