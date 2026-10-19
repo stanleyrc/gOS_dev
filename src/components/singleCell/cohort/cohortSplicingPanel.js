@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Empty, Input, Select, Space, Table, Typography } from "antd";
+import { Card, Empty, Input, Segmented, Select, Space, Table, Typography } from "antd";
 import { BranchesOutlined } from "@ant-design/icons";
 import HintLine from "../hintLine";
 import useContainerWidth from "../useContainerWidth";
@@ -19,6 +19,11 @@ import SpliceGeneFilter, { useSpliceGeneFilter } from "../rna/spliceGeneFilter";
 import { EXON_CONTEXT_LABEL, exonContext, passesGeneFilter } from "../../../helpers/singleCell/spliceGeneFilter";
 import CohortSpliceReads from "./cohortSpliceReads";
 import CohortSpliceEvent, { useSpliceExons } from "./cohortSpliceEvent";
+import CohortSpliceGene, { EventFacts } from "./cohortSpliceGene";
+import CohortSpliceCells from "./cohortSpliceCells";
+import useCohortSpliceData from "./cohortSpliceData";
+import { bySummary, clusterCellSummary, focusJunctions, pooledCounts } from "../../../helpers/singleCell/spliceCells";
+import { describeEvent, geneContext, pinnedEvents } from "../../../helpers/singleCell/spliceContext";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -37,6 +42,7 @@ export function loadCohortSplicing(dataset) {
 const fmtQ = (q) => (Number.isFinite(q) ? (q < 1e-3 ? q.toExponential(1) : q.toPrecision(2)) : "–");
 const fmtPct = (p) => (Number.isFinite(p) ? `${(p * 100).toFixed(1)}%` : "–");
 const PAGE_SIZE = 10;
+const NO_PATIENTS = [];
 
 /**
  * Overview heatmap: the top clusters (rows) × patients (columns), each cell
@@ -99,7 +105,7 @@ function CohortPsiOverview({ rows, patients, picked, onPick }) {
  * cluster as a sashimi plot with one track per patient plus a junction ×
  * patient PSI heatmap (PSI computed here from the pooled counts).
  */
-export default function CohortSplicingPanel({ dataset }) {
+export default function CohortSplicingPanel({ dataset, summaries = [] }) {
   const { t } = useTranslation("common");
   const [ref, width] = useContainerWidth(1000);
   const plotRef = useRef(null);
@@ -138,16 +144,35 @@ export default function CohortSplicingPanel({ dataset }) {
     setQueryText("");
   };
   const allRowsRaw = useMemo(() => (data ? cohortClusterRows(data) : []), [data]);
+  const exonModel = useSpliceExons(dataset);
+  const cellData = useCohortSpliceData(dataset, data?.patients || NO_PATIENTS);
+  // per cluster: exon context, event type and the cells using the aberrant junction (sum over patients)
+  const extra = useMemo(() => {
+    const out = new Map();
+    allRowsRaw.forEach((r) => {
+      const c = r.cluster;
+      const ctx = geneContext(exonModel, c);
+      const ev = [...pinnedEvents(c, data), ...clusterEvents(c, clusterTranscripts(exonModel, c))][0] || null;
+      const d = describeEvent(ctx, c, ev);
+      const focus = focusJunctions(c, ev, pooledCounts(c));
+      const cells = cellData.ready ? clusterCellSummary(data?.patients || [], (p) => cellData.clusterOf(p, c), focus) : null;
+      out.set(r.id, { nExons: ctx?.nExons ?? c.n_exons ?? null, hasModel: Boolean(ctx), exonLabel: d.exonN != null ? `${d.exonN}${ctx ? `/${ctx.nExons}` : ""}` : null, eventType: d.eventType, cells });
+    });
+    return out;
+  }, [allRowsRaw, exonModel, cellData, data]);
   const allRows = useMemo(
-    () => allRowsRaw.filter((r) => passesGeneFilter({ gene: r.gene, gbmGene: r.cluster.gbm_gene, exonKnown: "n_exons" in r.cluster, nExons: r.cluster.n_exons ?? null, intronOverlap: r.cluster.intron_overlap ?? null }, geneFilter)),
-    [allRowsRaw, geneFilter]
+    () => {
+      const kept = allRowsRaw.filter((r) => passesGeneFilter({ gene: r.gene, gbmGene: r.cluster.gbm_gene, exonKnown: "n_exons" in r.cluster, nExons: r.cluster.n_exons ?? null, intronOverlap: r.cluster.intron_overlap ?? null }, geneFilter));
+      // default order: patients with cells using the aberrant junction, then cells (stable for ties: the back-end rank)
+      return cellData.ready ? [...kept].sort((a, b) => bySummary(extra.get(a.id)?.cells, extra.get(b.id)?.cells)) : kept;
+    },
+    [allRowsRaw, geneFilter, extra, cellData.ready]
   );
   const rows = useMemo(() => {
     if (!query) return allRows;
     const keep = new Set(filterClusters(allRows.map((r) => r.cluster), query).map((c) => c.id));
     return allRows.filter((r) => keep.has(r.id));
   }, [allRows, query]);
-  const exonModel = useSpliceExons(dataset);
   // overview: for clusters with a cassette exon, the exon's inclusion PSI (both inclusion junctions
   // against the skip junction) replaces the single most-variable junction, and the row is named by the exon
   const overview = useMemo(() => {
@@ -156,11 +181,11 @@ export default function CohortSplicingPanel({ dataset }) {
     const pts = data.patients || [];
     return base
       .map((r) => {
-        const ev = clusterEvents(r.cluster, clusterTranscripts(exonModel, r.cluster)).find((e) => e.type === "cassette");
+        const ev = pinnedEvents(r.cluster, data).find((e) => e.variant) || clusterEvents(r.cluster, clusterTranscripts(exonModel, r.cluster)).find((e) => e.type === "cassette");
         if (!ev) return r;
         const psi = pts.map((p, i) => (Number.isFinite(r.psi[i]) ? eventPsi(r.cluster.usage?.[p]?.counts || [], ev).psi : NaN));
         const f = psi.filter(Number.isFinite);
-        return { ...r, psi, dpsi: f.length > 1 ? Math.max(...f) - Math.min(...f) : NaN, eventLabel: ev.exonNumber != null ? `exon ${ev.exonNumber} inclusion` : "cassette exon" };
+        return { ...r, psi, dpsi: f.length > 1 ? Math.max(...f) - Math.min(...f) : NaN, eventLabel: ev.variant ? `${ev.variant} (skip)` : ev.exonNumber != null ? `exon ${ev.exonNumber} inclusion` : "cassette exon" };
       })
       .sort((a, b) => b.dpsi - a.dpsi || (a.q || 1) - (b.q || 1))
       .slice(0, 30);
@@ -180,10 +205,13 @@ export default function CohortSplicingPanel({ dataset }) {
   const row = rows.find((r) => r.id === picked) || null;
   const matrix = useMemo(() => (row ? cohortPsiMatrix(row.cluster, data?.patients) : null), [row, data]);
   const transcripts = useMemo(() => (row ? clusterTranscripts(exonModel, row.cluster) : []), [row, exonModel]);
-  const events = useMemo(() => (row ? clusterEvents(row.cluster, transcripts) : []), [row, transcripts]);
+  const events = useMemo(() => (row ? [...pinnedEvents(row.cluster, data), ...clusterEvents(row.cluster, transcripts)] : []), [row, transcripts, data]);
   const [eventIdx, setEventIdx] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState("gene");
+  const geneCtx = useMemo(() => (row ? geneContext(exonModel, row.cluster) : null), [row, exonModel]);
   useEffect(() => setEventIdx(0), [picked]);
   const event = events[eventIdx] || events[0] || null;
+  const focus = useMemo(() => focusJunctions(row?.cluster, event, row ? pooledCounts(row.cluster) : null), [row, event]);
 
   const title = (
     <Space>
@@ -316,6 +344,34 @@ export default function CohortSplicingPanel({ dataset }) {
                     );
                   },
                 },
+                {
+                  title: <span title="Exon of the canonical transcript carrying the event, out of the gene's exons (needs the exon model)">Affected exon</span>,
+                  key: "affected",
+                  align: "right",
+                  render: (_, r) => {
+                    const x = extra.get(r.id);
+                    return x?.exonLabel ? `exon ${x.exonLabel}` : <Text type="secondary" title={x?.hasModel ? "exon not resolved" : "gene model not available"}>{x?.hasModel ? "–" : "no model"}</Text>;
+                  },
+                },
+                { title: <span title="Kind of splice change of the aberrant junction">Event</span>, key: "evtype", render: (_, r) => extra.get(r.id)?.eventType || "–" },
+                {
+                  title: <span title="Cells with at least one read on the aberrant junction, summed over patients (needs each patient's rna/splicing.json)">Cells using</span>,
+                  key: "cellsUsing",
+                  align: "right",
+                  sorter: (a, b) => (extra.get(a.id)?.cells?.cellsUsing ?? -1) - (extra.get(b.id)?.cells?.cellsUsing ?? -1),
+                  render: (_, r) => {
+                    const c = extra.get(r.id)?.cells;
+                    if (!c) return <Text type="secondary">…</Text>;
+                    return c.missing === (data.patients || []).length ? <Text type="secondary" title="cells not exported for these patients">n/e</Text> : <span title={c.missing ? `cells not exported for ${c.missing} patients` : undefined}>{c.cellsUsing}</span>;
+                  },
+                },
+                {
+                  title: <span title="Patients with at least 3 cells using the aberrant junction">Patients ≥3 cells</span>,
+                  key: "patWith",
+                  align: "right",
+                  sorter: (a, b) => (extra.get(a.id)?.cells?.patientsWith ?? -1) - (extra.get(b.id)?.cells?.patientsWith ?? -1),
+                  render: (_, r) => extra.get(r.id)?.cells?.patientsWith ?? <Text type="secondary">…</Text>,
+                },
                 { title: t(`${k}.col-locus`), dataIndex: "locus" },
                 {
                   title: t(`${k}.col-types`),
@@ -339,7 +395,20 @@ export default function CohortSplicingPanel({ dataset }) {
                 <HintLine inline text={t(`${k}.sashimi-help`)} />
                 <SvgExportButton containerRef={plotRef} name={`sashimi-cohort-${row.gene || row.id}`} />
               </Space>
-              <div ref={plotRef} style={{ overflowX: "auto" }}>
+              <EventFacts ctx={geneCtx} cluster={row.cluster} event={event} model={exonModel} />
+              <Segmented
+                size="small"
+                value={zoomLevel === "gene" && !geneCtx ? "window" : zoomLevel}
+                onChange={setZoomLevel}
+                options={[{ value: "gene", label: "Whole gene", disabled: !geneCtx }, { value: "window", label: "Junction window" }]}
+              />
+              {!geneCtx && <Text type="secondary">Gene model not available for {row.gene}: only the junction window can be drawn.</Text>}
+              {zoomLevel === "gene" && geneCtx && (
+                <div ref={plotRef} style={{ overflowX: "auto" }}>
+                  <CohortSpliceGene ctx={geneCtx} cluster={row.cluster} event={event} width={Math.max(520, width)} />
+                </div>
+              )}
+              <div ref={zoomLevel === "gene" && geneCtx ? null : plotRef} style={{ overflowX: "auto", display: zoomLevel === "gene" && geneCtx ? "none" : "block" }}>
                 <SashimiPlot cluster={row.cluster} tracks={tracks} width={Math.max(520, width)} trackH={84} transcripts={transcripts} event={event} />
               </div>
               <Space size={4} wrap>
@@ -356,6 +425,7 @@ export default function CohortSplicingPanel({ dataset }) {
                   <Select size="small" style={{ minWidth: 260 }} value={eventIdx} onChange={setEventIdx} options={events.map((e, i) => ({ value: i, label: e.type === "cassette" && e.exonNumber != null ? `exon ${e.exonNumber} inclusion` : e.label }))} />
                 </Space>
               )}
+              <CohortSpliceCells dataset={dataset} summaries={summaries} patients={patients} cluster={row.cluster} focus={focus} data={cellData} />
               <CohortSpliceEvent dataset={dataset} patients={patients} cluster={row.cluster} event={event} />
               <CohortSpliceReads dataset={dataset} patients={patients} cluster={row.cluster} />
               <Text strong>{t(`${k}.cohort-heatmap`)}</Text>
