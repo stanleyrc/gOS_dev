@@ -154,6 +154,50 @@ export function poolNormalised(arrays) {
   return { m, used: same.length, skipped: arrays.length - same.length };
 }
 
+/**
+ * Pools cells by genomic bin position: cells = [{ x, y }] with y copy number at bin position x (bins dropped as
+ * non-finite differ between cells). A bin is kept when at least minFrac of the cells have it; its value is the mean of
+ * the cells' normalised segment means. Returns { x, m } sorted by x, renormalised to mean 1, plus the cells used.
+ */
+export function poolByPosition(cells, minFrac = 0.6) {
+  const acc = new Map();
+  let used = 0;
+  cells.forEach((c) => {
+    const { m, mean } = normaliseKeep(c.y);
+    if (mean == null) return;
+    used += 1;
+    for (let i = 0; i < c.x.length; i += 1) {
+      if (m[i] == null) continue;
+      const e = acc.get(c.x[i]);
+      if (e) {
+        e[0] += m[i];
+        e[1] += 1;
+      } else acc.set(c.x[i], [m[i], 1]);
+    }
+  });
+  const x = [];
+  const raw = [];
+  [...acc.keys()].sort((a, b) => a - b).forEach((k) => {
+    const [sum, n] = acc.get(k);
+    if (n >= minFrac * used) {
+      x.push(k);
+      raw.push(sum / n);
+    }
+  });
+  const mean = raw.length ? raw.reduce((a, b) => a + b, 0) / raw.length : null;
+  return { x, m: mean ? raw.map((v) => v / mean) : [], used };
+}
+
+// normalised means aligned with the input (null where the bin is invalid)
+function normaliseKeep(y) {
+  let sum = 0;
+  let n = 0;
+  for (let i = 0; i < y.length; i += 1) if (Number.isFinite(y[i]) && y[i] > 0) { sum += y[i]; n += 1; }
+  if (!n) return { m: [], mean: null };
+  const mean = sum / n;
+  return { m: Array.from(y, (v) => (Number.isFinite(v) && v > 0 ? v / mean : null)), mean };
+}
+
 /** n ids spread evenly through a list (all of them when n >= length). */
 export function evenSample(ids, n) {
   if (ids.length <= n) return [...ids];
