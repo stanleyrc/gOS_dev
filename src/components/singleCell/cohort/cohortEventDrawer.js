@@ -6,8 +6,7 @@ import { Button, Checkbox, Descriptions, Drawer, Select, Space, Switch, Tag, Typ
 import { TrackPlot } from "../cellTracksPanel";
 import { SC_TRACKS } from "../../../redux/singleCell/actions";
 import CellIgvPanel from "../cellIgvPanel";
-import GenesPlot from "../../genesPlotHiglass";
-import HoverLine from "../../hoverLine";
+import GeneTrack from "../../genes/geneTrack";
 import useContainerWidth from "../useContainerWidth";
 import Wrapper from "../index.style";
 import settingsActions from "../../../redux/settings/actions";
@@ -38,7 +37,6 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { chromoBins, genomeLength, domains } = useSelector((s) => s.Settings);
-  const genesList = useSelector((s) => s.Genes?.list || []);
   const [ref, width] = useContainerWidth(640);
   const [picked, setPicked] = useState([]);
   const [tracks, setTracks] = useState(["total", "coverage"]);
@@ -181,12 +179,7 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
             </Text>
           )}
           <Checkbox.Group value={tracks} onChange={setTracks} options={SC_TRACKS.map((track) => ({ value: track, label: t(`components.single-cell.tracks.${track}`) }))} />
-          {genesList.length > 0 && (
-            <div style={{ position: "relative", height: 130 }}>
-              <GenesPlot {...{ width: Math.max(300, width - 8), height: 130, domains, genesList }} />
-              <HoverLine width={Math.max(300, width - 8)} height={130} margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }} />
-            </div>
-          )}
+          {domains?.length > 0 && <GeneTrack width={Math.max(300, width - 8)} domains={domains} exportName="event-genes" />}
           {/* the drawer portals to <body>: bring the single-cell styles along for compact per-cell lanes */}
           {picked.length > 0 && (
             <Wrapper>
