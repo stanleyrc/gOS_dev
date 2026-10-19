@@ -308,6 +308,16 @@ const Wrapper = styled.div`
   .sc-fig-pextra {
     margin-left: auto;
   }
+  /* Paper figure style: the manuscript's Helvetica type and black letters */
+  .sc-fig-paper .sc-fig-phead,
+  .sc-fig-paper .sc-fig-legend,
+  .sc-fig-paper .sc-fig-caption {
+    font-family: Helvetica, "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
+  }
+  .sc-fig-paper .sc-fig-letter {
+    font-size: 20px;
+    color: var(--sc-text, #000);
+  }
   .sc-fig-section {
     display: flex;
     flex-wrap: wrap;

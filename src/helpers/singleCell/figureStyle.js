@@ -4,6 +4,7 @@
 // and SVG drawing read the same values; d3-free so it can be unit tested.
 
 import { TYPE } from "./plotTheme";
+import { PAPER_FONT } from "./paperPalette";
 
 const BASE = {
   fontScale: 1,
@@ -38,6 +39,27 @@ const BASE = {
 
 /** Named presets; `legacy` reproduces the original look for comparison. */
 export const FIGURE_STYLES = {
+  // the manuscript PDFs (srctools paper_figures, 2026-10-19): Helvetica, black ink, classic axes, no grid, paper palettes
+  paper: {
+    ...BASE,
+    label: "Paper",
+    paper: true,
+    fontFamily: PAPER_FONT,
+    axisInk: "text",
+    tickInk: "text",
+    tickLen: 3,
+    grid: "none",
+    groupRule: false,
+    bands: true,
+    labelWeight: 400,
+    groupWeight: 400,
+    headWeight: 400,
+    markerHalo: 0,
+    areaAlpha: 0.85,
+    barRadius: 0,
+    refDash: [3, 3],
+    refInk: "danger",
+  },
   clean: { ...BASE, label: "Clean" },
   classic: {
     ...BASE,
@@ -88,6 +110,11 @@ export const FIGURE_STYLES = {
 };
 
 export const DEFAULT_FIGURE_STYLE = "clean";
+// the Paper figures view opens in the manuscript look unless a style was chosen
+export const FIGURES_VIEW_STYLE = "paper";
+
+/** True when a style draws with the manuscript palettes. */
+export const isPaperStyle = (style) => !!style?.paper;
 
 export const figureStyle = (name) => FIGURE_STYLES[name] || FIGURE_STYLES[DEFAULT_FIGURE_STYLE];
 
