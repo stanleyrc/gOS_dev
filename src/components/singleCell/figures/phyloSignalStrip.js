@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Select, Space, Typography } from "antd";
 import FigureCanvas, { useFigureStyleName } from "./figureCanvas";
-import { FigureLegend, textRole } from "./figureKit";
+import { textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
 import { figureStyle, isPaperStyle } from "../../../helpers/singleCell/figureStyle";
 import { paperAmpColor } from "../../../helpers/singleCell/paperPalette";
@@ -63,9 +63,10 @@ export default function PhyloSignalStrip({ signals, onSelectWalk }) {
   const { columns, missing } = useMemo(() => phyloSignalColumns(signals, { controls, geneSets: shownGenes }), [signals, controls, shownGenes]);
   const patients = useMemo(() => [...new Set(columns.flatMap((c) => c.points.map((p) => p.patient)))].sort(), [columns]);
   const shapeOf = useCallback((p) => SHAPES[patients.indexOf(p) % SHAPES.length], [patients]);
-  const width = Math.max(320, Math.min(measured, 140 + columns.length * 120));
+  const LEG = 92; // patient shape legend, drawn in the canvas so it exports with the panel
+  const width = Math.max(360, Math.min(measured, 140 + LEG + columns.length * 120));
   const height = 300;
-  const plot = { x0: 56, x1: width - 8, y0: 10, y1: height - 44 };
+  const plot = { x0: 56, x1: width - LEG - 8, y0: 10, y1: height - 44 };
   const zs = columns.flatMap((c) => c.points.map((p) => p.z));
   const zLo = Math.min(-0.5, ...zs);
   const zHi = Math.max(5, ...zs);
@@ -149,10 +150,21 @@ export default function PhyloSignalStrip({ signals, onSelectWalk }) {
         ctx.fillText(`${col.points.length} ${col.kind === "walk" ? "walks" : "patients"}`, cx, y1 + 22);
         ctx.textBaseline = "middle";
       });
+      // legend: patient shapes
+      const lx = x1 + 18;
+      textRole(ctx, c, "label", "text");
+      ctx.textAlign = "left";
+      patients.forEach((pt, k) => {
+        const y = y0 + 8 + k * 16;
+        ctx.fillStyle = c.text;
+        shape(ctx, shapeOf(pt), lx, y, st.markerR * 0.85);
+        ctx.fill();
+        ctx.fillText(pt, lx + 10, y);
+      });
       return hits;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [columns, width, sy, colW, pos, colorOf, shapeOf, st, paper, zLo, zHi]
+    [columns, width, sy, colW, pos, colorOf, shapeOf, st, paper, zLo, zHi, patients]
   );
 
   const controlOptions = ["Seq. depth", "Ploidy", "SNVs / cell", "Mean somatic VAF"].map((k) => ({ value: k, label: k === "Mean somatic VAF" ? "Somatic VAF" : k }));
@@ -172,7 +184,6 @@ export default function PhyloSignalStrip({ signals, onSelectWalk }) {
         tooltip={(h) => [`${h.p.patient} · ${h.p.label}`, ["Moran's I z", h.p.z.toFixed(2)], ["p (perm.)", h.p.p ?? "–"], ["cells on tree", h.p.n ?? "–"], h.p.walkId ? "click to open the walk" : null].filter(Boolean)}
         onClick={(h) => h.p.walkId && onSelectWalk?.(h.p.patient, h.p.walkId, h.p.geneSet)}
       />
-      <FigureLegend items={patients.map((p) => ({ key: p, color: "#555", label: p, shape: shapeOf(p) === "square" ? "square" : "circle" }))} title="Patients (shape)" />
       <div className="sc-fig-caption">
         Points: patients (amplicons: each walk). Dashed: z = 1.645 (one-sided p = 0.05). From phylo_signal.json (permutation null, weights 1 / patristic distance).
         {missing.map((m) => ` ${m.key} not available for ${m.patients.join(", ")} (not recorded).`).join("")}
