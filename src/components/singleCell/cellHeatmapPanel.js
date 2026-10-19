@@ -1,3 +1,4 @@
+import { findEntryByKey } from "../../helpers/singleCell/complexFamilies";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -2135,10 +2136,10 @@ export default function CellHeatmapPanel() {
           variantIdx={snvsByBranch?.get(branchNode) || []}
         />
       )}
-      {sc.driverDrawer && driverLayer.entries.find((d) => d.key === sc.driverDrawer) && (
+      {sc.driverDrawer && findEntryByKey(driverLayer.entries, sc.driverDrawer) && (
         <DriverLayerDrawer
           sigText={driverSigText}
-          entry={driverLayer.entries.find((d) => d.key === sc.driverDrawer)}
+          entry={findEntryByKey(driverLayer.entries, sc.driverDrawer)}
           driverLayer={driverLayer}
           onClose={() => dispatch(singleCellActions.updateDriverDrawer(null))}
         />

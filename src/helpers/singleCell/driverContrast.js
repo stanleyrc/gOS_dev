@@ -30,6 +30,7 @@ export function driverLabel(e) {
 }
 
 export function driverKey(e) {
+  if (e.__familyKey) return e.__familyKey; // family entry (complexFamilies.js): the key of its dominant member row
   if (e.source === "clinical assay" && e.clinical_key) return e.clinical_key; // clinical findings without a filtered event (clinicalEvents.js)
   return `${driverLabel(e)}|${e.Genome_Location || `${e.seqnames}:${e.start}-${e.end}`}`;
 }

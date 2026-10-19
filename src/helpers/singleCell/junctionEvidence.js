@@ -84,3 +84,34 @@ export function evidenceSummary(ev) {
     return { key: r.key, ...tally };
   });
 }
+
+/** Junction id "a|b" with its two ends in sorted order (ids and graph keys compare after this). */
+export const normJunctionId = (id) => `${id}`.replace(/\s/g, "").split("|").sort().join(" | ");
+
+/**
+ * Read-support matrix from junction_identity.json: support = { id: { cell: distinct supporting read names } }.
+ * Same shape as buildJunctionEvidence (rows, cells, values) with value { state: "cn" | "zero", cn: reads }; a cell
+ * missing from support[id] had no read observed (coverage is not separated from absence). Rows: the given junction
+ * ids with at least one carrier read, most carriers with reads first, at most maxRows.
+ */
+export function buildReadEvidence({ junctionIds = [], support = {}, carriers = [], cellIds = [], cellOrder = [], maxRows = 10 }) {
+  const carrierSet = new Set(carriers);
+  const all = [...new Set([...carriers, ...cellIds])];
+  const rank = new Map(cellOrder.map((id, i) => [id, i]));
+  const ordered = (ids) => [...ids].sort((a, b) => (rank.has(a) ? rank.get(a) : 1e9) - (rank.has(b) ? rank.get(b) : 1e9) || `${a}`.localeCompare(`${b}`));
+  const cells = [...ordered(all.filter((c) => carrierSet.has(c))).map((id) => ({ id, carrier: true })), ...ordered(all.filter((c) => !carrierSet.has(c))).map((id) => ({ id, carrier: false }))];
+  const scored = junctionIds
+    .map((id) => {
+      const s = support[id] || {};
+      return { id, hit: carriers.filter((c) => Number(s[c]) > 0).length, reads: carriers.reduce((t, c) => t + (Number(s[c]) || 0), 0) };
+    })
+    .filter((r) => r.hit > 0)
+    .sort((a, b) => b.hit - a.hit || b.reads - a.reads || a.id.localeCompare(b.id))
+    .slice(0, maxRows);
+  const rows = scored.map((r) => ({ key: r.id, nCarriers: r.hit, breakpoints: r.id.split("|") }));
+  const values = rows.map((r) => cells.map(({ id }) => {
+    const reads = Number(support[r.key]?.[id]) || 0;
+    return reads > 0 ? { state: "cn", cn: reads } : { state: "zero", cn: 0 };
+  }));
+  return { rows, cells, values };
+}
