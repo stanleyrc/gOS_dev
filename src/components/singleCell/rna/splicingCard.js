@@ -340,7 +340,9 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
   const cluster = clusters.find((c) => c.id === picked);
   const groups = useMemo(() => (cluster ? clusterByGroup(cluster, groupOf) : []), [cluster, groupOf]);
   const usage = useMemo(() => (cluster ? cellUsageMatrix(cluster, rows) : null), [cluster, rows]);
-  const exonModel = useSpliceExons(dataset);
+  const modelChroms = useMemo(() => (cluster ? [`${cluster.chromosome}`.replace(/^chr/, "")] : []), [cluster]);
+  const modelGenes = useMemo(() => (cluster ? [cluster.gene] : []), [cluster]);
+  const exonModel = useSpliceExons(dataset, modelChroms, modelGenes);
   const transcripts = useMemo(() => (cluster ? clusterTranscripts(exonModel, cluster) : []), [cluster, exonModel]);
   const spliceEvent = useMemo(() => (cluster ? clusterEvents(cluster, transcripts)[0] || null : null), [cluster, transcripts]);
   // groups with too few cells are pooled: a 2-cell clone's PSI is mostly sampling noise
