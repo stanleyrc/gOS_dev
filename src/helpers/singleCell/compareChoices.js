@@ -45,3 +45,15 @@ export function hasTreeSupport(support, name) {
 }
 
 export const NO_BOOTSTRAP_TEXT = "Bootstrap support: not available (no bootstraps for this tree)";
+
+/**
+ * Quality note on the pipeline tree from trees/index.json: the "gos" entry's `note` (gos_sc_alt_trees.R TREE_LABEL_NOTE), or
+ * the text after "current; " in its label. Null when there is none (the usual case).
+ */
+export function treeQualityNote(index) {
+  const gos = (Array.isArray(index) ? index : []).find((t) => t && t.name === "gos");
+  if (!gos) return null;
+  if (gos.note) return `${gos.note}`;
+  const m = /\(current;\s*([^)]+)\)/.exec(`${gos.label || ""}`);
+  return m ? m[1].trim() : null;
+}
