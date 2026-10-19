@@ -114,6 +114,7 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
     const tracks = buildIgvTracks({
       dnaCellIds: cellIds,
       rnaTracks,
+      pooled: view.pooled || null,
       pathFor: (folder, file) => casePath(dataset, folder, file),
       sortAt: { chromosome: view.chromosome, position: view.position },
       dnaHeight: rnaTracks.length ? 200 : 260,
