@@ -4,8 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, Button, Select, Space, Switch, Typography } from "antd";
 import CellTracksPanel from "./cellTracksPanel";
 import CellIgvPanel from "./cellIgvPanel";
-import GenesPlot from "../genesPlotHiglass";
-import HoverLine from "../hoverLine";
+import GeneTrack from "../genes/geneTrack";
 import useContainerWidth from "./useContainerWidth";
 import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
@@ -21,7 +20,6 @@ import { isComplexEvent, footprintLocation, defaultFootprintPad, firstJunctionBr
 
 const { Text } = Typography;
 const PADS = [0, 5e4, 2.5e5, 1e6, 5e6];
-const GENES_H = 130;
 const DEFAULT_PAD = 5e4;
 const DEFAULT_MULTI = 3;
 
@@ -62,7 +60,6 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const { chromoBins, genomeLength, domains } = useSelector((state) => state.Settings);
-  const genesList = useSelector((state) => state.Genes?.list || []);
   const { cells, cloneColors } = useSelector((state) => state.SingleCell);
   const carriers = useMemo(() => `${record?.cell_ids || ""}`.split(",").filter(Boolean), [record]);
   // complex SVs: Genome_Location lists several intervals (comma separated); the cell they were called in is the default
@@ -163,12 +160,7 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
       )}
       <div ref={trackRef} style={{ padding: "0 8px", position: "relative" }}>
         <Text type="secondary" style={{ fontSize: 12.5 }}>{t("components.single-cell.event-cells.genes")}</Text>
-        {genesList.length > 0 && (
-          <div style={{ position: "relative", height: GENES_H }}>
-            <GenesPlot {...{ width: Math.max(200, trackWidth - 16), height: GENES_H, domains, genesList }} />
-            <HoverLine width={Math.max(200, trackWidth - 16)} height={GENES_H} margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }} />
-          </div>
-        )}
+        {domains?.length > 0 && <GeneTrack width={Math.max(200, trackWidth - 16)} domains={domains} exportName="event-genes" />}
       </div>
       <CellTracksPanel
         cellIds={shown}

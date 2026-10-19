@@ -26,7 +26,7 @@ import {
 import * as htmlToImage from "html-to-image";
 import { AiFillBoxPlot } from "react-icons/ai";
 import Wrapper from "./index.style";
-import GenesPlot from "../genesPlotHiglass";
+import GeneTrack from "../genes/geneTrack";
 import settingsActions from "../../redux/settings/actions";
 import genesActions from "../../redux/genes/actions";
 import CytobandsPlot from "../cytobandsPlot";
@@ -46,7 +46,13 @@ export class TracksLegendPanel extends Component {
   container = null;
   genesStructure = null;
 
-  state = { locationString: null };
+  // geneExtra: px the gene track needs beyond its share (squished / expanded isoforms); the panel grows by it
+  state = { locationString: null, geneExtra: 0 };
+
+  handleGeneHeight = (genesHeight, h) => {
+    const extra = Math.max(0, Math.round(h - genesHeight));
+    if (extra !== this.state.geneExtra) this.setState({ geneExtra: extra });
+  };
 
   handleLocationChange = (e) => {
     this.setState({ locationString: e.target.value });
@@ -257,10 +263,8 @@ export class TracksLegendPanel extends Component {
               ref={(elem) => (this.container = elem)}
               style={{
                 ...(compact
-                  ? { height: compactKeepsGenes ? 150 : "auto" }
-                  : plotHeight
-                  ? { height: plotHeight }
-                  : {}),
+                  ? { height: compactKeepsGenes ? 150 + this.state.geneExtra : "auto" }
+                  : { height: (plotHeight || 280) + this.state.geneExtra }),
                 // Optional padding so the genome plots line up with another
                 // view's genomic columns (the single-cell heatmap).
                 ...(plotInsets
@@ -272,7 +276,8 @@ export class TracksLegendPanel extends Component {
               }}
             >
               <ContainerDimensions>
-                {({ width, height }) => {
+                {({ width, height: fullHeight }) => {
+                  const height = fullHeight - this.state.geneExtra;
                   // With a custom height, extra room goes to the gene track
                   // and the cytobands keep their default 120 px.
                   const genesHeight =
@@ -292,18 +297,12 @@ export class TracksLegendPanel extends Component {
                       </Col>
                       {(!compact || compactKeepsGenes) && (
                       <Col span={24}>
-                        <GenesPlot
-                          {...{
-                            width,
-                            height: genesHeight,
-                            domains,
-                            genesList,
-                          }}
-                        />
-                        <HoverLine
+                        <GeneTrack
                           width={width}
-                          height={genesHeight}
-                          margins={{ gapX: 50, gapY: 0, gapYUnits: 2 }}
+                          domains={domains}
+                          maxHeight={Math.max(81, genesHeight - 28)}
+                          onHeightChange={(h) => this.handleGeneHeight(genesHeight, h)}
+                          exportName="genome-genes"
                         />
                       </Col>
                       )}
