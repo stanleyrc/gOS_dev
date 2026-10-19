@@ -13,7 +13,7 @@ const isAberrant = (j) => j && (j.annotated === false || (j.type && j.type !== "
  */
 export function focusJunctions(cluster, event, pooled = null) {
   const js = cluster?.junctions || [];
-  if (event?.focus) return { side: "incl", ks: event.focus, otherKs: event.junctions.skip, label: event.variant ? `${event.variant} (the skip junction)` : "the pinned junction" };
+  if (event?.focus) return { side: "incl", ks: event.focus, otherKs: event.junctions.skip, label: event.variant || "the aberrant junction" };
   const incl = event?.junctions?.incl || [];
   const skip = event?.junctions?.skip || [];
   if (!incl.length && !skip.length) {
@@ -120,7 +120,7 @@ export function stripLayout(tables, width, { cell = 8, gap = 1.5, labelW = 150, 
   const blocks = tables.map((t) => {
     const n = t.rows ? t.rows.length : 0;
     const lines = Math.max(1, Math.ceil(n / per));
-    const h = lines * (cell + gap);
+    const h = Math.max(26, lines * (cell + gap));
     const cells = (t.rows || []).map((r, i) => ({ key: r.key, x: labelW + (i % per) * (cell + gap), y: y + Math.floor(i / per) * (cell + gap) }));
     const block = { patient: t.patient, y, h, cells };
     y += h + rowGap;
@@ -151,4 +151,4 @@ export function keysByPatient(keys) {
 }
 
 /** Display name for a saved cohort group made from a splice event. */
-export const spliceGroupName = (gene, label, side) => `${gene} ${label || "splice"} ${side === "skip" ? "skip" : "using"}`.replace(/\s+/g, " ").trim();
+export const spliceGroupName = (gene, label, side) => `${`${label || ""}`.includes(gene) ? "" : `${gene} `}${label || "splice"} ${side === "skip" ? "skip" : "using"}`.replace(/\s+/g, " ").trim();
