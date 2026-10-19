@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Button, Drawer, Tooltip } from "antd";
@@ -7,7 +7,7 @@ import { getDetailTabAvailability } from "../../../helpers/detailTabAvailability
 import { isPatientRecord } from "../../../helpers/singleCell/cellFiles";
 import { COHORT_VIEWS, COHORT_VIEW_GROUPS } from "../../../helpers/singleCell/cohortViews";
 import { announceCohortView, currentCohortView, requestHelpTarget, subscribeCohortView, openHelpCenter } from "../../../helpers/singleCell/helpNav";
-import { PATIENT_RAIL, RAIL_WIDTH, cohortGroupOfView, cohortRail, isPhoneWidth, patientGroupOfTab, railContext } from "../../../helpers/singleCell/navRail";
+import { HOVER_CLOSE_MS, HOVER_OPEN_MS, PATIENT_RAIL, RAIL_WIDTH, cohortGroupOfView, cohortRail, firstEnabledItem, isPhoneWidth, patientGroupOfTab, railContext } from "../../../helpers/singleCell/navRail";
 import settingsActions from "../../../redux/settings/actions";
 
 const GROUP_ICON = { findings: "StarOutlined", genome: "RadarChartOutlined", evolution: "ApartmentOutlined", rna: "DotChartOutlined", explore: "SearchOutlined", guide: "ReadOutlined" };
@@ -42,7 +42,16 @@ export default function NavRail() {
   const ctx = railContext({ report, singleCellTabAvailable: availability[7] === true, hasCohort });
   const width = useWidth();
   const phone = isPhoneWidth(width);
-  const [open, setOpen] = useState(false);
+  const [open, setOpenState] = useState(false);
+  // Hover intent: open only after the pointer rests on the rail, close with a short grace period, and stay closed after a
+  // click until the pointer leaves (a click hid the panel under the cursor and it reopened or swallowed the next click).
+  const timer = useRef(null);
+  const suppress = useRef(false);
+  const clearTimer = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
+  const setOpen = (v) => { clearTimer(); if (!v) suppress.current = true; setOpenState(v); };
+  const hoverOpen = () => { if (suppress.current) return; clearTimer(); timer.current = setTimeout(() => setOpenState(true), HOVER_OPEN_MS); };
+  const hoverClose = () => { suppress.current = false; clearTimer(); timer.current = setTimeout(() => setOpenState(false), HOVER_CLOSE_MS); };
+  useEffect(() => clearTimer, []);
   const [view, setView] = useState(currentCohortView());
   useEffect(() => subscribeCohortView(setView), []);
 
@@ -121,11 +130,11 @@ export default function NavRail() {
     );
   }
   return (
-    <div className="sc-rail" data-open={open} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} onFocus={() => setOpen(true)} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}>
+    <div className="sc-rail" data-open={open} onMouseEnter={hoverOpen} onMouseLeave={hoverClose} onFocus={(e) => { if (e.target.matches(":focus-visible")) { suppress.current = false; setOpenState(true); } }} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { clearTimer(); setOpenState(false); } }}>
       <div className="sc-rail-icons">
         {groups.map((g) => (
           <Tooltip key={g.key} title={g.label} placement="right" open={open ? false : undefined}>
-            <button type="button" className="sc-rail-icon" data-current={g.key === currentGroup} aria-label={g.label} onClick={() => setOpen(true)}><Icon name={g.icon} /></button>
+            <button type="button" className="sc-rail-icon" data-current={g.key === currentGroup} aria-label={g.label} onClick={() => { const it = firstEnabledItem(g.items); if (it) it.go(); else setOpen(false); }}><Icon name={g.icon} /></button>
           </Tooltip>
         ))}
         <div className="sc-rail-sep" />
