@@ -1,3 +1,4 @@
+import { familyCountText } from "../../../helpers/singleCell/complexFamilies";
 import React, { useMemo } from "react";
 import { driverColors } from "./driverColors";
 import { Button, Checkbox, InputNumber, Popover, Radio, Segmented, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
@@ -188,6 +189,7 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
     [entries]
   );
   const nShown = shown.length;
+  const familyText = useMemo(() => familyCountText(entries), [entries]);
   const nPreset = useMemo(() => selectDrivers(entries, { ...selection, add: [], remove: [] }, fits).length, [entries, selection, fits]);
   const nF1Hidden = useMemo(() => f1HiddenCount(entries, selection, fits), [entries, selection, fits]);
   const noF1 = useMemo(() => noF1Keys(shown, fits), [shown, fits]);
@@ -253,7 +255,7 @@ export default function DriverControls({ driverLayer, branches, onBranches, canB
           onChange={(keys) => setSelection(selectionForKeys(entries, selection, keys, fits))}
         />
       </Space>}
-      {!compact && <Text type="secondary">{`${nShown} shown of ${entries.length}${nClinical ? ` (${nClinical} clinical, ${nGermline} germline-like)` : ""}${collapsed ? ` (${collapsed} collapsed into shared-CN columns)` : ""}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>}
+      {!compact && <Text type="secondary">{`${nShown} shown of ${entries.length}${nClinical ? ` (${nClinical} clinical, ${nGermline} germline-like)` : ""}${collapsed ? ` (${collapsed} collapsed into shared-CN columns)` : ""}${familyText ? ` · ${familyText}` : ""}${edited ? ` · ${edited} hand-picked` : ""}`}</Text>}
       {selection.filters?.minF1 > 0 && noF1.size > 0 && (
         <Tooltip title={`No carrier cells on the tree, so no Clade F1 score: ${shown.filter((d) => noF1.has(d.key)).map((d) => d.label).join(", ")}`}>
           <Tag style={{ marginInlineEnd: 0 }}>{`${noF1.size} no F1`}</Tag>
