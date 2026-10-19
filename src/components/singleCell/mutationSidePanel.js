@@ -160,7 +160,7 @@ export default function MutationSidePanel({
       const a = bins.binStart[x];
       const b = bins.binEnd[x];
       if (b - a > 1) {
-        const { positive, missing } = snvBinSummary(snv, p, columnOrder, a, b);
+        const { positive, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
         return missing === b - a ? vafRGBA(null) : vafRGBA(positive / (b - a));
       }
       return snvMetricRGBA(snvMetricValue(snv, p, columnOrder[a], metric), metric, max);
@@ -176,7 +176,7 @@ export default function MutationSidePanel({
     if (b - a > 1) {
       const first = snv.variants[columnOrder[a]];
       const last = snv.variants[columnOrder[b - 1]];
-      const { positive, zero, missing } = snvBinSummary(snv, p, columnOrder, a, b);
+      const { positive, zero, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
       return [
         [t("components.single-cell.side.sites"), `${b - a} (${first.id} … ${last.id})`],
         [t("components.single-cell.side.positive"), positive],
