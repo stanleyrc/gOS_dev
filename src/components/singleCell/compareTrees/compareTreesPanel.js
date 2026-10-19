@@ -410,8 +410,8 @@ export default function CompareTreesPanel() {
     const all = snvOrder === "tree" ? treeColumnOrder(snvCalls, layout, rows) : snvColumnOrder(snvCalls, snvOrder);
     return { rows, columns: filterSnvColumns(snvCalls, all, { ...siteFilter, annot: layout === layoutA ? annotA : annotB }) };
   };
-  const matA = useMemo(() => matrixColumns(layoutA, sides.includes("A")), [snvCalls, layoutA, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvSelected, siteFilter.snvSelectedOnly, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
-  const matB = useMemo(() => matrixColumns(layoutB, sides.includes("B")), [snvCalls, layoutB, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvSelected, siteFilter.snvSelectedOnly, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matA = useMemo(() => matrixColumns(layoutA, sides.includes("A")), [snvCalls, layoutA, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvSelected, siteFilter.snvSelectedOnly, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix, heatMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matB = useMemo(() => matrixColumns(layoutB, sides.includes("B")), [snvCalls, layoutB, snvOrder, siteFilter.snvCategories, siteFilter.snvCellphyOnly, siteFilter.snvDriversOnly, siteFilter.snvSiteIds, siteFilter.snvSelected, siteFilter.snvSelectedOnly, siteFilter.snvMinCladeScore, siteFilter.snvAnnotFilter, annotA, annotB, matrixMode, showMatrix, heatMode]); // eslint-disable-line react-hooks/exhaustive-deps
   const isolateCarriers = (layout, mat) => (isolating && mat && isolateColumns.length ? carrierRows(snvCalls, isolateColumns, mat.rows) : null);
   const markedRows = (layout, mat = null) => {
     const r = rowsOf(layout);
