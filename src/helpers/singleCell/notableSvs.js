@@ -6,6 +6,7 @@ import { complexChromosomes, dmOverlap } from "./complexLabels";
 import { classificationText, familyClassifications } from "./complexFamilies";
 import { parseFootprint } from "./complexZoom";
 import { GBM_GENES } from "./geneInfo";
+import { genesInside } from "./geneSpans";
 
 export const NOTABLE_KINDS = /^(dm|cpxdm|rdeldup|rdel|rdup|tic|chromoplexy|bfb|chromothripsis|rigma|tyfonas)$/i;
 export const isEcdnaKind = (k) => /^(dm|cpxdm)$/i.test(`${k || ""}`);
@@ -30,10 +31,10 @@ const kindOf = (entry) => `${entry.family?.dominant?.vartype || entry.event?.var
 
 /**
  * Notable SV rows from driver entries (buildDriverEntries / cohortEntries output).
- * opts: genesList (gene annotation) or null, tumorN, treeLayout (adds clade placement), driverSet.
+ * opts: geneSpans (parseGeneSpans output; preferred, whole GENCODE) or null, genesList (gOS gene track, fallback) or null, tumorN, treeLayout (adds clade placement), driverSet.
  * Row: { key, entry, label, chromosomes, members: text, n, fraction, placement, f1, cladeSize, genes, nGenes, ecdna: { family, label } | null }.
  */
-export function notableSvs(entries = [], { genesList = null, treeLayout = null, tumorN = 0, driverSet = GBM_GENES } = {}) {
+export function notableSvs(entries = [], { genesList = null, geneSpans = null, treeLayout = null, tumorN = 0, driverSet = GBM_GENES } = {}) {
   const dmEntries = entries.filter((d) => d.cls === "complex");
   return entries
     .filter((d) => d.cls === "complex" && NOTABLE_KINDS.test(kindOf(d)) && d.n > 0)
@@ -41,7 +42,7 @@ export function notableSvs(entries = [], { genesList = null, treeLayout = null, 
       const location = d.family?.dominant?.Genome_Location || d.event?.Genome_Location;
       const fit = treeLayout ? cladeFitScore(d.carriers || [], treeLayout) : null;
       const okFit = fit && Number.isFinite(fit.score) ? fit : null;
-      const g = genesList ? genesInFootprint(genesList, location, { driverSet }) : null;
+      const g = geneSpans ? genesInside(geneSpans, location, { driverSet }) : genesList ? genesInFootprint(genesList, location, { driverSet }) : null;
       const dm = dmOverlap(d, dmEntries);
       const members = d.family ? d.family.classifications : familyClassifications([d.event]);
       return {
@@ -57,6 +58,7 @@ export function notableSvs(entries = [], { genesList = null, treeLayout = null, 
         f1: okFit ? okFit.score : null,
         cladeSize: okFit ? okFit.clade : null,
         genes: g ? g.genes : null,
+        genesSource: geneSpans ? "spans" : g ? "track" : null,
         nGenes: g ? g.total : null,
         nDrivers: g ? g.drivers : null,
         ecdna: dm && dm.overlap > 0 ? { label: dm.dms.map((x) => x.label)[0], overlap: dm.overlap, carriers: dm.carriers } : null,

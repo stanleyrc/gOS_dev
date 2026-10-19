@@ -53,4 +53,17 @@ describe("ecDNA families in notable SVs", () => {
     expect(isEcdnaKind("DM")).toBe(true);
     expect(isEcdnaKind("rDelDup")).toBe(false);
   });
+  test("gene spans (whole GENCODE) take precedence over the gene track and are labelled", () => {
+    const entries = buildDriverEntries(events);
+    const spans = [
+      { gene: "EGFR", chromosome: "7", start: 54500000, end: 54600000, coding: true },
+      { gene: "SEC61G", chromosome: "7", start: 54700000, end: 54750000, coding: true },
+    ];
+    const withSpans = notableSvs(entries, { geneSpans: spans, genesList: genes }).find((r) => /rDelDup/.test(r.label));
+    expect(withSpans.genes).toEqual(["EGFR", "SEC61G"]);
+    expect(withSpans.genesSource).toBe("spans");
+    const track = notableSvs(entries, { genesList: genes }).find((r) => /rDelDup/.test(r.label));
+    expect(track.genesSource).toBe("track");
+    expect(notableSvs(entries).find((r) => /rDelDup/.test(r.label)).genesSource).toBeNull();
+  });
 });

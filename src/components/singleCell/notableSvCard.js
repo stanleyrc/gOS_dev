@@ -6,6 +6,8 @@ import settingsActions from "../../redux/settings/actions";
 import singleCellActions from "../../redux/singleCell/actions";
 import { buildDriverEntries } from "../../helpers/singleCell/driverLayer";
 import { notableSvs } from "../../helpers/singleCell/notableSvs";
+import { GENE_SPANS_MISSING } from "../../helpers/singleCell/geneSpans";
+import useGeneSpans from "./cohort/useGeneSpans";
 
 const { Text } = Typography;
 const COLORS = { truncal: "#237804", subclonal: "#1d39c4", private: "#8c8c8c" };
@@ -13,9 +15,13 @@ const isNormal = (clone) => /^normal$/i.test(`${clone || ""}`);
 
 export const NOTE = "Classifier families (gGnome events grouped by shared junctions), not validated structural variants. Clade placement is the best-matching tree clade for the carrier cells.";
 
-/** Genes line: driver genes first; "not available" without the gene annotation. */
-export const GenesText = ({ r }) =>
-  r.genes == null ? <Text type="secondary">not available (gene annotation not loaded)</Text> : r.genes.length ? <span>{`${r.genes.join(", ")}${r.nGenes > r.genes.length ? ` +${r.nGenes - r.genes.length}` : ""}`}</span> : <Text type="secondary">none in the gOS gene track (well-cited genes only)</Text>;
+/** Genes line: driver genes first. Whole-GENCODE spans when gene_spans.json is exported, else the gOS gene track (and says so). */
+export const GenesText = ({ r }) => {
+  if (r.genes == null) return <Text type="secondary">not available (gene annotation not loaded; {GENE_SPANS_MISSING})</Text>;
+  const note = r.genesSource === "track" ? <Text type="secondary" style={{ fontSize: 11 }}>{` (${GENE_SPANS_MISSING}; gOS gene track only)`}</Text> : null;
+  if (!r.genes.length) return <Text type="secondary">{r.genesSource === "spans" ? "no protein-coding gene" : "none in the gOS gene track (well-cited genes only)"}{note}</Text>;
+  return <span>{`${r.genes.join(", ")}${r.nGenes > r.genes.length ? ` (+${r.nGenes - r.genes.length} more)` : ""}`}{note}</span>;
+};
 
 /** Patient Summary: the complex-SV families, ecDNA first, then rDelDup, rDel, rDup, TIC, chromoplexy ...; click opens the Drivers drawer. */
 export default function NotableSvCard() {
@@ -23,6 +29,7 @@ export default function NotableSvCard() {
   const events = useSelector((s) => s.FilteredEvents.filteredEvents);
   const cells = useSelector((s) => s.SingleCell.cells);
   const genesList = useSelector((s) => s.Genes?.list || []);
+  const { spans: geneSpans } = useGeneSpans();
   const { treeLayout, order: rowOrder } = useTreeView();
   const tumorIds = useMemo(() => {
     const normal = new Set((cells || []).filter((c) => isNormal(c.clone_id)).map((c) => `${c.cell_id}`));
@@ -30,8 +37,8 @@ export default function NotableSvCard() {
   }, [cells, rowOrder]);
   const rows = useMemo(() => {
     const entries = buildDriverEntries(events || [], { tumorIds });
-    return notableSvs(entries, { genesList: genesList.length ? genesList : null, treeLayout, tumorN: tumorIds.length });
-  }, [events, tumorIds, genesList, treeLayout]);
+    return notableSvs(entries, { geneSpans, genesList: genesList.length ? genesList : null, treeLayout, tumorN: tumorIds.length });
+  }, [events, tumorIds, genesList, geneSpans, treeLayout]);
   if (!rows.length) return <Empty description="No complex-SV family in this patient" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
   const open = (r) => {
     dispatch(singleCellActions.updateHeatmapType("drivers"));

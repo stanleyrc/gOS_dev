@@ -3,6 +3,8 @@ import { useDispatch } from "react-redux";
 import { Button, Space, Tag, Typography } from "antd";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { classificationText, familyLinkLines } from "../../../helpers/singleCell/complexFamilies";
+import { genesInside, genesInsideText, GENE_SPANS_MISSING } from "../../../helpers/singleCell/geneSpans";
+import useGeneSpans from "../cohort/useGeneSpans";
 
 const { Text } = Typography;
 const MAX_JUNCTIONS = 12;
@@ -14,6 +16,7 @@ const MAX_JUNCTIONS = 12;
  */
 export default function FamilyBlock({ entry, files }) {
   const dispatch = useDispatch();
+  const { spans } = useGeneSpans();
   const fam = entry?.family;
   if (!fam) return null;
   const file = files?.families?.status === "ok" ? files.families.data : null;
@@ -62,6 +65,9 @@ export default function FamilyBlock({ entry, files }) {
         </Text>
       </div>
       <Text type="secondary" style={{ fontSize: 12 }}>{`Family footprint: ${fam.footprint}`}</Text>
+      <div style={{ marginTop: 4 }} data-family-genes>
+        <Text type="secondary">{`genes inside: ${spans ? genesInsideText(genesInside(spans, fam.footprint, { max: 8 })) : GENE_SPANS_MISSING}`}</Text>
+      </div>
     </div>
   );
 }
