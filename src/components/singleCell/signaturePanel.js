@@ -7,7 +7,7 @@ import { Alert, Button, Card, Col, Empty, Radio, Row, Space, Tooltip, Typography
 import { BarChartOutlined } from "@ant-design/icons";
 import { SBS96, SBS_COLORS, decomposeFit, fitSignatures, parseCosmic, sbs96Counts } from "../../helpers/singleCell/signatures";
 import BarPlotPanel from "../barPlotPanel";
-import { themePalette } from "../../helpers/singleCell/themes";
+import { signatureColor as sharedSignatureColor } from "../../helpers/singleCell/signatureColors";
 import { mutationFilterTypes, mutationsColorPalette, mutationsGroups, nucleotideMutationText } from "../../helpers/utility";
 import { filterSnvColumns, sitesSeenInRows } from "../../helpers/singleCell/snvSites";
 import { rowMap } from "../../helpers/singleCell/matrix";
@@ -67,10 +67,11 @@ export function AetiologyLegend({ rows }) {
 }
 
 // COSMIC signature colours: the theme first, then d3 schemes for long tails
-let signatureColor = d3.scaleOrdinal([...d3.schemeTableau10, ...d3.schemeSet3, ...d3.schemePastel1]);
+let signatureTheme = "tableau";
+const signatureColor = (sig) => sharedSignatureColor(sig, signatureTheme);
 export const signatureColorOf = (sig) => signatureColor(sig);
 export const setSignatureTheme = (theme) => {
-  signatureColor = d3.scaleOrdinal([...themePalette(theme), ...d3.schemeSet3, ...d3.schemePastel1]);
+  signatureTheme = theme;
 };
 
 /** One stacked bar per set: each signature's share of the set's mutations. */
