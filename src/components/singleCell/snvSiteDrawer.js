@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Button, Checkbox, Descriptions, Drawer, Space, Table, Tag, Typography } from "antd";
+import { Button, Checkbox, Descriptions, Drawer, Space, Table, Tag, Tooltip, Typography } from "antd";
 import singleCellActions from "../../redux/singleCell/actions";
 import { snvMetricValue } from "../../helpers/singleCell/matrix";
+import { SIG_PROB_TOOLTIP, formatSigProbability } from "../../helpers/singleCell/siteSignature";
 import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
 import { SNV_CATEGORIES } from "./mutationSidePanel";
+import { SBS96 } from "../../helpers/singleCell/signatures";
 import useSignatureModel from "./signatures/useSignatureModel";
 import { signatureColorOf } from "./signaturePanel";
 import ColorTag from "./colorTag";
@@ -15,6 +17,7 @@ const { Text } = Typography;
 const IGV_MAX = 8;
 const categoryColor = Object.fromEntries(SNV_CATEGORIES.map((c) => [c.key, c.color]));
 
+const SBS96_INDEX = new Map(SBS96.map((c, k) => [c, k]));
 /**
  * One SNV site: annotation, where it maps on the tree, and every cell with
  * reads at the site (alt / depth / VAF). Pick cells (carriers preselected,
@@ -78,9 +81,11 @@ export default function SnvSiteDrawer({ open, onClose, variant, order, rows, cli
             <Descriptions.Item label="SBS96">
               {variant.context}
               {assigned?.signature && (
-                <Tag style={{ marginLeft: 6, borderColor: signatureColorOf(assigned.signature), color: signatureColorOf(assigned.signature) }}>
-                  {`${assigned.signature} · ${Math.round(100 * assigned.prob)}%`}
-                </Tag>
+                <Tooltip title={SIG_PROB_TOOLTIP}>
+                  <Tag style={{ marginLeft: 6, borderColor: signatureColorOf(assigned.signature), color: signatureColorOf(assigned.signature) }}>
+                    {formatSigProbability(model.posteriors.perChannel[SBS96_INDEX.get(variant.context)] || [{ signature: assigned.signature, prob: assigned.prob }])}
+                  </Tag>
+                </Tooltip>
               )}
             </Descriptions.Item>
           )}
