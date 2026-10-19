@@ -13,6 +13,10 @@ export function verdictOf(v) {
   return VERDICTS[v] || VERDICTS.not_testable;
 }
 
+/** Caveat text of a link / cell ("not conclusive: ..." from the exporter), or null. A consistent link with a caveat is shown as "✓*". */
+export const caveatOf = (x) => (x && x.caveat ? `${x.caveat}` : null);
+export const glyphOf = (x) => `${verdictOf(x?.verdict).glyph}${x?.verdict === "consistent" && caveatOf(x) ? "*" : ""}`;
+
 const STATUS_ORDER = { robust: 0, candidate: 1, exploratory: 2 };
 export const STATUS_LABEL = { robust: "robust", candidate: "candidate", exploratory: "exploratory" };
 
@@ -74,7 +78,7 @@ export function holdsOrNot(matrix, links = null) {
       const share = decided ? tally.counts.consistent / decided : null;
       cat = share == null ? "open" : share >= 2 / 3 ? "holds" : share <= 1 / 3 ? "fails" : "mixed";
     }
-    out[cat].push({ ...f, tally });
+    out[cat].push({ ...f, tally, caveat: link ? caveatOf(link) : null });
   });
   return out;
 }
