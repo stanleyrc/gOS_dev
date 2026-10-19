@@ -1280,7 +1280,7 @@
         "view-cnexpr": "CN vs expression",
         "amp-title": "Amplicon copies per cell",
         "amp-y": "walk copies (carriers)",
-        "amp-pct": "cells",
+        "amp-pct": "% of cells",
         "amp-help": "Each strip is one ecDNA walk of one patient (up to six per patient passing the filters): the copies of the walk in every cell that carries it, with the fraction of the patient's cells carrying it below. Walks come from the patients' walks.json (pipeline step walks).",
         "amp-none-pass": "No walk passes the filters.",
         "amp-empty": "No walks exported for these patients (pipeline step walks).",

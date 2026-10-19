@@ -9,6 +9,7 @@ import { binAt } from "../../../helpers/singleCell/matrix";
 import { spearman, walkStats } from "../../../helpers/singleCell/walks";
 import { correlationP, formatP } from "../../../helpers/singleCell/tests";
 import { BoxStrips } from "./charts";
+import { carrierBarLines } from "../../../helpers/singleCell/plotHover";
 import usePlotTheme from "../usePlotTheme";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
@@ -64,6 +65,8 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
       values: p.cellIds.map((id) => Number(wk.cells[id]) || 0).filter((v) => v > 0),
       ids: p.cellIds.filter((id) => (Number(wk.cells[id]) || 0) > 0),
       fraction: wk.stats.fraction,
+      total: p.cellIds.length,
+      bar: { fraction: wk.stats.fraction, title: carrierBarLines({ patient: p.patient, label: wk.label, nCarriers: p.cellIds.filter((id) => Number(wk.cells[id]) > 0).length, nCells: p.cellIds.length }).join("\n") },
     })),
   }));
   const stripGroups = stripsByPatient.flatMap((p) => p.groups);
@@ -154,21 +157,8 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
                 const pw = Math.max(320, Math.min(w - 8, 110 + p.groups.length * 110));
                 return (
                   <div key={p.patient}>
-                    <Text strong style={{ fontSize: 14 }}>{p.patient}</Text>
-                    <BoxStrips groups={p.groups} width={pw} height={300} yTitle={t("components.single-cell.cohort.amp-y")} log />
-                    <svg width={pw} height={64}>
-                      {p.groups.map((g, i) => {
-                        const bw = (pw - 76) / Math.max(1, p.groups.length);
-                        return (
-                          <g key={g.key} transform={`translate(${64 + i * bw},0)`}>
-                            <rect x={bw * 0.2} y={44 - g.fraction * 40} width={bw * 0.6} height={g.fraction * 40} fill={theme.faint} />
-                            <text x={bw / 2} y={41 - g.fraction * 40} textAnchor="middle" fontSize={TYPE.label} fill={INK.text}>{d3.format(".0%")(g.fraction)}</text>
-                            <title>{`${g.label}: ${g.ids.length} cells (${d3.format(".0%")(g.fraction)})`}</title>
-                          </g>
-                        );
-                      })}
-                      <text x={60} y={28} textAnchor="end" fontSize={TYPE.label} fill={INK.textSecondary}>{t("components.single-cell.cohort.amp-pct")}</text>
-                    </svg>
+                    <Text strong style={{ fontSize: 14, display: "block" }}>{p.patient}</Text>
+                    <BoxStrips groups={p.groups} width={pw} height={300} yTitle={t("components.single-cell.cohort.amp-y")} metric="Walk copies" unit="copies" noun="carrier cells" clickHint="" barTitle={t("components.single-cell.cohort.amp-pct")} log />
                   </div>
                 );
               })}

@@ -49,7 +49,7 @@ export default function CohortQcPanel({ summaries, datafiles, onOpenCell }) {
     if (!key) return [];
     return summaries.map((s, k) => {
       const cells = allCells.filter((c) => c._patient === s && (!tumorOnly || !/^normal$/i.test(`${c.clone_id || ""}`)));
-      return { key: s.caseReportId, label: s.caseReportId, color: patientColor(k), values: cells.map((c) => Number(c[key])), ids: cells.map((c) => c.cell_id), cells };
+      return { key: s.caseReportId, label: s.caseReportId, color: patientColor(k), total: cells.length, values: cells.map((c) => Number(c[key])), ids: cells.map((c) => c.cell_id), cells };
     });
   }, [summaries, allCells, key, tumorOnly]);
   const flagged = useMemo(() => {
@@ -90,6 +90,8 @@ export default function CohortQcPanel({ summaries, datafiles, onOpenCell }) {
           yTitle={def?.[1]}
           log={Boolean(def?.[2])}
           flagged={flagged}
+          metric={def?.[1]}
+          noun="cells"
           onPoint={(g, k) => onOpenCell && onOpenCell(g.cells[k])}
         />
         <HintLine text={t("components.single-cell.qc.cohort-help", { count: flagged.size })} />
