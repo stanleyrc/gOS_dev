@@ -1,3 +1,4 @@
+import { treeQualityNote } from "../../helpers/singleCell/compareChoices";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -1079,6 +1080,8 @@ export default function CellHeatmapPanel() {
     tree.status === "ok"
       ? t(`components.single-cell.tree.${tree.method}`)
       : t("components.single-cell.tree.none");
+  const altIndex = useSelector((s) => s.SingleCell.altTrees?.data);
+  const treeQuality = treeQualityNote(altIndex); // e.g. "weak: relaxed site set, 356 sites" (trees/index.json note)
 
   const ticks = useMemo(
     () => (heatmapType === "cn" && chromoBins ? genomicTicks(chromoBins, domainExtents(domains, heatWidth, DOMAIN_GAP)) : []),
@@ -1495,7 +1498,7 @@ export default function CellHeatmapPanel() {
               {t("components.single-cell.heatmap.cell-count", { count: nRows })}
             </Text>
             <Text type="secondary" className="sc-hint">
-              · <Provenance id="phylogeny">{treeNote}</Provenance>
+              · <Provenance id="phylogeny">{treeNote}{treeQuality && <Tooltip title={`This tree was built from a relaxed site set and should be read as provisional: ${treeQuality}`}><Tag color="warning" style={{ marginLeft: 6 }}>{`weak tree: ${treeQuality}`}</Tag></Tooltip>}</Provenance>
             </Text>
             {missingGenomes > 0 && (
               <span className="sc-note">
