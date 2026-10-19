@@ -63,3 +63,20 @@ export function patientScatterLines({ patient, xLabel, xValue, yLabel, yValue, n
 export function carrierBarLines({ patient, label, nCarriers, nCells }) {
   return [`${patient}: ${label}`, `Carried by ${fmtCount(nCarriers, nCells, "cells")}`, "Carrier = copies of the walk above zero in the cell"];
 }
+
+/** Hover for one dot of the CN-vs-expression Stouffer plot. */
+export function stoufferDotLines({ label, group, rho, p, pText, n, score, clipped = false, nPatients }) {
+  const dir = !Number.isFinite(score) ? "" : score > 0 ? "expression rises with copy number" : score < 0 ? "expression falls with copy number" : "no association";
+  const lines = [`${label}${group ? ` (${group.toLowerCase()})` : ""}`];
+  lines.push(`Weighted rho: ${Number.isFinite(rho) ? rho.toFixed(2) : "n/a"}${dir ? ` (${dir})` : ""}`);
+  lines.push(`Stouffer p: ${pText ?? (Number.isFinite(p) ? p.toExponential(1) : "n/a")}${Number.isFinite(score) ? `; score ${score.toFixed(1)}${clipped ? " (drawn at the axis limit)" : ""}` : ""}`);
+  lines.push(`${fmtNum(n)} tumor cells${Number.isFinite(Number(nPatients)) ? ` from ${fmtNum(nPatients)} patients` : ""}`);
+  return lines;
+}
+
+/** "BWH69 (115 cells)" style label with a thousands separator. */
+export const withCount = (label, n, noun = "cells") => (n != null && Number.isFinite(Number(n)) ? `${label} (${fmtNum(n)} ${noun})` : `${label}`);
+
+// axis-title suffix: unit of each per-cell QC metric (labels that already carry one are left alone)
+const QC_UNITS = { ploidy: "copies per genome", snv_count: "n", junction_count: "n", qc_reads: "reads", qc_depth: "x coverage", qc_mad: "of coverage, unitless", qc_gini: "0 = even, 1 = uneven", qc_ado: "fraction of het sites" };
+export const qcAxisTitle = (key, label, log) => `${label}${QC_UNITS[key] ? ` (${QC_UNITS[key]})` : ""}${log ? ", log scale" : ""}`;

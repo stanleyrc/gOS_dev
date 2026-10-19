@@ -2,11 +2,13 @@ import React, { useMemo } from "react";
 import { Card, Space, Table } from "antd";
 import { patientTreeStats } from "../../../helpers/singleCell/treeShape";
 import HintLine from "../hintLine";
+import { fmtNum } from "../../../helpers/singleCell/plotHover";
 
 const TREE_HELP =
   "Trunk fraction: truncal share of tumor SNVs (mapped onto the tree). Private share: SNVs in one cell, the ongoing mutation burden. Sackin / Yule: imbalance of the tumor tree (1 = as balanced as random branching; higher = caterpillar-like). LBI CV: spread of the local branching index (uneven expansion). Copy-number driver events from the patient's filtered events by the share of tumor cells carrying them; one-cell events include single-cell noise.";
 
 const pct = (x) => (Number.isFinite(x) ? `${Math.round(100 * x)}%` : "–");
+const cnt = (x) => (Number.isFinite(x) ? fmtNum(x) : "–");
 const fmt = (x, d = 2) => (Number.isFinite(x) ? x.toFixed(d) : "–");
 
 /**
@@ -45,16 +47,16 @@ export default function CohortTreeShapePanel({ summaries, files, datafiles }) {
           scroll={{ x: 900 }}
           columns={[
             { title: "Patient", dataIndex: "patient", fixed: "left" },
-            { title: "Tumor cells", dataIndex: "nCells", render: (x, r) => (r.loading ? "loading…" : x ?? "–") },
-            { title: "Tumor SNVs", dataIndex: "nSnv", render: (x) => x ?? "–" },
-            { title: "Trunk fraction", dataIndex: "trunkFrac", sorter: (a, b) => (a.trunkFrac ?? -1) - (b.trunkFrac ?? -1), render: pct },
-            { title: "Private SNVs", dataIndex: "privateFrac", sorter: (a, b) => (a.privateFrac ?? -1) - (b.privateFrac ?? -1), render: pct },
-            { title: "Sackin / Yule", dataIndex: "sackinNorm", sorter: (a, b) => (a.sackinNorm ?? -1) - (b.sackinNorm ?? -1), render: (x) => fmt(x) },
-            { title: "LBI CV", dataIndex: "lbiCv", render: (x) => fmt(x) },
-            { title: "SCNA events", dataIndex: "nScna", render: (x) => x ?? "–" },
-            { title: "Clonal SCNA (≥ 90%)", dataIndex: "scnaClonal", render: (x) => x ?? "–" },
-            { title: "Subclonal SCNA (≥ 2 cells)", dataIndex: "scnaSubclonal", sorter: (a, b) => (a.scnaSubclonal ?? -1) - (b.scnaSubclonal ?? -1), render: (x) => x ?? "–" },
-            { title: "One-cell SCNA", dataIndex: "scnaPrivate", render: (x) => x ?? "–" },
+            { title: "Tumor cells (n)", dataIndex: "nCells", align: "right", render: (x, r) => (r.loading ? "loading (not available yet)" : cnt(x)) },
+            { title: "Tumor SNVs (n)", dataIndex: "nSnv", align: "right", render: cnt },
+            { title: "Trunk fraction (% of SNVs)", dataIndex: "trunkFrac", sorter: (a, b) => (a.trunkFrac ?? -1) - (b.trunkFrac ?? -1), render: pct },
+            { title: "Private SNVs (% of SNVs)", dataIndex: "privateFrac", sorter: (a, b) => (a.privateFrac ?? -1) - (b.privateFrac ?? -1), render: pct },
+            { title: "Sackin / Yule (1 = random tree)", dataIndex: "sackinNorm", sorter: (a, b) => (a.sackinNorm ?? -1) - (b.sackinNorm ?? -1), render: (x) => fmt(x) },
+            { title: "LBI CV (unitless)", dataIndex: "lbiCv", render: (x) => fmt(x) },
+            { title: "SCNA events (n)", dataIndex: "nScna", align: "right", render: cnt },
+            { title: "Clonal SCNA (n, ≥ 90% of cells)", dataIndex: "scnaClonal", align: "right", render: cnt },
+            { title: "Subclonal SCNA (n, ≥ 2 cells)", dataIndex: "scnaSubclonal", align: "right", sorter: (a, b) => (a.scnaSubclonal ?? -1) - (b.scnaSubclonal ?? -1), render: cnt },
+            { title: "One-cell SCNA (n)", dataIndex: "scnaPrivate", align: "right", render: cnt },
           ]}
         />
       </Space>

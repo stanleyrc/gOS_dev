@@ -190,7 +190,7 @@ function HitsTable({ hits, verdicts, onIgv }) {
         >
           <Space size={4}>
             <Tag color={STATUS_COLOR[h.status]}>{STATUS_LABEL[h.status]}</Tag>
-            <Text>{clonalityText(h)}</Text>
+            <Text style={{ minWidth: 150, display: "inline-block" }}>{clonalityText(h)}</Text>
           </Space>
         </Tooltip>
       ),
@@ -231,7 +231,7 @@ function HitsTable({ hits, verdicts, onIgv }) {
       ),
     },
   ];
-  return <Table size="small" rowKey={(h) => `${h.patient}|${h.site}`} columns={columns} dataSource={hits} pagination={false} />;
+  return <Table size="small" rowKey={(h) => `${h.patient}|${h.site}`} columns={columns} dataSource={hits} pagination={false} scroll={{ x: "max-content" }} />;
 }
 
 function NoteBlock({ notes, hits, onIgv }) {
@@ -268,8 +268,8 @@ function DriverGeneTable({ data, verdicts, onIgv }) {
     { title: "Patients (any)", key: "pa", render: (_, r) => r.patients.length },
     { title: "Independent hits", key: "h", render: (_, r) => <span>{r.n_hits}{r.multi_hit_patients.length ? <Tag color="purple" style={{ marginLeft: 6 }}>multi-hit: {r.multi_hit_patients.join(", ")}</Tag> : null}</span> },
     { title: "Consequences", key: "c", render: (_, r) => Object.entries(r.classes).map(([k, v]) => `${v} ${CLASS_LABEL[k] || k}`).join(", ") },
-    { title: "Carrier fraction per patient", key: "f", render: (_, r) => r.hits.map((h) => `${h.patient} ${pct(h.carrier_fraction)}`).join(" · ") },
-    { title: "Territory bp", dataIndex: "length_bp", render: (v) => (v ? v.toLocaleString() : "n/a") },
+    { title: "Carrier fraction per patient", key: "f", render: (_, r) => r.hits.map((h) => `${h.patient} ${pct(h.carrier_fraction)}${Number.isFinite(h.n_carriers) && Number.isFinite(h.n_tumour_cells) ? ` (${h.n_carriers} of ${h.n_tumour_cells} cells)` : ""}`).join(" · ") },
+    { title: "Callable territory (bp)", dataIndex: "length_bp", render: (v) => (v ? v.toLocaleString() : "n/a") },
     { title: "Recurrence q (trunc)", key: "q", sorter: (a, b) => (a.q ?? 1) - (b.q ?? 1), render: (_, r) => (r.recurrence_trunc ? <Tooltip title={`p ${fmtP(r.recurrence_trunc.p_patients)}; ${r.recurrence_trunc.hits} subclonal truncating hits in the mutation map, ${r.recurrence_trunc.expected_hits?.toFixed(3)} expected`}><span>{fmtP(r.q)}</span></Tooltip> : <Text type="secondary">no subclonal truncating hit</Text>) },
   ];
   return (
@@ -302,7 +302,7 @@ function RecurrenceCard({ data }) {
     { title: "Hits", dataIndex: "hits" },
     { title: "Expected hits", dataIndex: "expected_hits", render: (v) => v.toFixed(3) },
     { title: "Obs / exp", dataIndex: "ratio" },
-    { title: "Territory bp", dataIndex: "length_bp", render: (v) => v.toLocaleString() },
+    { title: "Callable territory (bp)", dataIndex: "length_bp", render: (v) => v.toLocaleString() },
     { title: "p (patients)", dataIndex: "p_patients", render: fmtP },
     { title: "q (patients)", dataIndex: "q_patients", render: (v) => <Text strong={v < 0.1}>{fmtP(v)}</Text> },
     { title: "q (hits)", dataIndex: "q_hits", render: fmtP },
