@@ -378,13 +378,15 @@ export function packSnvCells(cells = {}) {
     const keep = (list || []).filter((e) => (Number(e[1]) || 0) + (Number(e[2]) || 0) > 0);
     const idx = new Int32Array(keep.length);
     const vaf = new Uint8Array(keep.length);
+    const gt = new Int8Array(keep.length); // called genotype: 1 alt, 0 ref, -1 not called
     keep.forEach((e, k) => {
       const ref = Number(e[1]) || 0;
       const alt = Number(e[2]) || 0;
       idx[k] = e[0];
       vaf[k] = Math.round((250 * alt) / (ref + alt));
+      gt[k] = e[3] === 1 ? 1 : e[3] === 0 ? 0 : -1;
     });
-    out[id] = { idx, vaf };
+    out[id] = { idx, vaf, gt };
   });
   return out;
 }
