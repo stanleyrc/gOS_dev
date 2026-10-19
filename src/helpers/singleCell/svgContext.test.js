@@ -40,8 +40,18 @@ describe("SvgContext", () => {
     expect(svg).toContain('dominant-baseline="central"');
     expect(svg).toContain("A &lt; B");
     expect(svg).toMatch(/transform="matrix\(0 -1 1 0 5 6\)"/);
-    expect(svg).toMatch(/<path d="M55 50A5 5 0 0 1 45 50A5 5 0 0 1 55 50"/);
+    expect(svg).toMatch(/<path d="M55 50C55 52.76 52.76 55 50 55C/);
     expect(svg).toContain('<image x="10" y="10" width="40" height="20"');
+  });
+  it("transforms path points when they are added (save / translate / restore before fill)", () => {
+    const ctx = new SvgContext(20, 20, { imageUrl: () => null });
+    ctx.beginPath();
+    ctx.save();
+    ctx.translate(10, 10);
+    ctx.rect(-1, -1, 2, 2);
+    ctx.restore();
+    ctx.fill();
+    expect(ctx.toSvg()).toContain('<path d="M9 9L11 9L11 11L9 11Z" fill="#000000"/>');
   });
   it("keeps clip paths and gradients", () => {
     const ctx = new SvgContext(10, 10, { imageUrl: () => null });
@@ -57,7 +67,7 @@ describe("SvgContext", () => {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 10, 2);
     const svg = ctx.toSvg();
-    expect(svg).toContain('<clipPath id="clip1"><path d="M0 0h5v5h-5Z"/></clipPath>');
+    expect(svg).toContain('<clipPath id="clip1"><path d="M0 0L5 0L5 5L0 5Z"/></clipPath>');
     expect(svg).toContain('<g clip-path="url(#clip1)"><rect');
     expect(svg).toContain('<stop offset="1" stop-color="rgb(0,0,0)" stop-opacity="0.5"/>');
     expect(svg).toContain('fill="url(#grad2)"');
