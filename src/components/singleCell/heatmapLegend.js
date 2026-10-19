@@ -111,7 +111,7 @@ export default function HeatmapLegend({
         { color: GT_COLORS.alt, label: "alt" },
         { color: GT_COLORS.ref, label: "ref" },
       ];
-      note = null;
+      note = "zoomed out: grey = fraction of sites in the pixel with an alt genotype call";
     } else if (snvMetric === "alt") {
       items = ALT_BINS.map((b) => ({ color: b.color, label: b.label }));
       note = `zoomed in: ALT reads per cell in bins; zoomed out: grey = fraction of sites in the pixel with alt reads`;
