@@ -1,6 +1,6 @@
 import {
   allelicFit, blockMeanCn, blockMedian, cladePloidyRows, evenSample, fitCurve, histogram, integerFit, normalise,
-  ploidySummary, poolNormalised, segmentMeans, solutionOf, stateMean, weightedHistogram, cnAt,
+  ploidySummary, poolByPosition, poolNormalised, segmentMeans, solutionOf, stateMean, weightedHistogram, cnAt,
 } from "./cnFit";
 
 describe("cnFit", () => {
@@ -78,6 +78,18 @@ describe("cnFit", () => {
     expect(p.skipped).toBe(2);
     expect(evenSample([1, 2, 3, 4, 5, 6], 3)).toEqual([1, 3, 5]);
     expect(evenSample([1, 2], 5)).toEqual([1, 2]);
+  });
+
+  it("pools cells with different bin sets by position", () => {
+    const a = { x: [1, 2, 3, 4], y: [2, 2, 2, 2] };
+    const b = { x: [1, 2, 3, 4], y: [1, NaN, 3, 4] };
+    const c = { x: [1, 2, 3, 4], y: [4, 4, NaN, 4] };
+    const p = poolByPosition([a, b, c], 0.6);
+    expect(p.used).toBe(3);
+    expect(p.x).toEqual([1, 2, 3, 4]); // each bin is in at least 2 of 3 cells
+    expect(p.m.reduce((s, v) => s + v, 0) / p.m.length).toBeCloseTo(1);
+    expect(poolByPosition([a, b, c], 1).x).toEqual([1, 4]);
+    expect(poolByPosition([{ x: [1], y: [NaN] }]).m).toEqual([]);
   });
 
   it("summarises ploidy and ranks clades", () => {

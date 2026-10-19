@@ -6,7 +6,7 @@ import usePatientClades from "./usePatientClades";
 import { casePath, loadCellTrack, tryGet } from "../../redux/singleCell/loaders";
 import {
   allelicFit, blockMeanCn, blockMedian, cladePloidyRows, cnAt, evenSample, fitCurve, histogram, integerFit, normalise,
-  ploidySummary, poolNormalised, segmentMeans, solutionOf, stateMean, weightedHistogram,
+  ploidySummary, poolByPosition, segmentMeans, solutionOf, stateMean, weightedHistogram,
 } from "../../helpers/singleCell/cnFit";
 
 const { Text } = Typography;
@@ -44,12 +44,11 @@ function useFitData(dataset, cellIds) {
         setState({ status: "missing", reason: `coverage.arrow not available for ${single ? cellIds[0] : "any selected cell"}` });
         return;
       }
-      const norm = ok.map((c) => ({ ...c, ...normalise(c.y) }));
-      const binned = norm.map((c) => blockMedian(c.m, BIN_BLOCK));
-      const pooled = poolNormalised(binned);
-      const out = { status: "ok", single, ids, used: pooled.used, skipped: pooled.skipped, requested: cellIds.length, m: pooled.m };
+      const pooled = single ? null : poolByPosition(ok);
+      const one = single ? normalise(ok[0].y) : null;
+      const out = { status: "ok", single, ids, used: single ? 1 : pooled.used, requested: cellIds.length, m: blockMedian(single ? one.m : pooled.m, BIN_BLOCK) };
       if (single) {
-        const c = norm[0];
+        const c = { ...ok[0], ...one };
         const [meta, het, total] = await Promise.all([
           tryGet(casePath(dataset, c.id, "metadata.json")),
           tryGet(casePath(dataset, c.id, "hetblocks.json")),
@@ -314,7 +313,7 @@ export default function CnFitCard() {
                 </Space>
                 {!data.single && (
                   <Text type="secondary">
-                    {`Pooled coverage of ${data.used} of ${data.requested} cells${data.requested > MAX_POOLED ? ` (an even sample of ${MAX_POOLED})` : ""}${data.skipped ? `; ${data.skipped} skipped (different bin set)` : ""}; fitted ploidy is the median of the cells' ploidy. Allelic support is shown for single cells.`}
+                    {`Pooled coverage of ${data.used} of ${data.requested} cells${data.requested > MAX_POOLED ? ` (an even sample of ${MAX_POOLED})` : ""}; fitted ploidy is the median of the cells' ploidy. Allelic support is shown for single cells.`}
                   </Text>
                 )}
                 <table style={{ borderCollapse: "collapse", fontSize: 13 }}>
