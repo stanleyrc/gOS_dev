@@ -23,6 +23,7 @@ import {
 } from "../../../helpers/singleCell/subclonalDrivers";
 import CellIgvPanel from "../cellIgvPanel";
 import useCohortExport from "./useCohortExport";
+import { SIG_PROB_TOOLTIP } from "../../../helpers/singleCell/siteSignature";
 
 const { Text, Paragraph } = Typography;
 const NOTE_FILE = "subclonal_drivers.json";
@@ -87,8 +88,8 @@ function VerdictTag({ verdicts, hit }) {
 function SignatureText({ sig }) {
   if (!sig?.ranked?.length) return <Text type="secondary">n/a</Text>;
   return (
-    <Tooltip title={`P(signature | SBS96 context), exposures of the ${sig.set} set (joint fit)`}>
-      <span>{sig.ranked.slice(0, 2).map((r) => `${r.signature} ${Math.round(100 * r.prob)}%`).join(", ")}</span>
+    <Tooltip title={`${SIG_PROB_TOOLTIP} Exposures of the ${sig.set} set.`}>
+      <span>{sig.ranked.slice(0, 2).map((r) => `${r.signature} p=${r.prob.toFixed(2)}`).join(", ")}</span>
     </Tooltip>
   );
 }
