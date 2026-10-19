@@ -7,7 +7,7 @@ import { GenesText, NOTE } from "../notableSvCard";
 
 const { Text } = Typography;
 
-/** Cohort Overview: one line per non-DM complex-SV family across patients, by cell fraction. Classifier families, not validated SVs. */
+/** Cohort Overview: one line per complex-SV family (ecDNA first) across patients, by cell fraction. Classifier families, not validated SVs. */
 export default function CohortNotableSvs({ summaries = [], files = {}, onPatient, loading = false }) {
   const genesList = useSelector((s) => s.Genes?.list || []);
   const rows = useMemo(() => {
@@ -25,12 +25,12 @@ export default function CohortNotableSvs({ summaries = [], files = {}, onPatient
     { title: "Chromosomes", render: (_, r) => r.chromosomes.join(", ") },
     { title: "Cells", width: 110, render: (_, r) => `${r.n}${r.fraction ? ` (${Math.round(100 * r.fraction)}%)` : ""}` },
     { title: "Genes inside (drivers first)", render: (_, r) => <GenesText r={r} /> },
-    { title: "ecDNA", width: 110, render: (_, r) => (r.ecdna ? <Tag color="purple">inside DM</Tag> : null) },
+    { title: "ecDNA", width: 110, render: (_, r) => (r.ecdna ? <Tag color="purple">inside ecDNA</Tag> : null) },
   ];
   return (
     <Card size="small" title="Notable SVs across patients" extra={<Text type="secondary" style={{ fontSize: 12 }}>{NOTE}</Text>}>
       {!rows.length ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loading ? "Loading patients..." : "No non-DM complex-SV family"} />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loading ? "Loading patients..." : "No complex-SV family"} />
       ) : (
         <Table size="small" pagination={{ pageSize: 15, hideOnSinglePage: true }} rowKey={(r) => `${r.patient}|${r.key}`} dataSource={rows} columns={columns} />
       )}

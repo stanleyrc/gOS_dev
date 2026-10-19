@@ -59,7 +59,7 @@ describe("selection", () => {
     expect(rec).toContain("C::D");
     expect(rec).not.toContain("upstream of A::B");
     expect(rec).not.toContain("ZZZ3");
-    expect(rec.some((l) => /^DM/.test(l))).toBe(true);
+    expect(rec.some((l) => /^ecDNA/.test(l))).toBe(true);
     const all = selectDrivers(e, { ...DEFAULT_SELECTION, preset: "all" });
     expect(all).toHaveLength(7);
     expect(all.some((d) => d.upstreamOnly)).toBe(true);

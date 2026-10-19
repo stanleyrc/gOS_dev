@@ -24,16 +24,16 @@ describe("notable SVs", () => {
     expect(g.total).toBe(2);
     expect(genesInFootprint([], "7:1-10").genes).toEqual([]);
   });
-  test("non-DM families only, with label, members, genes and ecDNA flag", () => {
+  test("ecDNA families first, then the rest, with label, members, genes and ecDNA flag", () => {
     const rows = notableSvs(buildDriverEntries(events), { genesList: genes });
-    expect(rows.map((r) => r.label)).toEqual(["rDelDup chr1↔chr7", "rDel chr3"]);
+    expect(rows.map((r) => r.label)).toEqual(["ecDNA chr7 (+chr1 in subsets)", "complex ecDNA chr9", "rDelDup chr1↔chr7", "rDel chr3"]);
+    expect(rows.map((r) => r.isEcdna)).toEqual([true, true, false, false]);
     const f2 = rows.find((r) => r.entry.family?.id === "P:F2");
     expect(f2.n).toBe(4);
     expect(f2.members).toBe("rDelDup (1,7) in 4 cells, TIC (1,7) in 4 cells");
     expect(f2.chromosomes).toEqual(["chr1", "chr7"]);
     expect(f2.genes).toEqual(["EGFR", "ZZZ1"]);
     expect(f2.ecdna).toMatchObject({ label: "DM (7)", overlap: 4, carriers: 4 });
-    expect(rows.every((r) => !/dm/i.test(r.entry.family?.dominant?.vartype || r.entry.event.vartype))).toBe(true);
   });
   test("no gene annotation: genes null (not available), not empty", () => {
     expect(notableSvs(buildDriverEntries(events))[0].genes).toBeNull();
@@ -43,5 +43,14 @@ describe("notable SVs", () => {
     const out = cohortNotableSvs({ P1: buildDriverEntries([lo]), P2: buildDriverEntries(events) });
     expect(out[0].patient).toBe("P2");
     expect(out[out.length - 1].patient).toBe("P1");
+  });
+});
+
+describe("ecDNA families in notable SVs", () => {
+  const { NOTABLE_KINDS, isEcdnaKind } = require("./notableSvs");
+  it("DM is a notable kind and is flagged ecDNA", () => {
+    expect(NOTABLE_KINDS.test("DM")).toBe(true);
+    expect(isEcdnaKind("DM")).toBe(true);
+    expect(isEcdnaKind("rDelDup")).toBe(false);
   });
 });

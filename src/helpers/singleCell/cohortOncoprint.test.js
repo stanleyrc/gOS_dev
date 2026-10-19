@@ -56,7 +56,7 @@ describe("oncoprintGrid and sorting", () => {
     const g = oncoprintGrid(byP());
     expect(g.rows.map((r) => r.gene)[0]).toMatch(/EGFR|TP53/);
     expect(g.rows.find((r) => r.gene === "TP53").nPatients).toBe(2);
-    expect(g.rows.find((r) => /DM/.test(r.gene)).cells.B.best.cls).toBe("complex");
+    expect(g.rows.find((r) => /ecDNA/.test(r.gene)).cells.B.best.cls).toBe("complex");
     expect(g.rows.find((r) => r.gene === "EGFR").cells.A.clonal).toBe(true);
     expect(g.rows.find((r) => r.gene === "EGFR").cells.C.clonal).toBe(false);
   });

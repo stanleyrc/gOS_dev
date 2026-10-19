@@ -1,4 +1,5 @@
-// d3-free: "notable structural variants" = non-DM complex-SV families (classifier families, not validated SVs).
+// d3-free: "notable structural variants" = complex-SV families (classifier families, not validated SVs); ecDNA families first,
+// then rDelDup / rDel / rDup / TIC / chromoplexy / BFB / chromothripsis / rigma / tyfonas by cell fraction.
 import { cladeFitScore } from "./cladeFit";
 import { placementOf } from "./complexTiming";
 import { complexChromosomes, dmOverlap } from "./complexLabels";
@@ -6,7 +7,8 @@ import { classificationText, familyClassifications } from "./complexFamilies";
 import { parseFootprint } from "./complexZoom";
 import { GBM_GENES } from "./geneInfo";
 
-export const NOTABLE_KINDS = /^(rdeldup|rdel|rdup|tic|chromoplexy|bfb|chromothripsis|rigma|tyfonas)$/i;
+export const NOTABLE_KINDS = /^(dm|cpxdm|rdeldup|rdel|rdup|tic|chromoplexy|bfb|chromothripsis|rigma|tyfonas)$/i;
+export const isEcdnaKind = (k) => /^(dm|cpxdm)$/i.test(`${k || ""}`);
 
 /** Genes (protein-coding by default) overlapping the footprint: driver genes first, then by citation importance. */
 export function genesInFootprint(genesList = [], location, { max = 8, driverSet = GBM_GENES, codingOnly = true } = {}) {
@@ -46,6 +48,7 @@ export function notableSvs(entries = [], { genesList = null, treeLayout = null, 
         key: d.key,
         entry: d,
         label: d.label,
+        isEcdna: isEcdnaKind(kindOf(d)),
         chromosomes: complexChromosomes(d.family?.footprint || location).map((c) => `chr${c}`),
         members: classificationText(members),
         n: d.n,
@@ -59,12 +62,12 @@ export function notableSvs(entries = [], { genesList = null, treeLayout = null, 
         ecdna: dm && dm.overlap > 0 ? { label: dm.dms.map((x) => x.label)[0], overlap: dm.overlap, carriers: dm.carriers } : null,
       };
     })
-    .sort((a, b) => (b.fraction || 0) - (a.fraction || 0) || b.n - a.n || a.label.localeCompare(b.label));
+    .sort((a, b) => Number(b.isEcdna) - Number(a.isEcdna) || (b.fraction || 0) - (a.fraction || 0) || b.n - a.n || a.label.localeCompare(b.label));
 }
 
 /** Cohort lines: one per family, sorted by cell fraction. perPatient: { patient: entries }. */
 export function cohortNotableSvs(perPatient = {}, opts = {}) {
   return Object.entries(perPatient)
     .flatMap(([patient, entries]) => notableSvs(entries, opts).map((r) => ({ ...r, patient })))
-    .sort((a, b) => (b.fraction || 0) - (a.fraction || 0) || b.n - a.n || a.patient.localeCompare(b.patient));
+    .sort((a, b) => Number(b.isEcdna) - Number(a.isEcdna) || (b.fraction || 0) - (a.fraction || 0) || b.n - a.n || a.patient.localeCompare(b.patient));
 }
