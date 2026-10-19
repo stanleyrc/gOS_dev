@@ -68,6 +68,17 @@ export const PAPER_VARIANT_GROUPS = {
   ],
 };
 
+// Fig 5B: per-walk amplicon CN heatmap columns (display label, walk label in walks.json); BWH69 ecCombined = MYCN 3 (user, 2026-10-10)
+export const PAPER_WALK_HEATMAP = {
+  BWH69: [
+    { label: "ecMYCN", walk: "MYCN 1" },
+    { label: "ecEGFR v3", walk: "EGFR 1" },
+    { label: "ecCDK4-1", walk: "GLI1,DDIT3,CDK4 1" },
+    { label: "ecCDK4-2", walk: "CDK4 1" },
+    { label: "ecCombined", walk: "MYCN 3" },
+  ],
+};
+
 const chrOf = (c) => `${c}`.replace(/^chr/, "");
 
 /** [start, end] of a walk's nodes on chromosome `chr` (null when it has none there). */

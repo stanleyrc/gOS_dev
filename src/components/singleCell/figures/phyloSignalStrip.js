@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Select, Space, Typography } from "antd";
+import { Checkbox, Select, Space, Typography } from "antd";
 import FigureCanvas, { useFigureStyleName } from "./figureCanvas";
 import { textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
@@ -60,7 +60,9 @@ export default function PhyloSignalStrip({ signals, onSelectWalk }) {
   const [genes, setGenes] = useState(null);
   const shownGenes = useMemo(() => genes || (geneSets.some((g) => g.geneSet === "EGFR") ? ["EGFR"] : geneSets.slice(0, 1).map((g) => g.geneSet)), [genes, geneSets]);
   const [controls, setControls] = useState(["Seq. depth", "Mean somatic VAF"]);
-  const { columns, missing } = useMemo(() => phyloSignalColumns(signals, { controls, geneSets: shownGenes }), [signals, controls, shownGenes]);
+  // the paper: manually reviewed walks, controls of the patients with the amplicon
+  const [amplifiedOnly, setAmplifiedOnly] = useState(true);
+  const { columns, missing } = useMemo(() => phyloSignalColumns(signals, { controls, geneSets: shownGenes, curatedOnly: true, amplifiedOnly }), [signals, controls, shownGenes, amplifiedOnly]);
   const patients = useMemo(() => [...new Set(columns.flatMap((c) => c.points.map((p) => p.patient)))].sort(), [columns]);
   const shapeOf = useCallback((p) => SHAPES[patients.indexOf(p) % SHAPES.length], [patients]);
   const LEG = 92; // patient shape legend, drawn in the canvas so it exports with the panel
@@ -74,7 +76,15 @@ export default function PhyloSignalStrip({ signals, onSelectWalk }) {
   const tHi = zTransform(zHi) + 0.05;
   const sy = useCallback((z) => plot.y1 - ((zTransform(z) - tLo) / (tHi - tLo)) * (plot.y1 - plot.y0), [plot.y0, plot.y1, tLo, tHi]);
   const colW = (plot.x1 - plot.x0) / Math.max(1, columns.length);
-  const colorOf = useCallback((col, pt) => (col.kind === "control" ? (paper ? "#3A3A3A" : "#7f7f7f") : paper ? paperAmpColor(pt.geneSet) : geneSetColor(pt.geneSet)), [paper]);
+  // paper colours (fig3_lib panel_E): depth dark grey, EGFR ecDNA purple, somatic VAF brown
+  const colorOf = useCallback(
+    (col, pt) => {
+      if (col.kind === "control") return paper ? (col.key === "c:Mean somatic VAF" ? "#9C6119" : "#3A3A3A") : "#7f7f7f";
+      if (paper) return pt.geneSet === "EGFR" ? "#4B2C91" : paperAmpColor(pt.geneSet);
+      return geneSetColor(pt.geneSet);
+    },
+    [paper]
+  );
   const pos = useMemo(() => {
     // deterministic spread within a column: points sorted by z, alternate sides
     const out = new Map();
@@ -126,7 +136,7 @@ export default function PhyloSignalStrip({ signals, onSelectWalk }) {
         const cx = x0 + colW * (ci + 0.5);
         // median bar
         if (Number.isFinite(col.median)) {
-          ctx.strokeStyle = col.kind === "control" ? c.text : colorOf(col, col.points[0]);
+          ctx.strokeStyle = colorOf(col, col.points[0]);
           ctx.lineWidth = 1.6;
           ctx.beginPath();
           ctx.moveTo(cx - colW * 0.3, sy(col.median));
@@ -175,17 +185,20 @@ export default function PhyloSignalStrip({ signals, onSelectWalk }) {
         <Select size="small" mode="multiple" style={{ minWidth: 160 }} value={shownGenes} onChange={(v) => setGenes(v)} options={geneSets.map((g) => ({ value: g.geneSet, label: `${g.geneSet} (${g.patients})` }))} />
         <Text type="secondary">Controls</Text>
         <Select size="small" mode="multiple" style={{ minWidth: 200 }} value={controls} onChange={setControls} options={controlOptions} />
+        <Checkbox checked={amplifiedOnly} onChange={(e) => setAmplifiedOnly(e.target.checked)}>
+          only patients with the amplicon
+        </Checkbox>
       </Space>
       <FigureCanvas
         width={width}
         height={height}
         draw={draw}
         ariaLabel="Fig 3E phylogenetic signal"
-        tooltip={(h) => [`${h.p.patient} · ${h.p.label}`, ["Moran's I z", h.p.z.toFixed(2)], ["p (perm.)", h.p.p ?? "–"], ["cells on tree", h.p.n ?? "–"], h.p.walkId ? "click to open the walk" : null].filter(Boolean)}
+        tooltip={(h) => [`${h.p.patient} · ${h.p.label}`, ["Moran's I z", h.p.z.toFixed(2)], h.p.source ? ["depth", h.p.source] : null, ["p (perm.)", h.p.p ?? "–"], ["cells on tree", h.p.n ?? "–"], h.p.walkId ? "click to open the walk" : null].filter(Boolean)}
         onClick={(h) => h.p.walkId && onSelectWalk?.(h.p.patient, h.p.walkId, h.p.geneSet)}
       />
       <div className="sc-fig-caption">
-        Points: patients (amplicons: each walk). Dashed: z = 1.645 (one-sided p = 0.05). From phylo_signal.json (permutation null, weights 1 / patristic distance).
+        Points: patients (amplicons: each manually reviewed walk). Dashed: z = 1.645 (one-sided p = 0.05). From phylo_signal.json (permutation null, weights 1 / patristic distance).
         {missing.map((m) => ` ${m.key} not available for ${m.patients.join(", ")} (not recorded).`).join("")}
       </div>
     </div>
