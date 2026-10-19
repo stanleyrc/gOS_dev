@@ -5,6 +5,12 @@
 
 export const PHONE_MAX_WIDTH = 768;
 export const RAIL_WIDTH = 48;
+/** Hover intent of the rail panel (ms): open after resting on the rail, close after leaving it. */
+export const HOVER_OPEN_MS = 200;
+export const HOVER_CLOSE_MS = 250;
+
+/** First item of a rail group that can be opened (group icons navigate to it). */
+export const firstEnabledItem = (items) => (items || []).find((it) => it && !it.disabled) || null;
 
 /** Patient page groups: icon is an @ant-design/icons name; tabs carry the one-line description shown on hover. */
 export const PATIENT_RAIL = [

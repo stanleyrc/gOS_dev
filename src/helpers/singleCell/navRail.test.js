@@ -1,8 +1,16 @@
-import { PATIENT_RAIL, cohortGroupOfView, cohortRail, isPhoneWidth, patientGroupOfTab, railContext } from "./navRail";
+import { HOVER_CLOSE_MS, HOVER_OPEN_MS, PATIENT_RAIL, cohortGroupOfView, firstEnabledItem, cohortRail, isPhoneWidth, patientGroupOfTab, railContext } from "./navRail";
 import { finderHref } from "./welcomeCards";
 import { normalizeMethods, searchMethods } from "./methodsDoc";
 
 describe("navRail", () => {
+  it("group icons go to the first enabled page; hover intent delays are short and positive", () => {
+    expect(firstEnabledItem([{ id: "a", disabled: true }, { id: "b" }, { id: "c" }]).id).toBe("b");
+    expect(firstEnabledItem([{ id: "a", disabled: true }])).toBeNull();
+    expect(firstEnabledItem(undefined)).toBeNull();
+    expect(HOVER_OPEN_MS).toBeGreaterThan(0);
+    expect(HOVER_OPEN_MS).toBeLessThanOrEqual(400);
+    expect(HOVER_CLOSE_MS).toBeGreaterThan(0);
+  });
   it("maps tabs (incl. retired 16, 17) to groups", () => {
     expect(patientGroupOfTab("7")).toBe("tree");
     expect(patientGroupOfTab(16)).toBe("report");
