@@ -69,7 +69,7 @@ export function formatSiteSignature(result, { tagOf = () => "", top = 4, minProb
   const shown = result.ranked.filter((r, i) => i === 0 || r.prob >= minProb).slice(0, top);
   const parts = shown.map((r) => {
     const tag = tagOf(r.signature);
-    return `${r.signature}${tag ? ` (${tag})` : ""} ${r.prob.toFixed(2)}`;
+    return `${r.signature}${tag ? ` (${tag})` : ""} p=${r.prob.toFixed(2)}`;
   });
   const more = result.ranked.length - shown.length;
   return `${parts.join(" · ")}${more > 0 ? " · …" : ""}, set: ${result.set}, fit: ${result.fit}`;
@@ -77,3 +77,17 @@ export function formatSiteSignature(result, { tagOf = () => "", top = 4, minProb
 
 export const SIGNATURE_METHOD_HINT = (fit) =>
   `Signature per SNV: context-only assignment, P(signature | trinucleotide context) proportional to exposure x COSMIC v3.4 profile, exposures from the ${fit || "patient"} fit of the site's own tree-site set when it has one, else the all-sites fit. It does not use read-level or cell-level evidence.`;
+
+/**
+ * Explicit wording of a context-only posterior: "SBS1 (p = 0.72 that this variant arose from SBS1); runner-up SBS5 (p = 0.20)".
+ * ranked: [{ signature, prob }] sorted by prob (channelPosteriors output for the variant's SBS96 context).
+ */
+export function formatSigProbability(ranked) {
+  if (!ranked?.length) return "not available (no signature probability)";
+  const [a, b] = ranked;
+  const head = `${a.signature} (p = ${a.prob.toFixed(2)} that this variant arose from ${a.signature})`;
+  return b && b.prob > 0 ? `${head}; runner-up ${b.signature} (p = ${b.prob.toFixed(2)})` : head;
+}
+
+export const SIG_PROB_TOOLTIP =
+  "Posterior probability that this single mutation was produced by this signature, given only its trinucleotide (SBS96) context and the patient's fitted signature exposures: P(sig | context) = exposure x COSMIC profile, normalised over the fitted signatures. It is not the signature's share of the patient's mutations and not read-level evidence.";
