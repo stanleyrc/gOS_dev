@@ -52,8 +52,8 @@ export function signatureSegments(fit, width, top = 4) {
   });
 }
 
-export function signatureTooltip(fit) {
-  if (!fit) return [["Signature", "not available (normal cell, too few mutations, or no fitted set)"]];
+export function signatureTooltip(fit, reason = null) {
+  if (!fit) return [["Signature", `not available (${reason || "normal cell, too few mutations, or no fitted set"})`]];
   return [[fit.name, fit.activities.map((a) => `${a.signature} ${(100 * a.fraction).toFixed(0)}%`).join(", ")],
     ["Fit quality", `n = ${fit.n == null ? "not available" : fit.n.toLocaleString()} mutations; cosine ${fit.cosine == null ? "not available" : fit.cosine.toFixed(2)}`],
     ["Signature method", fit.perCell ? "fitted per cell on its root-to-tip mutation set" : "fitted per clone, not per cell (subclonal fallback when no clone fit exists)"]];

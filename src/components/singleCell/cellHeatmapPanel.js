@@ -206,6 +206,9 @@ export default function CellHeatmapPanel() {
     ? (cellSignatureSource ? "cell" : "dominant") : layout.cellSignatureMode;
   const showSignature = layout.signatureTrack !== false;
   const signatureLabel = signatureMode === "cell" ? "Signature (per-cell fit)" : "Signature (clone fit)";
+  const signatureUnavailable = signatureMode === "cell"
+    ? (!cellSignatureSource ? "no per-cell signature fits available for this patient" : null)
+    : (sc.signaturesLegacy?.status !== "ok" ? "no clone signature fits available for this patient" : null);
   const signatureFits = useMemo(() => new Map(cells.map((cell) => [cell.cell_id,
     cellSignatureFit(cell, sc.signaturesLegacy?.data, signatureMode === "cell" ? (cellSignatureSource || { cells: [] }) : null)])),
     [cells, sc.signaturesLegacy, signatureMode, cellSignatureSource]);
@@ -1054,7 +1057,7 @@ export default function CellHeatmapPanel() {
         [t("components.single-cell.tooltip.cell"), cellLabels.full(order[row])],
         ...(cell?.clone_id != null ? [[t("components.single-cell.tooltip.clone"), cell.clone_id]] : []),
         ...annotationFields.filter((f) => cell?.[f] != null).map((f) => [f, cell[f]]),
-        ...(showSignature ? signatureTooltip(signatureFits.get(order[row])) : []),
+        ...(showSignature ? signatureTooltip(signatureFits.get(order[row]), signatureUnavailable) : []),
         ...(showExpression
           ? [[
               expression.gene,
@@ -2142,7 +2145,7 @@ export default function CellHeatmapPanel() {
               <Text strong type="secondary">{signatureLabel}</Text>
               {signatureNames.map((name) => <span key={name} className="sc-legend-item"><span className="sc-legend-swatch" style={{ background: signatureColor(name, layout.theme) }} /><Text type="secondary">{name}</Text></span>)}
               {signatureMode === "stacked" && <span className="sc-legend-item"><span className="sc-legend-swatch" style={{ background: "#bdbdbd" }} /><Text type="secondary">Other (beyond top 4)</Text></span>}
-              <Text type="secondary">{signatureMode === "cell" ? "fitted per cell; below 100 mutations: not available" : "fitted per clone, not per cell; subclonal fallback"}</Text>
+              <Text type="secondary">{signatureUnavailable ? `not available (${signatureUnavailable})` : signatureMode === "cell" ? "fitted per cell; below 100 mutations: not available" : "fitted per clone, not per cell; subclonal fallback"}</Text>
             </Space>}
             {showPloidy && modalPl != null && (
               <Space size={4} wrap className="sc-legend">

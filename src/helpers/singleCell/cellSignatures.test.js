@@ -8,6 +8,7 @@ test("clone mapping, subclonal fallback, normal cells, and absent fits", () => {
   expect(cellSignatureFit({ clone_id: "Normal" }, sig)).toBeNull();
   expect(cellSignatureFit({ normal_for_pon: true }, sig)).toBeNull();
   expect(cellSignatureFit({ clone_id: "Clone 2" }, { sets: [] })).toBeNull();
+  expect(signatureTooltip(null, "no clone signature fits available for this patient")[0][1]).toContain("not available (no clone signature fits");
 });
 test("per-cell fits use the specified cell and flag low mutation counts", () => {
   const per = { cells: [{ cell_id: "a", n: 200, exposures: { SBS3: 0.7, SBS5: 0.3 }, cosine: 0.9 }, { cell_id: "b", n: 99, too_few: true, exposures: {} }] };
