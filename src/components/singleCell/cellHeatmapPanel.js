@@ -1,5 +1,5 @@
 import { findEntryByKey } from "../../helpers/singleCell/complexFamilies";
-import { treeQualityNote } from "../../helpers/singleCell/compareChoices";
+import { treeNoteDisplay, treeQualityNote } from "../../helpers/singleCell/compareChoices";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -1547,7 +1547,7 @@ export default function CellHeatmapPanel() {
               {t("components.single-cell.heatmap.cell-count", { count: nRows })}
             </Text>
             <Text type="secondary" className="sc-hint">
-              · <Provenance id="phylogeny">{treeNote}{treeQuality && <Tooltip title={`This tree was built from a relaxed site set and should be read as provisional: ${treeQuality}`}><Tag color="warning" style={{ marginLeft: 6 }}>{`weak tree: ${treeQuality}`}</Tag></Tooltip>}</Provenance>
+              · <Provenance id="phylogeny">{treeNote}{treeQuality && (() => { const d = treeNoteDisplay(treeQuality); return <Tooltip title={d.tooltip}><Tag color={d.weak ? "warning" : "default"} style={{ marginLeft: 6 }}>{d.tag}</Tag></Tooltip>; })()}</Provenance>
             </Text>
             {missingGenomes > 0 && (
               <span className="sc-note">

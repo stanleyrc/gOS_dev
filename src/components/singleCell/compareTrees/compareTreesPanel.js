@@ -47,7 +47,7 @@ import useContainerWidth from "../useContainerWidth";
 import useAltTree from "./useAltTree";
 import useTreeSupport from "./useTreeSupport";
 import useSnvSet, { useSnvSetIndex } from "./useSnvSet";
-import { CMP_SET_PARAM, CMP_TREE_A_PARAM, CMP_TREE_B_PARAM, NO_BOOTSTRAP_TEXT, defaultSnvSet, hasTreeSupport, serializeChoice, usableSnvSets, validChoice } from "../../../helpers/singleCell/compareChoices";
+import { CMP_SET_PARAM, CMP_TREE_A_PARAM, CMP_TREE_B_PARAM, noSupportText, defaultSnvSet, hasTreeSupport, serializeChoice, usableSnvSets, validChoice } from "../../../helpers/singleCell/compareChoices";
 import { SUPPORT_BINS, conflictSummary, labelSupport, supportBin, supportSummary } from "../../../helpers/singleCell/treeSupport";
 import { CnLegend, CnSide, useCnShared } from "./cnCompareHeatmaps";
 import { CMPHEAT_PARAM, cnWidth, figurePad, parseCmpHeat, serializeCmpHeat, showsCn, showsSnv } from "../../../helpers/singleCell/cnCompare";
@@ -509,7 +509,7 @@ export default function CompareTreesPanel() {
       {layout ? <Text type="secondary" style={{ fontSize: TYPE.tick }}>{layout.leaves.length} cells in tree</Text> : null}
       {supportOn && sup && !hasTreeSupport(supportFile.data, name) ? (
         <div>
-          <Text type="secondary" style={{ fontSize: TYPE.tick }}>{NO_BOOTSTRAP_TEXT}</Text>
+          <Text type="secondary" style={{ fontSize: TYPE.tick }}>{noSupportText(supportFile.data, name)}</Text>
         </div>
       ) : null}
       {supportOn && sup && hasTreeSupport(supportFile.data, name) ? (

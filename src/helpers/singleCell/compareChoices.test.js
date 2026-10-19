@@ -1,4 +1,4 @@
-import { FULL_SET, defaultSnvSet, hasTreeSupport, serializeChoice, treeQualityNote, usableSnvSets, validChoice } from "./compareChoices";
+import { FULL_SET, noSupportText, treeNoteDisplay, defaultSnvSet, hasTreeSupport, serializeChoice, treeQualityNote, usableSnvSets, validChoice } from "./compareChoices";
 
 const index = [
   { name: "strict", label: "Pipeline strict (6.9k sites)", file: "snv_matrix.strict.json", n_variants: 6918 },
@@ -57,4 +57,25 @@ describe("treeQualityNote", () => {
     expect(treeQualityNote([{ name: "gos", label: "Pipeline (current)", note: "weak: 356 sites" }, { name: "jake_latest" }])).toBe("weak: 356 sites");
     expect(treeQualityNote(null)).toBeNull();
   });
+});
+
+describe("treeNoteDisplay", () => {
+  it("marks weak notes and strips the weak prefix", () => {
+    const d = treeNoteDisplay("weak: relaxed site set, 6,530 sites");
+    expect(d.weak).toBe(true);
+    expect(d.tag).toBe("weak tree: relaxed site set, 6,530 sites");
+  });
+  it("shows other notes neutrally without the word weak", () => {
+    const d = treeNoteDisplay("cleaned site set: pooled VAF ≥0.4; 5,675 tree sites");
+    expect(d.weak).toBe(false);
+    expect(d.tag).not.toMatch(/weak/i);
+  });
+  it("returns null without a note", () => expect(treeNoteDisplay(null)).toBeNull());
+});
+
+describe("noSupportText", () => {
+  it("uses the per-tree reason when present", () => {
+    expect(noSupportText({ reasons: { gos: "not available (no bootstraps for the cleaned site set yet)" } }, "gos")).toBe("Bootstrap support: not available (no bootstraps for the cleaned site set yet)");
+  });
+  it("falls back to the generic text", () => expect(noSupportText({}, "gos")).toMatch(/not available/));
 });
