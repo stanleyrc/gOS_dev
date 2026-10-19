@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef } from "react";
+import SvgExportButton from "../svgExportButton";
 import { FONT_FAMILY } from "../../../helpers/singleCell/plotTheme";
 import { formatTick, styleFontSize, styleFontWeight } from "../../../helpers/singleCell/figureStyle";
 
@@ -10,7 +11,7 @@ import { formatTick, styleFontSize, styleFontWeight } from "../../../helpers/sin
 export function textRole(ctx, c, role, ink) {
   const st = c.st;
   const italic = role === "caption" && st.captionItalic ? "italic " : "";
-  ctx.font = `${italic}${styleFontWeight(st, role)} ${styleFontSize(st, role)}px ${FONT_FAMILY}`;
+  ctx.font = `${italic}${styleFontWeight(st, role)} ${styleFontSize(st, role)}px ${st.fontFamily || FONT_FAMILY}`;
   ctx.fillStyle = c[ink || { tick: st.tickInk, label: "textSecondary", group: "text", head: "textSecondary", caption: "muted", title: "text" }[role] || "text"] || c.text;
 }
 
@@ -182,6 +183,32 @@ export function PanelHead({ letter, title, fig, hint, extra }) {
       {fig && <span className="sc-fig-pfig">{fig}</span>}
       {hint && <span className="sc-fig-phint">{hint}</span>}
       {extra && <span className="sc-fig-pextra">{extra}</span>}
+    </div>
+  );
+}
+
+/**
+ * A figure panel with its header and an "Export SVG" menu (vector SVG at
+ * publication size, 1 px = 0.75 pt, or PNG presets) for everything drawn
+ * inside it. `name` also tags the panel (data-figpanel) for screenshots.
+ */
+export function ExportPanel({ name, letter, title, fig, hint, extra, children, style }) {
+  const ref = useRef(null);
+  return (
+    <div ref={ref} data-figpanel={name} style={style}>
+      <PanelHead
+        letter={letter}
+        title={title}
+        fig={fig}
+        hint={hint}
+        extra={
+          <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+            {extra}
+            <SvgExportButton containerRef={ref} name={`figure-${name}`} title="Export SVG (vector, publication size) or PNG" />
+          </span>
+        }
+      />
+      {children}
     </div>
   );
 }
