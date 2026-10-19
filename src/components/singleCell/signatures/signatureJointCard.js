@@ -19,6 +19,7 @@ import {
 
 const { Text } = Typography;
 const ROW_H = 20;
+const AXIS_H = 22;
 const LABEL_W = 70;
 const pct = (x) => `${(100 * x).toFixed(0)}%`;
 const pct1 = (x) => `${(100 * x).toFixed(1)}%`;
@@ -29,7 +30,7 @@ function ExposureWhiskers({ bars, width }) {
   const max = Math.max(0.05, ...bars.map((b) => b.hi || b.fraction));
   const x = (v) => LABEL_W + (Math.min(v, max) / max) * barW;
   return (
-    <svg width={width} height={bars.length * ROW_H + 8} role="img" aria-label="Exposure fractions with bootstrap 95% confidence intervals">
+    <svg width={width} height={bars.length * ROW_H + 8 + AXIS_H} role="img" aria-label="Exposure fractions with bootstrap 95% confidence intervals">
       {bars.map((b, i) => (
         <g key={b.signature} transform={`translate(0, ${i * ROW_H + 4})`}>
           <text x={LABEL_W - 6} y={ROW_H / 2} dy="0.35em" textAnchor="end" fontSize={12} fill="currentColor">{b.signature}</text>
@@ -44,6 +45,16 @@ function ExposureWhiskers({ bars, width }) {
           <text x={LABEL_W + barW + 10} y={ROW_H / 2} dy="0.35em" fontSize={12} fill="currentColor" opacity={0.75}>{`${pct(b.fraction)} [${pct(b.lo)}, ${pct(b.hi)}]`}</text>
         </g>
       ))}
+      <g transform={`translate(0, ${bars.length * ROW_H + 6})`} fontSize={11} fill="currentColor" opacity={0.7}>
+        <line x1={LABEL_W} x2={LABEL_W + barW} y1={0} y2={0} stroke="currentColor" opacity={0.4} />
+        {[0, max / 2, max].map((v) => (
+          <g key={v}>
+            <line x1={x(v)} x2={x(v)} y1={0} y2={4} stroke="currentColor" opacity={0.5} />
+            <text x={x(v)} y={15} textAnchor={v === 0 ? "start" : v === max ? "end" : "middle"}>{pct(v)}</text>
+          </g>
+        ))}
+        <text x={LABEL_W + barW + 10} y={15}>{"share of the set's mutations (bar), bootstrap 95% CI (whisker)"}</text>
+      </g>
     </svg>
   );
 }
