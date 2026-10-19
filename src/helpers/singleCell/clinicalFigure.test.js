@@ -58,3 +58,20 @@ test("truncal/subclonal and state composition", () => {
   expect(s[0].n).toBe(2);
   expect(s[0].frac.MES).toBe(0.5);
 });
+
+describe("filterRecovery", () => {
+  const { filterRecovery } = require("./clinicalFigure");
+  const rec = { patients: {
+    A: { snv: [{ gene: "TP53", tier: 2, status: "recovered" }, { gene: "EGFR", tier: 3, status: "not_recovered" }], cnv: [{ type: "Amplification", genes: ["MYCN"], status: "recovered" }], missed: [{ gene: "PTEN", tier: 1, type: "Missense" }] },
+    B: { snv: [{ gene: "TP53", tier: 1, status: "not_covered" }], cnv: [], missed: [] },
+  } };
+  it("filters by class, patient, status, gene and tier", () => {
+    expect(filterRecovery(rec, { classes: ["amp"] }).patients.A.snv).toHaveLength(0);
+    expect(filterRecovery(rec, { classes: ["amp"] }).patients.A.cnv).toHaveLength(1);
+    expect(Object.keys(filterRecovery(rec, { patients: ["B"] }).patients)).toEqual(["B"]);
+    expect(filterRecovery(rec, { statuses: ["not_recovered"] }).patients.A.snv.map((r) => r.gene)).toEqual(["EGFR"]);
+    expect(filterRecovery(rec, { gene: "myc" }).patients.A.cnv).toHaveLength(1);
+    expect(filterRecovery(rec, { tiers: [2] }).patients.B.snv).toHaveLength(0);
+    expect(filterRecovery(rec, { tiers: [1] }).patients.A.missed).toHaveLength(1);
+  });
+});
