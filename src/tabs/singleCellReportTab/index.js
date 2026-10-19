@@ -73,7 +73,7 @@ export default function SingleCellSummaryTab() {
         items={[
           {
             key: "portrait",
-            label: "Patient portrait: genotype, evolution, phenotype, canonical GBM biology vs novel",
+            label: "Known-biology check: genotype, evolution, phenotype, canonical GBM biology vs novel",
             children: portrait.status === "loading" ? <Skeleton active /> : <PortraitCard bare portrait={portrait.data} patient={id} features={portraitCohort.data?.matrix?.features} />,
           },
           { key: "clonal-history", label: "Clonal history", children: <ClonalHistoryCard /> },

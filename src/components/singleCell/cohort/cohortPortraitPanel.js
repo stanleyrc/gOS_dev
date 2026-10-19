@@ -1,3 +1,4 @@
+import { CORE_REFERENCES } from "../../../helpers/singleCell/provenance";
 import React, { useRef, useState } from "react";
 import { Alert, Card, Collapse, Empty, Skeleton, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
@@ -84,7 +85,7 @@ function NovelList({ items }) {
 }
 
 /**
- * Cohort "Patient portraits" view: patients x canonical GBM features with verdict glyphs, the Novel list with
+ * Cohort "Known biology" view: patients x canonical GBM features with verdict glyphs, the Novel list with
  * evidence links, caveats, and one portrait card per patient. Data: _cohort/portrait.json (srctools gos_sc_portrait.py).
  */
 export default function CohortPortraitPanel({ dataset }) {
@@ -99,7 +100,7 @@ export default function CohortPortraitPanel({ dataset }) {
   };
   return (
     <div ref={ref}>
-      <Card size="small" title="Canonical GBM biology vs this cohort" extra={<Text type="secondary" style={{ fontSize: TYPE.label }}>{data.patients.length} patients · {Object.keys(VERDICTS).map((k) => `${VERDICTS[k].glyph} ${VERDICTS[k].label}`).join("   ")}</Text>} style={{ marginBottom: 8 }}>
+      <Card size="small" title="Known GBM biology vs this cohort" extra={<Text type="secondary" style={{ fontSize: TYPE.label }}>{data.patients.length} patients · {Object.keys(VERDICTS).map((k) => `${VERDICTS[k].glyph} ${VERDICTS[k].label}`).join("   ")}</Text>} style={{ marginBottom: 8 }}>
         <Summary data={data} />
         <div style={{ marginTop: 8 }}>
           <Matrix data={data} onPatient={jump} />
@@ -131,11 +132,11 @@ export default function CohortPortraitPanel({ dataset }) {
                 </>
               ),
             },
-            { key: "ref", label: "References", children: <ul style={{ margin: 0, paddingLeft: 18, fontSize: TYPE.label }}>{data.references.map((c, i) => <li key={i}>{c}</li>)}</ul> },
+            { key: "ref", label: "References", children: <ul style={{ margin: 0, paddingLeft: 18, fontSize: TYPE.label }}>{[...CORE_REFERENCES.map((r) => r.text), ...(data.references || []).filter((c) => !/Hadi et al\. 2020|Choo et al\. 2023/.test(c))].map((c, i) => <li key={i}>{c}</li>)}</ul> },
           ]}
         />
       </Card>
-      <Card size="small" title="Patient portraits">
+      <Card size="small" title="Known-biology check per patient">
         <Collapse
           activeKey={open}
           onChange={setOpen}

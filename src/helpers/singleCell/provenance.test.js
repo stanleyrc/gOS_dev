@@ -55,3 +55,10 @@ describe("provenance registry", () => {
     );
   });
 });
+
+describe("CORE_REFERENCES", () => {
+  const { CORE_REFERENCES } = require("./provenance");
+  it("always lists JaBbA (Hadi 2020) and Choo 2023", () => {
+    expect(CORE_REFERENCES.map((r) => r.key)).toEqual(["hadi2020", "choo2023"]);
+  });
+});
