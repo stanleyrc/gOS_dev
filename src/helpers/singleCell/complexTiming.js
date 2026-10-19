@@ -117,7 +117,7 @@ export function edgeText(edge, byId) {
 }
 
 /** Layered positions for an SVG: x by depth, y by row inside the layer. */
-export function layoutOrder(order, { colW = 230, rowH = 62, padX = 10, padY = 10, nodeW = 170, nodeH = 46 } = {}) {
+export function layoutOrder(order, { colW = 340, rowH = 58, padX = 10, padY = 10, nodeW = 250, nodeH = 46 } = {}) {
   const rows = new Map();
   const pos = new Map();
   [...order.nodes].sort((a, b) => a.depth - b.depth || b.n - a.n).forEach((n) => {
