@@ -23,7 +23,7 @@ import CohortSpliceGene, { EventFacts } from "./cohortSpliceGene";
 import CohortSpliceCells from "./cohortSpliceCells";
 import useCohortSpliceData from "./cohortSpliceData";
 import { bySummary, clusterCellSummary, focusJunctions, pooledCounts } from "../../../helpers/singleCell/spliceCells";
-import { describeEvent, geneContext } from "../../../helpers/singleCell/spliceContext";
+import { describeEvent, geneContext, pinnedEvents } from "../../../helpers/singleCell/spliceContext";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -152,7 +152,7 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
     allRowsRaw.forEach((r) => {
       const c = r.cluster;
       const ctx = geneContext(exonModel, c);
-      const ev = clusterEvents(c, clusterTranscripts(exonModel, c))[0] || null;
+      const ev = [...pinnedEvents(c, data), ...clusterEvents(c, clusterTranscripts(exonModel, c))][0] || null;
       const d = describeEvent(ctx, c, ev);
       const focus = focusJunctions(c, ev, pooledCounts(c));
       const cells = cellData.ready ? clusterCellSummary(data?.patients || [], (p) => cellData.clusterOf(p, c), focus) : null;
@@ -205,7 +205,7 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
   const row = rows.find((r) => r.id === picked) || null;
   const matrix = useMemo(() => (row ? cohortPsiMatrix(row.cluster, data?.patients) : null), [row, data]);
   const transcripts = useMemo(() => (row ? clusterTranscripts(exonModel, row.cluster) : []), [row, exonModel]);
-  const events = useMemo(() => (row ? clusterEvents(row.cluster, transcripts) : []), [row, transcripts]);
+  const events = useMemo(() => (row ? [...pinnedEvents(row.cluster, data), ...clusterEvents(row.cluster, transcripts)] : []), [row, transcripts, data]);
   const [eventIdx, setEventIdx] = useState(0);
   const [zoomLevel, setZoomLevel] = useState("gene");
   const geneCtx = useMemo(() => (row ? geneContext(exonModel, row.cluster) : null), [row, exonModel]);

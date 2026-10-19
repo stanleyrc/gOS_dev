@@ -13,6 +13,7 @@ const isAberrant = (j) => j && (j.annotated === false || (j.type && j.type !== "
  */
 export function focusJunctions(cluster, event, pooled = null) {
   const js = cluster?.junctions || [];
+  if (event?.focus) return { side: "incl", ks: event.focus, otherKs: event.junctions.skip, label: event.variant ? `${event.variant} (the skip junction)` : "the pinned junction" };
   const incl = event?.junctions?.incl || [];
   const skip = event?.junctions?.skip || [];
   if (!incl.length && !skip.length) {

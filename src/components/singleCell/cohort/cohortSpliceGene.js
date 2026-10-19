@@ -46,6 +46,8 @@ export default function CohortSpliceGene({ ctx, cluster, event, width }) {
   useEffect(() => setView({ k: 1, tx: 0 }), [cluster.id]);
   const layout = useMemo(() => (ctx ? compressedLayout(ctx.backbone, W) : null), [ctx, W]);
   const arcs = useMemo(() => (layout ? junctionArcs(layout, cluster) : []), [layout, cluster]);
+  const desc = useMemo(() => (ctx ? describeEvent(ctx, cluster, event) : null), [ctx, cluster, event]);
+  const arcLabel = desc ? `${desc.eventType}${desc.frame ? `, ${desc.frame.replace(" (estimated)", "")}` : ""}` : "";
   const hot = useMemo(() => {
     if (!ctx) return new Set();
     const d = describeEvent(ctx, cluster, event);
@@ -148,7 +150,7 @@ export default function CohortSpliceGene({ ctx, cluster, event, width }) {
                   <title>{`junction ${a.k + 1} (${cluster.junctions[a.k].type || "annotated"}) chr${cluster.chromosome}:${Number(cluster.junctions[a.k].start).toLocaleString("en-US")}-${Number(cluster.junctions[a.k].end).toLocaleString("en-US")}`}</title>
                 </path>
                 <text x={(x1 + x2) / 2} y={base - h * 0.75 - 2} textAnchor="middle" fontSize={TYPE.micro} fill={col} fontWeight={700} paintOrder="stroke" stroke="var(--sc-plot-bg, #fff)" strokeWidth={3}>
-                  {a.k + 1}
+                  {desc && a.k === desc.junction ? `${a.k + 1} · ${arcLabel}` : a.k + 1}
                 </text>
               </g>
             );
@@ -156,7 +158,7 @@ export default function CohortSpliceGene({ ctx, cluster, event, width }) {
         </g>
       </svg>
       <Space size={6} wrap style={{ marginTop: 2 }}>
-        <Tag color="#d4380d">affected exon</Tag>
+        <Tag color="#d4380d">affected / skipped exons</Tag>
         <Text type="secondary" style={{ fontSize: 12 }}>solid arc = aberrant junction, dashed = annotated; arc numbers match the junction legend below the sashimi plot.</Text>
       </Space>
     </div>
