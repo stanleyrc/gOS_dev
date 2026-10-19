@@ -379,7 +379,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           </Card>
         </Col>
         <Col span={24}>
-          <CohortSplicingPanel dataset={(summaries[0] && datasetOf(summaries[0])) || datasets[0]} />
+          <CohortSplicingPanel summaries={summaries} dataset={(summaries[0] && datasetOf(summaries[0])) || datasets[0]} />
         </Col>
       </Row>
     </div>
