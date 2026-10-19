@@ -148,7 +148,7 @@ const EVENT_NAMES = {
  */
 export function describeEvent(ctx, cluster, event, junctionIdx = null) {
   const js = cluster?.junctions || [];
-  let k = junctionIdx;
+  let k = junctionIdx ?? event?.focus?.[0] ?? null;
   if (k == null) {
     const ab = js.findIndex((j) => j.annotated === false || (j.type && j.type !== "annotated"));
     k = ab >= 0 ? ab : event?.junctions?.incl?.[0] ?? 0;
@@ -184,6 +184,10 @@ export function describeEvent(ctx, cluster, event, junctionIdx = null) {
       out.nearestBp = 0;
     }
   }
+  if (event?.variant && out.exonLabel) {
+    const m = out.exonLabel.match(/^exons? ([\d\u2013]+)/);
+    out.eventType = `${event.variant} (\u0394 exons ${m ? m[1] : "?"})`;
+  }
   if (!out.eventType) out.eventType = EVENT_NAMES[event?.type] || (j?.type && j.type !== "annotated" ? j.type.replace(/_/g, " ") : "annotated junction");
   if (out.lengthChange != null && out.lengthChange !== 0) out.frame = out.lengthChange % 3 === 0 ? "in frame (estimated)" : "frameshift (estimated)";
   return out;
@@ -215,4 +219,36 @@ export function zoomView(view, factor, cx, width, maxK = 40) {
   let tx = cx - (cx - view.tx) * f;
   tx = Math.min(0, Math.max(width - width * k, tx));
   return { k, tx };
+}
+
+const sameJ = (a, j) => Boolean(a) && num(a.start) === num(j.start) && num(a.end) === num(j.end);
+
+/**
+ * Events pinned to junctions the exports name: known variants (EGFRvIII: alt_junction against ref_junction) and the
+ * findings of this cluster that carry a junction. They come before the geometry-derived events, so the representative
+ * junction of a 14-junction cluster is the one the finding is about, not its first novel acceptor.
+ * @param cohort the cohort splicing.json ({ variants, findings }); returns [{ type: "junction", label, variant?, focus, junctions }]
+ */
+export function pinnedEvents(cluster, cohort) {
+  const js = cluster?.junctions || [];
+  const n = js.length;
+  const out = [];
+  const seen = new Set();
+  const others = (k) => js.map((_, i) => i).filter((i) => i !== k);
+  (cohort?.variants || []).forEach((v) => {
+    if (v.gene !== cluster.gene) return;
+    const k = js.findIndex((j) => sameJ(v.alt_junction, j));
+    if (k < 0 || seen.has(k)) return;
+    seen.add(k);
+    const r = js.findIndex((j) => sameJ(v.ref_junction, j));
+    out.push({ type: "junction", variant: v.id, label: v.description ? `${v.id}: ${v.description}` : v.id, focus: [k], junctions: { incl: [k], skip: r >= 0 ? [r] : others(k) } });
+  });
+  (cohort?.findings || []).forEach((f) => {
+    if (f.cluster_id !== cluster.id || !f.junction) return;
+    const k = js.findIndex((j) => sameJ(f.junction, j));
+    if (k < 0 || seen.has(k) || n < 2) return;
+    seen.add(k);
+    out.push({ type: "junction", label: `finding junction ${k + 1} (${js[k].type || "novel"})`, focus: [k], junctions: { incl: [k], skip: others(k) } });
+  });
+  return out;
 }

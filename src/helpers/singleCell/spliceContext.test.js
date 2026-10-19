@@ -1,4 +1,4 @@
-import { compressedLayout, describeEvent, domainContext, geneContext, junctionArcs, junctionGeometry, unionIntervals, zoomView } from "./spliceContext";
+import { pinnedEvents, compressedLayout, describeEvent, domainContext, geneContext, junctionArcs, junctionGeometry, unionIntervals, zoomView } from "./spliceContext";
 import { clusterEvents, clusterTranscripts } from "./spliceEvents";
 
 // synthetic + strand gene: exons 100-199, 1000-1099, 5000-5099 (3 exons) and a second transcript with an extra exon
@@ -115,5 +115,38 @@ describe("arcs and zoom", () => {
   });
   it("unionIntervals merges touching intervals", () => {
     expect(unionIntervals([{ start: 1, end: 5 }, { start: 6, end: 9 }, { start: 20, end: 30 }])).toEqual([{ start: 1, end: 9 }, { start: 20, end: 30 }]);
+  });
+});
+
+describe("pinned events (EGFRvIII-like skip in a many-junction cluster)", () => {
+  // 3-exon gene: junction 1 = skip of exon 2 (200..4999), junction 0 = a novel acceptor listed first, junction 2 = ref
+  const cluster = {
+    id: "clu",
+    gene: "GENE",
+    strand: "+",
+    chromosome: "1",
+    junctions: [
+      { start: 200, end: 955, annotated: false, type: "novel_acceptor" },
+      { start: 200, end: 4999, annotated: false, type: "exon_skip" },
+      { start: 200, end: 999, annotated: true, type: "annotated" },
+    ],
+  };
+  const cohort = { variants: [{ id: "VAR", gene: "GENE", description: "exon 1 to 3", alt_junction: { start: 200, end: 4999 }, ref_junction: { start: 200, end: 999 } }], findings: [] };
+  const ctx = geneContext(model, cluster);
+  it("pins the variant's junction first, against its reference junction", () => {
+    const ev = pinnedEvents(cluster, cohort);
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ variant: "VAR", focus: [1], junctions: { incl: [1], skip: [2] } });
+  });
+  it("describes it as the exon skip, not the first novel acceptor", () => {
+    const d = describeEvent(ctx, cluster, pinnedEvents(cluster, cohort)[0]);
+    expect(d.junction).toBe(1);
+    expect(d.exonLabel).toBe("exon 2 of 3");
+    expect(d.eventType).toBe("VAR (\u0394 exons 2)");
+    expect(junctionGeometry(ctx, cluster.junctions[1]).skipped).toEqual([2]);
+  });
+  it("pins a finding's junction and ignores other genes / clusters", () => {
+    const ev = pinnedEvents(cluster, { variants: [{ ...cohort.variants[0], gene: "OTHER" }], findings: [{ cluster_id: "clu", junction: { start: 200, end: 955 } }, { cluster_id: "x", junction: { start: 200, end: 4999 } }] });
+    expect(ev.map((e) => e.focus[0])).toEqual([0]);
   });
 });

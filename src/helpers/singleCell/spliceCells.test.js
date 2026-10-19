@@ -23,6 +23,13 @@ describe("focusJunctions", () => {
   });
 });
 
+describe("pinned focus", () => {
+  it("uses the pinned junction against its reference, whatever the pooled counts", () => {
+    const ev = { type: "junction", variant: "V", focus: [1], junctions: { incl: [1], skip: [0] } };
+    expect(focusJunctions(cluster, ev)).toMatchObject({ side: "incl", ks: [1], otherKs: [0] });
+  });
+});
+
 describe("classifyCells", () => {
   const focus = focusJunctions(cluster, alt3);
   const cells = { u1: [0, 8], u2: [2, 1], cov: [5, 0], thin: [1, 0], none: [0, 0] };
