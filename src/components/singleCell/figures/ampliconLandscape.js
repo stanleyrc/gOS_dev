@@ -3,7 +3,9 @@ import FigureCanvas, { fitText, jitter, useFigureStyleName } from "./figureCanva
 import { axisDepth, drawBar, drawGroups, drawXAxis, textRole } from "./figureKit";
 import { figureStyle } from "../../../helpers/singleCell/figureStyle";
 import useContainerWidth from "../useContainerWidth";
-import { geneSetColor, quantiles } from "../../../helpers/singleCell/figures";
+import { geneSetColor as appGeneSetColor, quantiles } from "../../../helpers/singleCell/figures";
+import { paperAmpColor } from "../../../helpers/singleCell/paperPalette";
+import { isPaperStyle } from "../../../helpers/singleCell/figureStyle";
 import { logKde, niceLogDomain } from "../../../helpers/singleCell/figureMath";
 import { selectMode } from "./cellSelection";
 
@@ -32,6 +34,8 @@ export function AmpliconViolins({ per, selected, onSelect, selection, onSelectCe
   const width = Math.max(420, measured);
   const styleName = useFigureStyleName();
   const st = figureStyle(styleName);
+  // Paper style: the manuscript's amplicon colours (combinations lavender)
+  const geneSetColor = useCallback((k) => (isPaperStyle(st) ? paperAmpColor(k) : appGeneSetColor(k)), [st]);
   const ROW = Math.round(34 * st.rowScale);
   const TOP = 6;
   const PAT = 78;
@@ -169,7 +173,7 @@ export function AmpliconViolins({ per, selected, onSelect, selection, onSelectCe
       });
       return [];
     },
-    [rows, geo, width, plotH, vx0, vx1, bx0, bx1, maxWalks, selected, selection, ROW, st, LO, HI, lx]
+    [rows, geo, width, plotH, vx0, vx1, bx0, bx1, maxWalks, selected, selection, ROW, st, LO, HI, lx, geneSetColor]
   );
 
   const rowAt = (y) => {
@@ -251,6 +255,8 @@ export function AmpliconUpset({ per, maxCombos = 6, selected, onSelect }) {
   const width = Math.max(360, measured);
   const styleName = useFigureStyleName();
   const st = figureStyle(styleName);
+  // Paper style: the manuscript's amplicon colours (combinations lavender)
+  const geneSetColor = useCallback((k) => (isPaperStyle(st) ? paperAmpColor(k) : appGeneSetColor(k)), [st]);
   const ROW = Math.round(22 * st.rowScale);
   const PAT = 78;
   const sets = useMemo(() => {
@@ -286,7 +292,7 @@ export function AmpliconUpset({ per, maxCombos = 6, selected, onSelect }) {
         textRole(ctx, c, "label");
         ctx.font = ctx.font.replace(/^\d+ /, "500 ");
         ctx.textAlign = "left";
-        ctx.fillStyle = geneSetColor(s) === "#9B8AAE" ? c.textSecondary : geneSetColor(s);
+        ctx.fillStyle = `${s}`.includes("+") ? c.textSecondary : geneSetColor(s);
         ctx.fillText(s, 0, 0);
         ctx.restore();
       });
@@ -325,7 +331,7 @@ export function AmpliconUpset({ per, maxCombos = 6, selected, onSelect }) {
           });
           const f = combo.n / Math.max(1, b.p.cellIds.length);
           const bh = Math.max(4, ROW * st.barThin);
-          drawBar(ctx, c, bx0, cy - bh / 2, f * (bx1 - bx0), bh, combo.keys.length === 1 ? geneSetColor(combo.keys[0]) : "#9B8AAE");
+          drawBar(ctx, c, bx0, cy - bh / 2, f * (bx1 - bx0), bh, combo.keys.length === 1 ? geneSetColor(combo.keys[0]) : isPaperStyle(st) ? "#9B86BD" : "#9B8AAE");
           textRole(ctx, c, "tick", "textSecondary");
           ctx.textAlign = "left";
           ctx.fillText(`${pct(f)}`, bx0 + f * (bx1 - bx0) + 4, cy);
@@ -335,7 +341,7 @@ export function AmpliconUpset({ per, maxCombos = 6, selected, onSelect }) {
       });
       return hits;
     },
-    [sets, blocks, plotH, width, colW, mx0, bx0, bx1, HEAD, selected, ROW, st]
+    [sets, blocks, plotH, width, colW, mx0, bx0, bx1, HEAD, selected, ROW, st, geneSetColor]
   );
   if (!nRows) return <div ref={ref} />;
   return (

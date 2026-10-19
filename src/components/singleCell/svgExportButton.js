@@ -4,6 +4,42 @@ import { AiOutlineDownload } from "react-icons/ai";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+// canvases that can redraw themselves as SVG (FigureCanvas): canvas -> () => svg string
+const vectors = new WeakMap();
+export const registerVector = (canvas, render) => canvas && vectors.set(canvas, render);
+export const vectorOf = (canvas) => vectors.get(canvas) || null;
+
+const downloadText = (text, filename) => {
+  const url = URL.createObjectURL(new Blob([text], { type: "image/svg+xml;charset=utf-8" }));
+  trigger(url, filename);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+/** Rasterise an SVG string at `factor` x its viewBox size (PNG presets for vector canvases). */
+function svgTextToPng(text, name, { scale = 2, widthPx = null, transparent = false } = {}) {
+  const m = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(text);
+  if (!m) return;
+  const [w, h] = [Number(m[1]), Number(m[2])];
+  const factor = widthPx ? widthPx / w : scale;
+  const sized = text.replace(/width="[\d.]+pt" height="[\d.]+pt"/, `width="${w}" height="${h}"`);
+  const url = URL.createObjectURL(new Blob([sized], { type: "image/svg+xml;charset=utf-8" }));
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(w * factor);
+    canvas.height = Math.round(h * factor);
+    const ctx = canvas.getContext("2d");
+    if (!transparent) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    trigger(canvas.toDataURL("image/png"), `${name}.png`);
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
 /** Clone of an <svg> with namespaces, explicit size and a font rule, ready to serialise. */
 function prepareSvg(svg) {
   const clone = svg.cloneNode(true);
@@ -112,7 +148,16 @@ export default function SvgExportButton({ containerRef, name = "plot", title = "
       if (preset.png) downloadSvgAsPng(s, file, preset.png);
       else downloadSvg(s, file);
     });
-    [...root.querySelectorAll("canvas")].forEach((c, i) => downloadCanvas(c, `${name}-canvas-${i + 1}`));
+    // figure canvases redraw as vectors (SVG at publication size: 1 px = 0.75 pt); others save their pixels
+    const canvases = [...root.querySelectorAll("canvas")].filter((c) => c.getBoundingClientRect().width > 40);
+    const vec = canvases.filter((c) => vectorOf(c));
+    vec.forEach((c, i) => {
+      const file = svgs.length + vec.length > 1 ? `${name}-${svgs.length + i + 1}` : name;
+      const text = vectorOf(c)();
+      if (preset.png) svgTextToPng(text, file, preset.png);
+      else downloadText(text, `${file}.svg`);
+    });
+    canvases.filter((c) => !vectorOf(c) && !c.getAttribute("aria-hidden")).forEach((c, i) => downloadCanvas(c, `${name}-canvas-${i + 1}`));
   };
   return (
     <Tooltip title={title}>
