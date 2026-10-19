@@ -52,8 +52,20 @@ export const isRnaTrackName = (name) => `${name || ""}`.startsWith(RNA_TRACK_PRE
  * relative to the patient folder. RNA reads are grouped and coloured by the
  * ZF tag so the fusion-supporting reads (ZF:1) form their own block.
  */
-export function buildIgvTracks({ dnaCellIds = [], rnaTracks = [], pathFor, sortAt = null, dnaHeight = 260, rnaHeight = 200, labelFor = null }) {
-  const dna = dnaCellIds.map((cellId) => ({
+export function buildIgvTracks({ dnaCellIds = [], rnaTracks = [], pooled = null, pathFor, sortAt = null, dnaHeight = 260, rnaHeight = 200, labelFor = null }) {
+  // pooled: { patientId, file } = the patient's pooled slice BAM (read group = cell id), used when the
+  // per-cell reads.bam does not cover the site (see siteHasCellReads). One track per cell, filtered by RG.
+  const dna = dnaCellIds.map((cellId) => (pooled ? {
+    id: cellId,
+    name: labelFor ? `${labelFor(cellId)}` : cellId,
+    url: pathFor(pooled.patientId, pooled.file),
+    indexURL: pathFor(pooled.patientId, `${pooled.file}.bai`),
+    format: "bam",
+    type: "alignment",
+    height: dnaHeight,
+    filter: (al) => al.tags().RG === cellId,
+    ...(sortAt ? { sort: altFirstSort(sortAt.chromosome, sortAt.position) } : {}),
+  } : {
     id: cellId, // the pair id stays the key (folder, de-duplication); only the shown name follows labelFor
     name: labelFor ? `${labelFor(cellId)}` : cellId,
     url: pathFor(cellId, DNA_READS_FILE),
@@ -83,6 +95,21 @@ export function buildIgvTracks({ dnaCellIds = [], rnaTracks = [], pathFor, sortA
       };
     });
   return [...dna, ...rna];
+}
+
+export const POOLED_DRIVER_BAM = "slices/drivers.dna.bam";
+
+/**
+ * Per-cell reads.bam only holds slices around the SNV-matrix sites (and SV junctions). A driver event that is
+ * not a matrix site (e.g. a tier 2 hotspot rescued after the site filter) has no reads there; its reads are in
+ * the patient's pooled slices/drivers.dna.bam. `variants` = snv_matrix variants ({ id: "chr17_7675088_C_T" }).
+ */
+export function siteHasCellReads(variants, chromosome, position) {
+  const c = `${chromosome}`.replace(/^chr/i, "");
+  return (variants || []).some((v) => {
+    const a = `${v.id}`.split("_");
+    return a.length >= 2 && a[0].replace(/^chr/i, "") === c && Number(a[1]) === Number(position);
+  });
 }
 
 /** Space-separated multi-locus string, `window` bp either side of each locus. */
