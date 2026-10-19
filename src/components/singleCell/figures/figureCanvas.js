@@ -19,10 +19,11 @@ export function ink(styleName) {
 /** The chart style chosen in the layout preferences (Paper figures and the shared SVG charts). */
 // a view can set its own default style (the Paper figures view opens in "paper"); an explicit choice in the layout wins
 export const FigureStyleDefault = createContext(null);
+// (the Paper figures view keeps its own choice, layout.figuresViewStyle, so the app-wide figureStyle default does not mask it)
 export const useFigureStyleName = () => {
   const fallback = useContext(FigureStyleDefault);
-  const chosen = useSelector((s) => s.SingleCell.layout.figureStyle);
-  return chosen || fallback;
+  const layout = useSelector((s) => s.SingleCell.layout);
+  return fallback ? layout.figuresViewStyle || fallback : layout.figureStyle;
 };
 
 /**

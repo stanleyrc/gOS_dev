@@ -313,7 +313,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
         </div>
         <Space size={6}>
           <Text type="secondary">Figure style</Text>
-          <Segmented size="small" value={styleName || FIGURES_VIEW_STYLE} onChange={(v) => dispatch(singleCellActions.updateLayout({ figureStyle: v }))} options={Object.entries(FIGURE_STYLES).map(([value, st]) => ({ value, label: st.label }))} />
+          <Segmented size="small" value={styleName || FIGURES_VIEW_STYLE} onChange={(v) => dispatch(singleCellActions.updateLayout({ figuresViewStyle: v }))} options={Object.entries(FIGURE_STYLES).map(([value, st]) => ({ value, label: st.label }))} />
         </Space>
       </div>
       <Row gutter={[16, 16]}>
