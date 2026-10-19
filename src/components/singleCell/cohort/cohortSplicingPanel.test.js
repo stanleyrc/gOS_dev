@@ -1,5 +1,7 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen } from "@testing-library/react";
+import { Provider } from "react-redux";
+import { createStore } from "redux";
 import cohort from "../../../helpers/singleCell/__fixtures__/cohortSplicing.json";
 import CohortSplicingPanel from "./cohortSplicingPanel";
 
@@ -14,6 +16,10 @@ jest.mock("../cellIgvPanel", () => ({ __esModule: true, default: () => null, SC_
 if (!window.matchMedia) {
   window.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });
 }
+
+// the cell strip reads the saved groups from the single-cell layout
+const store = createStore(() => ({ SingleCell: { layout: { cohortGroups: {}, savedGroups: {} } } }));
+const render = (ui) => rtlRender(<Provider store={store}>{ui}</Provider>);
 
 describe("CohortSplicingPanel", () => {
   it("lists clusters by q and draws one panel per patient plus the PSI heatmap", async () => {
