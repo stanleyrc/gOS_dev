@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { POOLED_DRIVER_BAM, siteHasCellReads } from "../../../helpers/singleCell/igvTracks";
 import { Alert, Button, Col, Drawer, Empty, Row, Space, Tabs, Tag, Typography } from "antd";
 import { AimOutlined, BranchesOutlined, FileSearchOutlined, NodeIndexOutlined, SelectOutlined } from "@ant-design/icons";
 import singleCellActions from "../../../redux/singleCell/actions";
@@ -37,11 +38,18 @@ export function igvLoci(event) {
 export function useDriverActions() {
   const dispatch = useDispatch();
   const { chromoBins, genomeLength } = useSelector((s) => s.Settings);
+  const snv = useSelector((s) => s.SingleCell.snv);
+  const patient = useSelector((s) => s.SingleCell.patient);
   return {
     igv: (s) => {
       const loci = igvLoci(s.members[0].event);
       if (!loci.length) return;
-      dispatch(singleCellActions.openIgv({ cellIds: s.members[0].carriers.slice(0, IGV_CELLS), chromosome: loci[0].chromosome, position: loci[0].position, loci: loci.length > 1 ? loci : undefined, label: s.label }));
+      const ev = s.members[0].event;
+      const isSnv = !ev.fusion_gene_coords && /^(Missense|Nonsense|Frameshift|Splice|Silent|In_Frame|Nonstop)/i.test(`${ev.type || ""}`);
+      const pooled = isSnv && snv?.status === "ok" && patient?.caseReportId && !siteHasCellReads(snv.data?.variants, loci[0].chromosome, loci[0].position)
+        ? { patientId: patient.caseReportId, file: POOLED_DRIVER_BAM }
+        : undefined;
+      dispatch(singleCellActions.openIgv({ pooled, cellIds: s.members[0].carriers.slice(0, IGV_CELLS), chromosome: loci[0].chromosome, position: loci[0].position, loci: loci.length > 1 ? loci : undefined, label: s.label }));
       dispatch(settingsActions.updateTab("7"));
     },
     zoom: (s) => {

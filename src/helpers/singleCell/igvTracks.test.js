@@ -45,3 +45,18 @@ describe("buildIgvTracks labels", () => {
     expect(buildIgvTracks({ dnaCellIds: ["XX1_10"], pathFor })[0].name).toBe("XX1_10");
   });
 });
+
+describe("pooled driver reads", () => {
+  const { siteHasCellReads, buildIgvTracks, POOLED_DRIVER_BAM } = require("./igvTracks");
+  it("detects sites missing from the SNV matrix (chr naming insensitive)", () => {
+    const variants = [{ id: "chr17_7674893_C_T" }];
+    expect(siteHasCellReads(variants, "17", 7674893)).toBe(true);
+    expect(siteHasCellReads(variants, "chr17", 7675088)).toBe(false);
+  });
+  it("builds RG-filtered pooled tracks", () => {
+    const [t] = buildIgvTracks({ dnaCellIds: ["c1"], pooled: { patientId: "P", file: POOLED_DRIVER_BAM }, pathFor: (f, n) => `/d/${f}/${n}` });
+    expect(t.url).toBe("/d/P/slices/drivers.dna.bam");
+    expect(t.filter({ tags: () => ({ RG: "c1" }) })).toBe(true);
+    expect(t.filter({ tags: () => ({ RG: "c2" }) })).toBe(false);
+  });
+});

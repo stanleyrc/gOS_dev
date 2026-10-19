@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { POOLED_DRIVER_BAM, siteHasCellReads } from "../../helpers/singleCell/igvTracks";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
 import { Alert, Button, Card, Col, Collapse, Descriptions, Empty, Row, Space, Statistic, Table, Tag, Tooltip, Typography } from "antd";
@@ -184,6 +185,8 @@ export default function PatientReportCard({ patient, events, cells, variants, si
   const lowFit = [...fitOf.values()].filter((f) => Number.isFinite(f.score) && f.score < 0.5).length;
   // width of the CN segment behind each deletion / amplification in its carriers (patient page only: needs the loaded CN rows)
   const cn = useSelector((state) => state.SingleCell.cn);
+  const snvState = useSelector((state) => state.SingleCell.snv);
+  const caseId = useSelector((state) => state.SingleCell.patient?.caseReportId);
   const noiseOf = useMemo(() => {
     const m = new Map();
     if (!interactive || cn.status !== "ok") return m;
@@ -214,7 +217,9 @@ export default function PatientReportCard({ patient, events, cells, variants, si
     const chromosome = bps.length ? bps[0].chromosome : `${d.event.seqnames}`;
     const position = bps.length ? bps[0].position : Number(d.event.start);
     if (!carriers.length || !Number.isFinite(position)) return;
-    dispatch(singleCellActions.openIgv({ cellIds: carriers, chromosome, position, loci: bps.length > 1 ? bps : undefined, label: d.label }));
+    const isSnv = d.class !== "fusion" && /^(Missense|Nonsense|Frameshift|Splice|Silent|In_Frame|Nonstop)/i.test(`${d.event.type || ""}`);
+    const pooled = isSnv && snvState?.status === "ok" && caseId && !siteHasCellReads(snvState.data?.variants, chromosome, position) ? { patientId: caseId, file: POOLED_DRIVER_BAM } : undefined;
+    dispatch(singleCellActions.openIgv({ pooled, cellIds: carriers, chromosome, position, loci: bps.length > 1 ? bps : undefined, label: d.label }));
     dispatch(settingsActions.updateTab("7"));
   };
   const onSites = (d) => {
