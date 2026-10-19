@@ -190,7 +190,7 @@ export default function QcPanel() {
               {shownMetrics.map(([k, label, log]) => (
                 <Col key={k} span={24 / cols}>
                   <Card size="small" title={<span style={{ fontSize: 13 }}>{label}</span>} extra={<Text type="secondary" style={{ fontSize: 12.5 }}>{t("components.single-cell.qc.median", { value: fmt(med(k), k === "fga" ? 3 : 2) })}</Text>} bodyStyle={{ padding: "2px 6px" }} headStyle={{ minHeight: 26 }}>
-                    <BoxStrips groups={groupsFor(k)} width={plotWidth} height={140} log={log} flagged={flaggedIds} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} />
+                    <BoxStrips groups={groupsFor(k)} width={plotWidth} height={140} log={log} flagged={flaggedIds} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} clickHint="Click to select the cell" />
                   </Card>
                 </Col>
               ))}

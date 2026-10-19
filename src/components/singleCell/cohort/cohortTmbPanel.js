@@ -71,7 +71,7 @@ export default function CohortTmbPanel({ dataset, summaries = [], onOpen, onView
       >
         {rows.some((r) => r.noisy) && <Alert type="warning" showIcon style={{ marginBottom: 8 }} message={rows.find((r) => r.noisy).caveats[0]} />}
         <div ref={ref}>
-          <BoxStrips groups={groups} width={width} height={280} yTitle={t("components.single-cell.tmb.y")} log={log} onPoint={(g) => open(g.key)} />
+          <BoxStrips groups={groups} width={width} height={280} yTitle={t("components.single-cell.tmb.y")} log={log} onPoint={(g) => open(g.key)} metric="TMB" unit="mutations per callable Mb" noun="tumour cells" clickHint="Click to open the patient" />
         </div>
         <Table size="small" rowKey="patient" pagination={false} dataSource={[...rows].reverse()} columns={columns} />
         <HintLine text={t("components.single-cell.tmb.cohort-help")} />
