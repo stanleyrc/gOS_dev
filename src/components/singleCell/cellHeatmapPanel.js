@@ -99,9 +99,11 @@ import { driverColors } from "./drivers/driverColors";
 import { SELECTION_PARAMS, branchMarkText, driverBranchMarks, entryStates, classLabel, rescueText, serializeSelection, snvStateLabel, snvVafCell } from "../../helpers/singleCell/driverLayer";
 import useCellLabels from "./useCellLabels";
 import SelectionExport from "./selectionExport";
+import useCellSignatures from "./useCellSignatures";
+import { ANNOTATION_PARAMS, ANNOTATION_WIDTHS, SIGNATURE_FIELD, annotationToSearch, annotationWidth as normaliseAnnotationWidth, cellSignatureFit, dominantSignature, signatureSegments, signatureTooltip } from "../../helpers/singleCell/cellSignatures";
+import { signatureColor } from "../../helpers/singleCell/signatureColors";
 
 const { Text } = Typography;
-const STRIP_WIDTHS = [6, 9, 14, 20, 28, 40]; // px per strip: selection, clone, metadata fields, expression
 const NOT_ANNOTATIONS = new Set(["pair", "well", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
 const GAP = 4;
 const TRACK_LABEL_ROOM = 92; // px kept free right of the beside-SNV annotation strips for their track names
@@ -199,6 +201,22 @@ export default function CellHeatmapPanel() {
   } = sc;
   const cells = useQcCells(rawCells); // + live QC / QC reason annotation fields
   const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
+  const cellSignatureSource = useCellSignatures();
+  const signatureMode = !layout.cellSignatureMode || layout.cellSignatureMode === "auto"
+    ? (cellSignatureSource ? "cell" : "dominant") : layout.cellSignatureMode;
+  const showSignature = layout.signatureTrack !== false;
+  const signatureLabel = signatureMode === "cell" ? "Signature (per-cell fit)" : "Signature (clone fit)";
+  const signatureFits = useMemo(() => new Map(cells.map((cell) => [cell.cell_id,
+    cellSignatureFit(cell, sc.signaturesLegacy?.data, signatureMode === "cell" ? (cellSignatureSource || { cells: [] }) : null)])),
+    [cells, sc.signaturesLegacy, signatureMode, cellSignatureSource]);
+  const signatureNames = useMemo(() => [...new Set([...signatureFits.values()].flatMap((f) => f?.activities?.map((a) => a.signature) || []))]
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [signatureFits]);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    ANNOTATION_PARAMS.forEach((key) => p.delete(key));
+    Object.entries(annotationToSearch(layout)).forEach(([key, value]) => p.set(key, value));
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${p}${window.location.hash}`);
+  }, [layout.stripWidth, layout.signatureTrack, layout.cellSignatureMode]); // eslint-disable-line react-hooks/exhaustive-deps
   const cloneNames = useMemo(
     () => [...new Set(cells.map((c) => c.clone_id).filter((c) => c != null))].sort(),
     [cells]
@@ -259,7 +277,7 @@ export default function CellHeatmapPanel() {
   const startStripDrag = (event) => {
     event.preventDefault();
     const x0 = event.clientX;
-    const start = layout.stripWidth || 14;
+    const start = normaliseAnnotationWidth(layout.stripWidth);
     const n = Math.max(1, Math.round(annotationWidth / start));
     const move = (e) => {
       const next = Math.round(Math.max(4, Math.min(60, start + (e.clientX - x0) / n)));
@@ -283,14 +301,16 @@ export default function CellHeatmapPanel() {
       return values.size >= 2 && values.size <= 24 && [...values].every((v) => typeof v === "string");
     });
   }, [cells]);
-  const annotationFields = withQcColumn(layout.annotationFields, annotationOptions);
+  const metadataFields = withQcColumn(layout.annotationFields, annotationOptions);
+  const annotationFields = [...metadataFields, ...(showSignature ? [SIGNATURE_FIELD] : [])];
+  const signatureColumn = showSignature ? 2 + metadataFields.length : -1;
   const annotationLevels = useMemo(
-    () => Object.fromEntries(annotationFields.map((f) => [f, annotationColors(cells.map((c) => c[f]).filter((v) => v != null && v !== ""), themePalette(layout.theme))])),
+    () => Object.fromEntries(metadataFields.map((f) => [f, annotationColors(cells.map((c) => c[f]).filter((v) => v != null && v !== ""), themePalette(layout.theme))])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [layout.theme, cells, annotationFields.join("|")]
   );
   const nAnnotation = 2 + annotationFields.length + (showExpression ? 1 : 0);
-  const ANNOTATION_COLUMN = layout.stripWidth || 14;
+  const ANNOTATION_COLUMN = normaliseAnnotationWidth(layout.stripWidth);
   // optional ploidy bar column (two strips wide), after the other annotation strips
   const hasPloidy = useMemo(() => cells.some((c) => Number.isFinite(c.ploidy)), [cells]);
   const showPloidy = Boolean(layout.ploidyBars) && hasPloidy;
@@ -904,7 +924,8 @@ export default function CellHeatmapPanel() {
   }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, jCols, jStats, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverMatrix, snv, snvRows, cn, stripBlank]);
 
   const annotationCols = useMemo(() => {
-    if (!showPloidy && !showTmb) return discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio);
+    const stacked = showSignature && signatureMode === "stacked";
+    if (!showPloidy && !showTmb && !stacked) return discreteColumnLookup(nAnnotation, annotationWidth * pixelRatio);
     // strips left of the bar columns; each bar region is masked per row to the bar length
     const total = Math.floor(annotationWidth * pixelRatio);
     const barPx = Math.round(ANNOTATION_COLUMN * 3 * pixelRatio);
@@ -914,6 +935,14 @@ export default function CellHeatmapPanel() {
       const out = new Int32Array(total).fill(-1);
       out.set(base, 0);
       const cell = cellById.get(order[r]);
+      if (stacked) {
+        const x0 = Math.round(signatureColumn * ANNOTATION_COLUMN * pixelRatio);
+        const x1 = Math.round((signatureColumn + 1) * ANNOTATION_COLUMN * pixelRatio);
+        signatureSegments(signatureFits.get(order[r]), x1 - x0).forEach((part) => {
+          const code = nAnnotation + 4 + (part.signature === "Other" ? signatureNames.length : signatureNames.indexOf(part.signature));
+          out.fill(code, x0 + part.x, x0 + part.x + part.width);
+        });
+      }
       // lit bar (column nAnnotation / nAnnotation + 2) over a faint full-width track (+ 1 / + 3), so length reads against the axis
       if (showPloidy) {
         const n = barPixels(ploidyBarFraction(cell?.ploidy, ploidyMax), barPx - 2);
@@ -927,9 +956,13 @@ export default function CellHeatmapPanel() {
       return out;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nAnnotation, annotationWidth, pixelRatio, showPloidy, showTmb, cellById, order, ploidyMax, tmbMap, tmbMax, ANNOTATION_COLUMN]);
+  }, [nAnnotation, annotationWidth, pixelRatio, showPloidy, showTmb, cellById, order, ploidyMax, tmbMap, tmbMax, ANNOTATION_COLUMN, showSignature, signatureMode, signatureColumn, signatureFits, signatureNames]);
   const annotationColor = useCallback(
     (r, c) => {
+      if (c >= nAnnotation + 4) {
+        const name = signatureNames[c - nAnnotation - 4];
+        return packRGBA(hexToRgb(name ? signatureColor(name, layout.theme) : "#bdbdbd"));
+      }
       if (showTmb && c === nAnnotation + 3) return packRGBA(hexToRgb(TMB_TRACK));
       if (showTmb && c === nAnnotation + 2) return packRGBA(hexToRgb(tmbBarColor(tmbMap.get(order[r]))));
       if (showPloidy && c === nAnnotation + 1) return packRGBA(hexToRgb(PLOIDY_TRACK));
@@ -938,6 +971,10 @@ export default function CellHeatmapPanel() {
       }
       if (c === 0) return selectedRows.has(r) ? SELECTED_RGBA : stripBlank;
       const cell = cellById.get(order[r]);
+      if (c === signatureColumn) {
+        const name = dominantSignature(signatureFits.get(order[r]));
+        return name ? packRGBA(hexToRgb(signatureColor(name, layout.theme))) : stripBlank;
+      }
       if (c === 1) {
         const clone = cell?.clone_id;
         return clone != null && cloneColors[clone] ? packRGBA(hexToRgb(cloneColors[clone])) : stripBlank;
@@ -948,7 +985,7 @@ export default function CellHeatmapPanel() {
       return hex ? packRGBA(hexToRgb(hex)) : stripBlank;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedRows, cellById, order, cloneColors, expression, annotationLevels, annotationFields.join("|"), stripBlank, showPloidy, showTmb, tmbMap, nAnnotation, modalPl]
+    [selectedRows, cellById, order, cloneColors, expression, annotationLevels, annotationFields.join("|"), stripBlank, showPloidy, showTmb, tmbMap, nAnnotation, modalPl, signatureColumn, signatureFits, signatureNames, layout.theme]
   );
 
   /* ---- groups for RNA comparisons from the current (tree / heatmap) selection ---- */
@@ -1017,6 +1054,7 @@ export default function CellHeatmapPanel() {
         [t("components.single-cell.tooltip.cell"), cellLabels.full(order[row])],
         ...(cell?.clone_id != null ? [[t("components.single-cell.tooltip.clone"), cell.clone_id]] : []),
         ...annotationFields.filter((f) => cell?.[f] != null).map((f) => [f, cell[f]]),
+        ...(showSignature ? signatureTooltip(signatureFits.get(order[row])) : []),
         ...(showExpression
           ? [[
               expression.gene,
@@ -1224,13 +1262,14 @@ export default function CellHeatmapPanel() {
             </Space>
           )}
           <Space size={4}>
-            <Text type="secondary">{t("components.single-cell.toolbar.strip-width")}</Text>
+            <Tooltip title="Annotation tracks are columns beside the heatmap; this changes their width. Row height controls cell rows separately."><Text type="secondary">Annotation track width</Text></Tooltip>
             <Select
               size="small"
               style={{ width: 80 }}
-              value={layout.stripWidth || 14}
+              aria-label="Annotation track width"
+              value={ANNOTATION_COLUMN}
               onChange={(value) => dispatch(singleCellActions.updateLayout({ stripWidth: value }))}
-              options={STRIP_WIDTHS.map((value) => ({ value, label: `${value} px` }))}
+              options={ANNOTATION_WIDTHS.map((value) => ({ value, label: `${value} px` }))}
             />
           </Space>
           <Space size={4}>
@@ -1246,7 +1285,7 @@ export default function CellHeatmapPanel() {
               }))}
             />
           </Space>
-          {annotationOptions.length > 0 && (
+          {(
             <Space size={4}>
               <Text type="secondary">{t("components.single-cell.toolbar.annotate")}</Text>
               <Select
@@ -1256,11 +1295,17 @@ export default function CellHeatmapPanel() {
                 maxTagCount="responsive"
                 style={{ minWidth: 150, maxWidth: 320 }}
                 value={annotationFields}
-                onChange={(value) => dispatch(singleCellActions.updateLayout({ annotationFields: value }))}
-                options={annotationOptions.map((f) => ({ value: f, label: fieldLabel(f) }))}
+                onChange={(value) => dispatch(singleCellActions.updateLayout({ annotationFields: value.filter((f) => f !== SIGNATURE_FIELD), signatureTrack: value.includes(SIGNATURE_FIELD) }))}
+                options={[...annotationOptions.map((f) => ({ value: f, label: fieldLabel(f) })), { value: SIGNATURE_FIELD, label: signatureLabel }]}
               />
             </Space>
           )}
+          {showSignature && <Space size={4}>
+            <Tooltip title="Clone fits are fitted per clone, not per cell; cells without a clone fit use the subclonal fit. A per-cell fit uses that cell's full root-to-tip mutation set and requires at least 100 mutations."><Text type="secondary">Signature track</Text></Tooltip>
+            <Select size="small" aria-label="Signature track rendering" style={{ width: 165 }} value={signatureMode}
+              onChange={(cellSignatureMode) => dispatch(singleCellActions.updateLayout({ cellSignatureMode }))}
+              options={[{ value: "dominant", label: "Dominant (clone fit)" }, { value: "stacked", label: "Stacked (clone fit)" }, ...(cellSignatureSource ? [{ value: "cell", label: "Per-cell fit" }] : [])]} />
+          </Space>}
           <Space size={4}>
             <Text type="secondary">{t("components.single-cell.toolbar.pin")}</Text>
             <Select
@@ -1739,7 +1784,7 @@ export default function CellHeatmapPanel() {
               labels={[
                 t("components.single-cell.heatmap.strip-selected"),
                 t("components.single-cell.heatmap.strip-clone"),
-                ...annotationFields.map(fieldLabel),
+                ...annotationFields.map((f) => f === SIGNATURE_FIELD ? signatureLabel : fieldLabel(f)),
                 ...(showExpression ? [expression.gene] : []),
                 ...(showPloidy ? [t("components.single-cell.heatmap.strip-ploidy"), "", ""] : []),
                 ...(showTmb ? [t("components.single-cell.heatmap.strip-tmb"), "", ""] : []),
@@ -1858,7 +1903,7 @@ export default function CellHeatmapPanel() {
             <div
               className="sc-resize-handle"
               style={{ height, width: 6, flex: "none" }}
-              title={t("components.single-cell.toolbar.strip-width")}
+              title="Annotation track width (double-click to reset to 14 px)"
               onMouseDown={startStripDrag}
               onDoubleClick={() => dispatch(singleCellActions.updateLayout({ stripWidth: 14 }))}
             />
@@ -2082,7 +2127,7 @@ export default function CellHeatmapPanel() {
               expression={showExpression ? expression : null}
               drivers={heatmapType === "drivers" ? { snvView: layout.driverSnvView === "call" ? "call" : "vaf", colors: driverColors(), palette, entries: driverEntries.map((c) => c.entry), vafColumns: driverEntries.some((c) => c.vafs) } : null}
             />
-            {annotationFields.map((f) => (
+            {metadataFields.map((f) => (
               <Space key={f} size={4} wrap className="sc-legend">
                 <Text strong type="secondary">{fieldLabel(f)}</Text>
                 {Object.entries(annotationLevels[f] || {}).map(([level, color]) => (
@@ -2093,6 +2138,12 @@ export default function CellHeatmapPanel() {
                 ))}
               </Space>
             ))}
+            {showSignature && <Space size={6} wrap className="sc-legend" data-testid="cell-signature-legend">
+              <Text strong type="secondary">{signatureLabel}</Text>
+              {signatureNames.map((name) => <span key={name} className="sc-legend-item"><span className="sc-legend-swatch" style={{ background: signatureColor(name, layout.theme) }} /><Text type="secondary">{name}</Text></span>)}
+              {signatureMode === "stacked" && <span className="sc-legend-item"><span className="sc-legend-swatch" style={{ background: "#bdbdbd" }} /><Text type="secondary">Other (beyond top 4)</Text></span>}
+              <Text type="secondary">{signatureMode === "cell" ? "fitted per cell; below 100 mutations: not available" : "fitted per clone, not per cell; subclonal fallback"}</Text>
+            </Space>}
             {showPloidy && modalPl != null && (
               <Space size={4} wrap className="sc-legend">
                 <Text strong type="secondary">{t("components.single-cell.heatmap.strip-ploidy")}</Text>

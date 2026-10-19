@@ -17,6 +17,7 @@ import { driverLayoutFromSearch } from "../../helpers/singleCell/driverColumns";
 import { junctionFocusFromSearch } from "../../helpers/singleCell/junctionFocus";
 import { hideLowQcFromSearch, thresholdsFromSearch } from "../../helpers/singleCell/cellQc";
 import { effectiveSignatures, sigFitMode } from "../../helpers/singleCell/signatureJoint";
+import { annotationFromSearch } from "../../helpers/singleCell/cellSignatures";
 
 // Saved cell groups shared through the URL join the stored ones.
 const withUrlGroups = (layout) => {
@@ -32,6 +33,7 @@ const withUrlGroups = (layout) => {
     const thr = thresholdsFromSearch(window.location.search);
     return {
       ...withDrivers,
+      ...annotationFromSearch(window.location.search),
       ...(hide != null ? { hideLowQc: hide } : {}),
       ...(thr ? { covQcThresholds: { ...(withDrivers.covQcThresholds || {}), ...thr } } : {}),
     };

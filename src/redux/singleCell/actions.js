@@ -1,4 +1,5 @@
 import { DEFAULT_SELECTION as DEFAULT_DRIVER_SELECTION } from "../../helpers/singleCell/driverLayer";
+import { DEFAULT_SIGNATURE_TRACK } from "../../helpers/singleCell/cellSignatures";
 
 // Tracks shown for each selected cell. Coverage and total CN are on by
 // default; the others are toggles. All come from the cell's own case folder.
@@ -45,6 +46,8 @@ export const SC_DEFAULT_LAYOUT = {
   showGenePanel: true, // expression of the RNA tab's picked genes beside the heatmap
   pinnedGenes: [], // genes marked across the heatmap and cell tracks
   annotationFields: ["state", "Region_Annotation"], // cell metadata strips beside the clone strip
+  signatureTrack: DEFAULT_SIGNATURE_TRACK,
+  cellSignatureMode: "auto", // per-cell fit when available; otherwise dominant signature of the clone fit
   keepGeneTrack: false, // keep the gene track in the pinned navigation while scrolling
   sideWidth: null, // px of the mutation panel beside the CN heatmap (null = auto)
   geneWidth: null, // px of the gene expression panel (null = auto)
