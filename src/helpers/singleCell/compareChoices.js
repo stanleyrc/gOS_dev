@@ -46,6 +46,27 @@ export function hasTreeSupport(support, name) {
 
 export const NO_BOOTSTRAP_TEXT = "Bootstrap support: not available (no bootstraps for this tree)";
 
+/** Support line for a tree without splits: the per-tree reason from trees/support.json `reasons`, else the generic text. */
+export function noSupportText(support, name) {
+  const r = support && support.reasons && support.reasons[name];
+  return r ? `Bootstrap support: ${r}` : NO_BOOTSTRAP_TEXT;
+}
+
+/**
+ * Display form of a tree note: weak notes ("weak: relaxed site set, ...") become a warning tag "weak tree: relaxed site set, ...";
+ * any other note (e.g. a cleaned site set) is shown as a neutral tag without the word "weak".
+ */
+export function treeNoteDisplay(note) {
+  if (!note) return null;
+  const text = `${note}`.trim();
+  const m = /^weak\b\s*[:;,-]?\s*/i.exec(text);
+  if (m) {
+    const rest = text.slice(m[0].length).trim();
+    return { weak: true, tag: rest ? `weak tree: ${rest}` : "weak tree", tooltip: `This tree was built from a relaxed site set and should be read as provisional${rest ? `: ${rest}` : "."}` };
+  }
+  return { weak: false, tag: text, tooltip: `Tree-building note: ${text}` };
+}
+
 /**
  * Quality note on the pipeline tree from trees/index.json: the "gos" entry's `note` (gos_sc_alt_trees.R TREE_LABEL_NOTE), or
  * the text after "current; " in its label. Null when there is none (the usual case).
