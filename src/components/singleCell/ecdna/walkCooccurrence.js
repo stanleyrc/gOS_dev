@@ -15,6 +15,7 @@ import { Swatches } from "../cohort/charts";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { walkMeasured } from "../../../helpers/singleCell/walkCopies";
 
 const { Text } = Typography;
 const MUTED = INK.muted;
@@ -24,7 +25,9 @@ const MUTED = INK.muted;
  * >= minCn copies, the shared "Carrier >= copies" filter). Rare walks
  * (shared threshold) are folded into one row per family.
  */
-export function WalkUpset({ walks, families, cellIds, colorOf, minCn = 1 }) {
+export function WalkUpset({ walks, families, cellIds: allIds, colorOf, minCn = 1 }) {
+  // combinations are only meaningful over cells in which every walk was counted
+  const cellIds = useMemo(() => allIds.filter((id) => walks.every((w) => walkMeasured(w, id))), [allIds, walks]);
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
   const [ref, width] = useContainerWidth(600);
@@ -107,7 +110,7 @@ export function WalkScatter({ walks, cellIds, colorOf }) {
   const A = walks.find((w) => w.id === xa) || walks.find((w) => w.id === pair?.a) || walks[0];
   const B = walks.find((w) => w.id === yb) || walks.find((w) => w.id === pair?.b) || walks[1] || walks[0];
   if (!A || !B) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.ecdna.none-selected")} />;
-  const pts = cellIds.map((id) => ({ id, x: Number(A.cells[id]) || 0, y: Number(B.cells[id]) || 0, clone: cloneOf.get(id) }));
+  const pts = cellIds.filter((id) => walkMeasured(A, id) && walkMeasured(B, id)).map((id) => ({ id, x: Number(A.cells[id]) || 0, y: Number(B.cells[id]) || 0, clone: cloneOf.get(id) }));
   const rho = spearman(pts.map((p) => p.x), pts.map((p) => p.y));
   const p = correlationP(rho, pts.length);
   const w = Math.max(320, width - 16);

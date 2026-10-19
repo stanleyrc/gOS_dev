@@ -21,7 +21,9 @@ import {
   columnWidths,
   copiesOf,
   groupValues,
+  unmeasuredWalks,
   walkColumnBlocks,
+  walkMeasured,
 } from "../../../helpers/singleCell/walkCopies";
 import HintLine from "../hintLine";
 import RareControl, { useRareMax } from "./rareControl";
@@ -165,18 +167,21 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
       const head = `${id}${g.clone != null ? ` · ${g.clone}` : ""}`;
       if (!hasData(id)) return [head, t("components.single-cell.ecdna.tc-no-data")];
       const lines = cellWalkLines(walks, id).map((r) => ({ color: colorOf(r.id), text: `${r.label}: ${fmt(r.copies)}` }));
-      return [head, ...(lines.length ? lines : [t("components.single-cell.ecdna.tc-no-walks")])];
+      const notCounted = unmeasuredWalks(walks, id);
+      const extra = notCounted.length ? [{ color: INK.muted, text: `not counted in this cell: ${notCounted.length} walk${notCounted.length > 1 ? "s" : ""} (counted over a different cell set)` }] : [];
+      return [head, ...(lines.length ? lines : [t("components.single-cell.ecdna.tc-no-walks")]), ...extra];
     }
     const head = `${g.label} · ${g.measuredIds.length}/${g.ids.length} cells`;
     const lines = walks
       .map((w) => {
-        const carriers = g.measuredIds.filter((id) => copiesOf(w, id) > 0);
-        const mean = g.measuredIds.length ? d3.sum(g.measuredIds, (id) => copiesOf(w, id)) / g.measuredIds.length : 0;
-        return { w, n: carriers.length, mean };
+        const m = g.measuredIds.filter((id) => walkMeasured(w, id));
+        const carriers = m.filter((id) => copiesOf(w, id) > 0);
+        const mean = m.length ? d3.sum(m, (id) => copiesOf(w, id)) / m.length : 0;
+        return { w, n: carriers.length, mean, m: m.length };
       })
       .filter((r) => r.n > 0)
       .sort((a, b) => b.mean - a.mean)
-      .map((r) => ({ color: colorOf(r.w.id), text: `${r.w.label}: mean ${fmt(r.mean)} · ${r.n}/${g.measuredIds.length} carry` }));
+      .map((r) => ({ color: colorOf(r.w.id), text: `${r.w.label}: mean ${fmt(r.mean)} · ${r.n}/${r.m} carry` }));
     return [head, ...lines];
   };
 
@@ -379,7 +384,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
                         <rect x={x} y={y + 1} width={Math.max(0, st.fraction * w)} height={SUM_ROW - 2} fill={colColor(c)} fillOpacity={0.22} />
                         <text x={x + 3} y={y + SUM_ROW / 2} dy="0.35em" fontSize={11} fill={INK.text}>{clip(txt, w - 4, 5.4)}</text>
                         <title>
-                          {t("components.single-cell.ecdna.tc-summary-tip", { clone: s.clone, pct: d3.format(".0%")(st.fraction), measured: s.measured, walk: colLabel(c), median: fmt(st.median) })}
+                          {t("components.single-cell.ecdna.tc-summary-tip", { clone: s.clone, pct: d3.format(".0%")(st.fraction), measured: st.measured ?? s.measured, walk: colLabel(c), median: fmt(st.median) })}
                         </title>
                       </g>
                     );

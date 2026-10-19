@@ -31,7 +31,8 @@ export default function useWalks(cellIds) {
       });
       return out;
     };
-    return (walksSource.data?.walks || []).map((w) => ({ ...w, id: `${w.id}`, genes: asList(w.genes), driver_genes: asList(w.driver_genes), nodes: w.nodes || [], junctions: w.junctions || [], cells: remap(w.cells) }));
+    const remapList = (ids) => (Array.isArray(ids) && ids.length ? new Set(ids.map((id) => canonical.get(idKey(id)) || `${id}`)) : null);
+    return (walksSource.data?.walks || []).map((w) => ({ ...w, id: `${w.id}`, genes: asList(w.genes), driver_genes: asList(w.driver_genes), nodes: w.nodes || [], junctions: w.junctions || [], cells: remap(w.cells), measuredSet: remapList(w.measured_cells) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walksSource, cellIds.join("|")]);
   // cells that have walk counts at all (walks.json "cells"); null = unknown, treat every cell as measured
