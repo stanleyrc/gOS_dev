@@ -127,9 +127,6 @@ export default function CohortSpliceGene({ ctx, cluster, event, width }) {
               </g>
             );
           })}
-          <text x={4} y={canonY - 4} fontSize={TYPE.micro} fill="currentColor" opacity={0.7}>
-            {`canonical ${ctx.canonical.id}`}
-          </text>
           {segsOthers.map((b, i) => {
             const r = { x0: sx(layout.x(b.start)), x1: sx(layout.x(b.end + 1)) };
             return <rect key={`o${i}`} x={r.x0} y={othersY + 4} width={Math.max(1, r.x1 - r.x0)} height={ROW - 8} fill="#9ca3af" opacity={0.7} />;
