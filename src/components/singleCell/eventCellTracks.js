@@ -174,6 +174,7 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
         cellIds={shown}
         embedded
         highlightLocation={complexLocation}
+        yAxisDefault={domains?.length > 1 ? "window" : "shared"}
         title={t("components.single-cell.event-cells.title", { location: location || "" })}
         onRemove={(id) => (multi ? setMany(many.filter((c) => c !== id)) : setOne(null))}
       />

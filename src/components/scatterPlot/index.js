@@ -141,7 +141,8 @@ class ScatterPlot extends Component {
     const widthChanged = nextProps.width !== this.props.width;
     const heightChanged = nextProps.height !== this.props.height;
     const commonRangeYChanged =
-      nextProps.commonRangeY !== this.props.commonRangeY;
+      nextProps.commonRangeY !== this.props.commonRangeY ||
+      nextProps.windowRangesY !== this.props.windowRangesY;
 
     return (
       dataPointsColorChanged ||
@@ -206,6 +207,7 @@ class ScatterPlot extends Component {
     } else {
       this.updateStage(
         dataPointsChanged ||
+          prevProps.windowRangesY !== this.props.windowRangesY ||
           (prevProps.commonRangeY === null &&
             this.props.commonRangeY !== null) ||
           (prevProps.commonRangeY !== null && this.props.commonRangeY === null)
@@ -246,9 +248,10 @@ class ScatterPlot extends Component {
   }
 
   getYDomains(domains) {
-    const { commonRangeY } = this.props;
+    const { commonRangeY, windowRangesY } = this.props;
     const manualYBounds = this.getActiveManualYBounds();
 
+    if (windowRangesY) return domains.map((d, index) => windowRangesY[index] || this.getDefaultYExtent(index));
     if (commonRangeY) {
       return domains.map(() => commonRangeY);
     }
@@ -261,7 +264,8 @@ class ScatterPlot extends Component {
   }
 
   getPanelYExtent(index) {
-    const { commonRangeY } = this.props;
+    const { commonRangeY, windowRangesY } = this.props;
+    if (windowRangesY && windowRangesY[index]) return windowRangesY[index];
     const manualYBounds = this.getActiveManualYBounds();
 
     if (commonRangeY) return commonRangeY;

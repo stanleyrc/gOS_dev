@@ -56,6 +56,7 @@ class ScatterPlotPanel extends Component {
     if (domainsChanged) return true;
 
     if (nextProps.commonRangeY !== this.props.commonRangeY) return true;
+    if (nextProps.windowRangesY !== this.props.windowRangesY) return true;
 
     if (
       nextProps.dataPointsY1 !== this.props.dataPointsY1 ||
@@ -155,6 +156,7 @@ class ScatterPlotPanel extends Component {
       yAxis2Title,
       notification,
       commonRangeY,
+      windowRangesY,
     } = this.props;
     if (!visible) return null;
     const { parentWidth, height } = this.state;
@@ -287,6 +289,7 @@ class ScatterPlotPanel extends Component {
                             yAxisTitle,
                             yAxis2Title,
                             commonRangeY,
+                            windowRangesY,
                           }}
                         />
                         <HoverLine width={w - gap} height={h} />
