@@ -2,7 +2,7 @@
 // labels and one-line purposes live in translations
 // (cohort.view-<key>, cohort.purpose-<key>, cohort.group-<group>). Pure data + helpers.
 
-export const COHORT_VIEW_GROUPS = ["findings", "genome", "evolution", "rna", "explore"];
+export const COHORT_VIEW_GROUPS = ["findings", "genome", "evolution", "rna", "explore", "guide"];
 
 export const COHORT_VIEWS = [
   { key: "overview", group: "findings" },
@@ -29,6 +29,8 @@ export const COHORT_VIEWS = [
   { key: "events", group: "explore" },
   { key: "scatter", group: "explore" },
   { key: "qc", group: "explore" },
+  { key: "welcome", group: "guide" },
+  { key: "methods", group: "guide" },
 ];
 
 const KEYS = new Set(COHORT_VIEWS.map((v) => v.key));

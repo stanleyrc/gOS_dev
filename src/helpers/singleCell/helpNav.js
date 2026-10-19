@@ -65,3 +65,16 @@ export function onOpenHelpCenter(fn) {
   openers.add(fn);
   return () => openers.delete(fn);
 }
+
+// Current cohort view, published by the cohort panel so the navigation rail can highlight it.
+let cohortView = null;
+const cohortViewListeners = new Set();
+export function announceCohortView(view) {
+  cohortView = view;
+  cohortViewListeners.forEach((fn) => fn(view));
+}
+export const currentCohortView = () => cohortView;
+export function subscribeCohortView(fn) {
+  cohortViewListeners.add(fn);
+  return () => cohortViewListeners.delete(fn);
+}
