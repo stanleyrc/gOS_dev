@@ -1,7 +1,7 @@
 import React from "react";
 import { Tooltip, Typography } from "antd";
 import { DatabaseOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { WHERE, provenanceOf } from "../../helpers/singleCell/provenance";
+import { CORE_REFERENCES, WHERE, provenanceOf } from "../../helpers/singleCell/provenance";
 
 const { Text } = Typography;
 
@@ -20,6 +20,7 @@ export function ProvenanceTip({ id, text }) {
       <div className="sc-prov-row">
         <span className="sc-prov-key">Data</span>
         <span>{entry.source}</span>
+        <div className="sc-prov-refs" style={{ marginTop: 4, opacity: 0.85 }}>Methods: {CORE_REFERENCES.map((r) => r.short).join("; ")}</div>
       </div>
       <div className="sc-prov-row">
         <span className="sc-prov-key">Calc</span>

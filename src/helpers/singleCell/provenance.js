@@ -10,6 +10,12 @@
 // map, signatures, dataset, cna, events, rna, walks, bams, register) with
 // skilift R/single-cell.R and R/single-cell-annotate.R.
 
+/** Methods references shown with every provenance hover and in every reference list of the single-cell views. */
+export const CORE_REFERENCES = [
+  { key: "hadi2020", short: "JaBbA (Hadi et al., Cell 2020)", text: "Hadi K et al. Distinct classes of complex structural variation uncovered across thousands of cancer genome graphs. Cell 2020. JaBbA: the genome graphs behind every copy-number and junction call shown here." },
+  { key: "choo2023", short: "Choo et al., Nature Genetics 2023", text: "Choo Z-N et al. Most large structural variants in cancer genomes can be detected without long reads. Nature Genetics 2023. Short-read structural-variant detection and the junction classes used here." },
+];
+
 export const WHERE = {
   browser: { label: "computed in browser", color: "geekblue" },
   backend: { label: "precomputed (back end)", color: "purple" },
