@@ -29,7 +29,8 @@ export const SC_LAYOUT_STORAGE_KEY = "gos.singleCell.layout";
 // heatmap; igvSync zooms every genome view to the site IGV shows.
 export const SC_DEFAULT_LAYOUT = {
   treeWidth: 220,
-  figureStyle: "clean", // Paper figures drawing style (helpers/singleCell/figureStyle)
+  figureStyle: "clean", // shared chart drawing style (helpers/singleCell/figureStyle)
+  figuresViewStyle: null, // Paper figures view style; null = "paper" (the manuscript look)
   rowHeight: "auto",
   compactHeader: false, // thin patient header and gene / karyotype track (Single-Cell tab toggle "Compact header")
   showUmap: false,

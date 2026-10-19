@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Button, Checkbox, Col, Progress, Row, Select, Space, Switch, Tooltip, Typography } from "antd";
-import FigureCanvas, { fitText } from "./figureCanvas";
+import FigureCanvas, { fitText, useFigureStyleName } from "./figureCanvas";
+import { figureStyle, isPaperStyle } from "../../../helpers/singleCell/figureStyle";
+import { PAPER_EGFR, paperCladeLabel, paperCloneColors, paperCnCss, paperCnPacked, paperEgfrColor, paperStateColor } from "../../../helpers/singleCell/paperPalette";
 import { PanelHead, textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
 import useTreeView from "../useTreeView";
@@ -9,6 +11,7 @@ import useWalks from "../ecdna/useWalks";
 import SnvSiteDrawer from "../snvSiteDrawer";
 import WalkDiagram from "../ecdna/walkDiagram";
 import VariantTree from "./variantTree";
+import SvgExportButton from "../svgExportButton";
 import TriangleCorrelation from "./triangleCorrelation";
 import CladeStateTree from "./cladeStateTree";
 import GenomeTracks from "./genomeTracks";
@@ -83,7 +86,14 @@ export function usePatientLoaded(patient) {
  */
 export function useFocusFamily(focusWalkId) {
   const { order, treeLayout, cellById } = useTreeView();
-  const { all, filtered, colorOf, measured } = useWalks(order);
+  const { all, filtered, colorOf: baseColorOf, measured } = useWalks(order);
+  // Paper style: the manuscript's ecEGFR colours (long / short / shorter / variants); other walks keep theirs
+  const paper = isPaperStyle(figureStyle(useFigureStyleName()));
+  const colorOf = useMemo(() => {
+    if (!paper) return baseColorOf;
+    const byId = new Map(all.map((w) => [`${w.id}`, w]));
+    return (id) => paperEgfrColor(byId.get(`${id}`)?.label) || baseColorOf(id);
+  }, [paper, all, baseColorOf]);
   const families = useMemo(() => walkFamilies(filtered.length ? filtered : all), [filtered, all]);
   // default: the driver ecDNA (walk with driver genes) carried by the most cells
   const focusWalk = useMemo(() => {
@@ -116,6 +126,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const [ref, measuredW] = useContainerWidth(1200);
   const width = Math.max(760, measuredW);
   const dark = useDarkTheme();
+  const paper = isPaperStyle(figureStyle(useFigureStyleName()));
+  const figRef = useRef(null);
 
   // ---- amplicons: every main amplicon of the patient by default (hide / reorder with the chips)
   const tumorIds = useMemo(() => order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)), [order, cellById]);
@@ -237,7 +249,18 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     );
     return snvData.variants.filter((v) => Number.isFinite(v.global) && ivals.some(([s, e]) => v.global >= s && v.global <= e)).sort((a, b) => a.global - b.global);
   }, [snvData, ampWalks, family, chromoBins]);
-  const stateColors = useMemo(() => annotationColors(sc.cells.map((c) => c.state).filter((s) => s != null && s !== "")), [sc.cells]);
+  const stateColors = useMemo(() => {
+    const base = annotationColors(sc.cells.map((c) => c.state).filter((s) => s != null && s !== ""));
+    if (!paper) return base;
+    return Object.fromEntries(Object.entries(base).map(([k, col]) => [k, paperStateColor(k) || col]));
+  }, [sc.cells, paper]);
+  // clade strip: the manuscript's clade colours and names in the Paper style (MGH303: EC1-3, CI)
+  const cloneColors = useMemo(() => (paper ? { ...sc.cloneColors, ...paperCloneColors(patient, Object.keys(sc.cloneColors || {})) } : sc.cloneColors), [paper, sc.cloneColors, patient]);
+  const cloneLabel = useCallback((k) => (paper ? paperCladeLabel(patient, k) : k), [paper, patient]);
+  const cnPacked = paper ? paperCnPacked : ampliconRGBA;
+  const cnCss = paper ? paperCnCss : ampliconCss;
+  const lostInkP = paper ? PAPER_EGFR.lost : LOST;
+  const keepInkP = paper ? PAPER_EGFR.retained : RETAINED;
 
   // ---- ancestral state of the focused variant
   const anc = useMemo(() => {
@@ -330,12 +353,12 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           else if (!row) px[r * cols + x] = NO_CN;
           else {
             const b = binAt(row.binIndex, gOf[x]);
-            px[r * cols + x] = b >= 0 ? ampliconRGBA(row.values[b]) : NO_CN;
+            px[r * cols + x] = b >= 0 ? cnPacked(row.values[b]) : NO_CN;
           }
         }
       })
     );
-  }, [cnGeo, cnById, order, n]);
+  }, [cnGeo, cnById, order, n, cnPacked]);
   const bars = useMemo(
     () =>
       columns.map((col) => {
@@ -398,8 +421,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     (ctx, c) => {
       ctx.imageSmoothingEnabled = false;
       const ink = c.dark ? "rgba(230,230,230,0.85)" : "rgba(30,30,30,0.85)";
-      const lostInk = c.dark ? "#ef6f6c" : LOST;
-      const keepInk = c.dark ? "#66bb6a" : RETAINED;
+      const lostInk = c.dark ? "#ef6f6c" : lostInkP;
+      const keepInk = c.dark ? "#66bb6a" : keepInkP;
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, TOP, width, plotH);
@@ -462,7 +485,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         const cell = cellById.get(order[r]) || {};
         const y = TOP + (r - r0) * rh;
         const h = Math.max(1, rh - (rh >= 4 ? 0.5 : 0));
-        ctx.fillStyle = sc.cloneColors[cell.clone_id] || (isNormalClone(cell.clone_id) ? "#9e9e9e" : "#d9d9d9");
+        ctx.fillStyle = cloneColors[cell.clone_id] || (isNormalClone(cell.clone_id) ? "#9e9e9e" : "#d9d9d9");
         ctx.fillRect(L.clade, y, STRIP, h);
         ctx.fillStyle = cell.state != null && cell.state !== "" ? stateColors[`${cell.state}`] || "#d9d9d9" : c.dark ? "#3a3a3a" : "#ededed";
         ctx.fillRect(L.state, y, STRIP, h);
@@ -565,7 +588,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         ramp(rx, 16, Math.min(120, (snvImg ? L.snvW : L.ecW) - 4), [[0, c.dark ? "#2a2a2a" : "#ffffff"], [1, c.dark ? "#f0f0f0" : "#141414"]], [[0, "0"], [0.5, "0.5"], [1, "1"]], "Variant allele frequency");
       }
       if (cnGeo) {
-        const stops = AMP_LEGEND.map((v, k) => [k / (AMP_LEGEND.length - 1), ampliconCss(v)]);
+        const stops = AMP_LEGEND.map((v, k) => [k / (AMP_LEGEND.length - 1), cnCss(v)]);
         const labs = AMP_LEGEND.map((v, k) => [k / (AMP_LEGEND.length - 1), `${v}`]);
         ramp(L.cnX, 16, Math.min(180, L.cnW * 0.4), stops, labs, "Copy number");
       }
@@ -714,7 +737,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       ctx.textBaseline = "middle";
       return [];
     },
-    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, lostBelow, nameOf, cellById, sc.cloneColors, stateColors, L, snvImg, ecImg, cnImg, bars, barMax, barLabH, colorOf, hoverRow, cnGeo, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length]
+    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, lostBelow, nameOf, cellById, cloneColors, stateColors, cnCss, lostInkP, keepInkP, L, snvImg, ecImg, cnImg, bars, barMax, barLabH, colorOf, hoverRow, cnGeo, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length]
   );
 
   // ---- interaction
@@ -899,7 +922,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           })}
         </div>
       )}
-      <PanelHead letter="A" title="Clonal structure of the amplicons" fig="Fig 4B · 5D" hint="hover a row for its cell · click or drag rows, or click a node, to select · scroll to zoom genome (heatmap) or rows (tree) · double-click a node for its clade (Fig 4D)" />
+      <PanelHead letter="A" title="Clonal structure of the amplicons" fig="Fig 4B · 5D" hint="hover a row for its cell · click or drag rows, or click a node, to select · scroll to zoom genome (heatmap) or rows (tree) · double-click a node for its clade (Fig 4D)" extra={<SvgExportButton containerRef={figRef} name={`figure-4B-${patient}`} title="Export SVG (vector, publication size) or PNG" />} />
+      <div ref={figRef}>
       <FigureCanvas
         width={width}
         height={height}
@@ -948,13 +972,14 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           if (e >= s) select(order.slice(s, e + 1), `${e - s + 1} rows (brushed)`, event);
         }}
       />
+      </div>
       <div className="sc-fig-keys">
         <span className="sc-fig-key">
           <b>Clade</b>
-          {Object.entries(sc.cloneColors).slice(0, 14).map(([k, col]) => (
+          {Object.entries(cloneColors).slice(0, 14).map(([k, col]) => (
             <span key={k}>
               <span className="sc-fig-swatch" style={{ background: col }} />
-              {k}
+              {cloneLabel(k)}
             </span>
           ))}
         </span>
@@ -970,9 +995,9 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         {showAnc && focusWalk && (
           <span className="sc-fig-key">
             <b>{`${focusWalk.label || "variant"} status`}</b>
-            <span><span className="sc-fig-swatch" style={{ background: RETAINED, borderRadius: 5 }} />present</span>
-            <span><span className="sc-fig-swatch" style={{ background: LOST, borderRadius: 5 }} />lost (red lineage)</span>
-            <span><span className="sc-fig-swatch" style={{ background: "transparent", border: `1.5px solid ${RETAINED}`, borderRadius: 6 }} />ringed: state changes here</span>
+            <span><span className="sc-fig-swatch" style={{ background: keepInkP, borderRadius: 5 }} />present</span>
+            <span><span className="sc-fig-swatch" style={{ background: lostInkP, borderRadius: 5 }} />lost (red lineage)</span>
+            <span><span className="sc-fig-swatch" style={{ background: "transparent", border: `1.5px solid ${keepInkP}`, borderRadius: 6 }} />ringed: state changes here</span>
             <span>dot size = likelihood</span>
           </span>
         )}

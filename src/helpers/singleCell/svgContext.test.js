@@ -1,0 +1,75 @@
+import SvgContext, { parseFont, svgPaint } from "./svgContext";
+
+describe("SvgContext", () => {
+  it("parses fonts and colours", () => {
+    expect(parseFont("italic 600 11.5px Helvetica, Arial")).toEqual({ style: "italic", weight: "600", size: 11.5, family: "Helvetica, Arial" });
+    expect(parseFont("12px sans-serif").weight).toBe("400");
+    expect(svgPaint("rgba(10,20,30,0.5)")).toEqual({ paint: "rgb(10,20,30)", opacity: 0.5 });
+    expect(svgPaint("#ff000080").paint).toBe("#ff0000");
+  });
+  it("records rects, paths, text and transforms as SVG", () => {
+    const ctx = new SvgContext(200, 100, { imageUrl: () => "data:image/png;base64,AAAA" });
+    ctx.fillStyle = "#123456";
+    ctx.fillRect(1, 2, 3, 4);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(10, 10);
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = "700 10px Helvetica";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.save();
+    ctx.translate(5, 6);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText("A < B", 0, 0);
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(50, 50, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.drawImage({ width: 4, height: 2 }, 10, 10, 40, 20);
+    const svg = ctx.toSvg();
+    expect(svg).toMatch(/^<svg [^>]*width="150pt" height="75pt" viewBox="0 0 200 100"/);
+    expect(svg).toContain('<rect x="1" y="2" width="3" height="4" fill="#123456"/>');
+    expect(svg).toContain('d="M0 0L10 10" fill="none" stroke="red" stroke-width="2" stroke-dasharray="3 3"');
+    expect(svg).toContain('font-weight="700"');
+    expect(svg).toContain('text-anchor="middle"');
+    expect(svg).toContain('dominant-baseline="central"');
+    expect(svg).toContain("A &lt; B");
+    expect(svg).toMatch(/transform="matrix\(0 -1 1 0 5 6\)"/);
+    expect(svg).toMatch(/<path d="M55 50C55 52.76 52.76 55 50 55C/);
+    expect(svg).toContain('<image x="10" y="10" width="40" height="20"');
+  });
+  it("transforms path points when they are added (save / translate / restore before fill)", () => {
+    const ctx = new SvgContext(20, 20, { imageUrl: () => null });
+    ctx.beginPath();
+    ctx.save();
+    ctx.translate(10, 10);
+    ctx.rect(-1, -1, 2, 2);
+    ctx.restore();
+    ctx.fill();
+    expect(ctx.toSvg()).toContain('<path d="M9 9L11 9L11 11L9 11Z" fill="#000000"/>');
+  });
+  it("keeps clip paths and gradients", () => {
+    const ctx = new SvgContext(10, 10, { imageUrl: () => null });
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, 5, 5);
+    ctx.clip();
+    ctx.fillRect(0, 0, 10, 10);
+    ctx.restore();
+    const g = ctx.createLinearGradient(0, 0, 10, 0);
+    g.addColorStop(0, "#fff");
+    g.addColorStop(1, "rgba(0,0,0,0.5)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 10, 2);
+    const svg = ctx.toSvg();
+    expect(svg).toContain('<clipPath id="clip1"><path d="M0 0L5 0L5 5L0 5Z"/></clipPath>');
+    expect(svg).toContain('<g clip-path="url(#clip1)"><rect');
+    expect(svg).toContain('<stop offset="1" stop-color="rgb(0,0,0)" stop-opacity="0.5"/>');
+    expect(svg).toContain('fill="url(#grad2)"');
+  });
+});

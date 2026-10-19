@@ -1,9 +1,11 @@
-import React, { useEffect, useRef } from "react";
+import React, { createContext, useContext, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import usePixelRatio from "../usePixelRatio";
 import usePlotTheme from "../usePlotTheme";
 import { FONT_FAMILY, TYPE, currentPlotTheme, fontCss, isDarkLike } from "../../../helpers/singleCell/plotTheme";
 import { figureStyle } from "../../../helpers/singleCell/figureStyle";
+import SvgContext from "../../../helpers/singleCell/svgContext";
+import { registerVector } from "../svgExportButton";
 
 /**
  * Colour tokens of the current theme (helpers/singleCell/plotTheme) plus the
@@ -15,7 +17,26 @@ export function ink(styleName) {
 }
 
 /** The chart style chosen in the layout preferences (Paper figures and the shared SVG charts). */
-export const useFigureStyleName = () => useSelector((s) => s.SingleCell.layout.figureStyle);
+// a view can set its own default style (the Paper figures view opens in "paper"); an explicit choice in the layout wins
+export const FigureStyleDefault = createContext(null);
+// (the Paper figures view keeps its own choice, layout.figuresViewStyle, so the app-wide figureStyle default does not mask it)
+export const useFigureStyleName = () => {
+  const fallback = useContext(FigureStyleDefault);
+  const layout = useSelector((s) => s.SingleCell.layout);
+  return fallback ? layout.figuresViewStyle || fallback : layout.figureStyle;
+};
+
+/**
+ * Replay a panel's draw() into an SVG recorder: text, lines and marks as
+ * vectors, prebuilt bitmaps (heatmaps) embedded. Returns the SVG string.
+ */
+export function drawToSvg(draw, width, height, styleName, { title } = {}) {
+  const c = ink(styleName);
+  const svg = new SvgContext(width, height, { background: c.panel || null });
+  svg.textBaseline = "middle";
+  draw(svg, c);
+  return svg.toSvg({ title });
+}
 export const useFigureStyle = () => figureStyle(useFigureStyleName());
 
 export { FONT_FAMILY };
@@ -58,6 +79,8 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
     ctx.clearRect(0, 0, width, height);
     ctx.textBaseline = "middle";
     hitsRef.current = draw(ctx, ink(styleName)) || [];
+    // vector export (SvgExportButton): replays the same draw() into SVG on demand
+    registerVector(canvas, () => drawToSvg(draw, width, height, styleName, { title: ariaLabel }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height, draw, pr, themeMode, styleName]);
 

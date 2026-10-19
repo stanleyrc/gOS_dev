@@ -10,17 +10,23 @@ import PhyloSignalPanel from "./phyloSignalPanel";
 import SubclonalFindingsTable from "./subclonalFindingsTable";
 import PatientEcdnaView from "./patientEcdnaView";
 import { Provenance } from "../hintLine";
-import { useFigureStyleName } from "./figureCanvas";
-import { PanelHead } from "./figureKit";
+import { FigureStyleDefault, useFigureStyleName } from "./figureCanvas";
+import { ExportPanel, PanelHead } from "./figureKit";
+import StateQuadrant from "./stateQuadrant";
+import PhyloSignalStrip from "./phyloSignalStrip";
+import useCohortExport from "../cohort/useCohortExport";
+import { casePath, tryGet } from "../../../redux/singleCell/loaders";
+import { PHYLO_SIGNAL_FILE, STATE_SCORES_FILE, parseStateScores } from "../../../helpers/singleCell/paperPanels";
 import { dominantGroupIndex } from "../../../helpers/singleCell/figureDefaults";
 import singleCellActions from "../../../redux/singleCell/actions";
-import { FIGURE_STYLES, DEFAULT_FIGURE_STYLE } from "../../../helpers/singleCell/figureStyle";
+import { FIGURE_STYLES, FIGURES_VIEW_STYLE, figureStyle, isPaperStyle } from "../../../helpers/singleCell/figureStyle";
 import PatientFigure, { PatientCladeStates, PatientProfiles, PatientVariantCopies } from "./patientFigure";
 import ScEventModal from "../scEventModal";
 import GenePairScatter from "./genePairScatter";
 import CladeCarrierBars from "./cladeCarrierBars";
 import SelectedCellsModal from "./selectedCellsModal";
 import { CellSelectionProvider, SelectionBar, useCellSelection } from "./cellSelection";
+import { paperCladeLabel, paperCloneColors } from "../../../helpers/singleCell/paperPalette";
 import { readViewLink, walkIdsForLabels, withCloneOverrides } from "../../../helpers/singleCell/deepLink";
 import GeneCnScatter from "./geneCnScatter";
 
@@ -73,10 +79,13 @@ function eventLoci(e) {
  * shown in a popup (SelectedCellsModal).
  */
 export default function CohortFiguresPanel(props) {
+  // the view opens in the manuscript look (Paper style) unless a figure style was chosen
   return (
-    <CellSelectionProvider>
-      <FiguresBody {...props} />
-    </CellSelectionProvider>
+    <FigureStyleDefault.Provider value={FIGURES_VIEW_STYLE}>
+      <CellSelectionProvider>
+        <FiguresBody {...props} />
+      </CellSelectionProvider>
+    </FigureStyleDefault.Provider>
   );
 }
 
@@ -91,6 +100,22 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
     return () => window.removeEventListener("keydown", onKey);
   }, [clear, popupOpen]);
   const styleName = useFigureStyleName();
+  const paper = isPaperStyle(figureStyle(styleName));
+  // precomputed exports read by the paper panels: Fig 1e state scores, Fig 3E phylogenetic signal
+  const dataset = useSelector((s) => s.Settings?.dataset);
+  const stateExport = useCohortExport(dataset?.dataPath ? dataset : null, STATE_SCORES_FILE);
+  const statePoints = useMemo(() => parseStateScores(stateExport.data) || [], [stateExport.data]);
+  const [signals, setSignals] = useState([]);
+  const summaryKey = summaries.map((x) => x.caseReportId).join("|");
+  useEffect(() => {
+    if (!dataset?.dataPath) return undefined;
+    let live = true;
+    Promise.all(summaries.map((x) => tryGet(casePath(dataset, x.caseReportId, PHYLO_SIGNAL_FILE)).then((r) => (r.status === "ok" && r.data?.rows ? { patient: x.caseReportId, data: r.data } : null)))).then((all) => live && setSignals(all.filter(Boolean)));
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataset?.dataPath, summaryKey]);
   const [ref] = useContainerWidth(1200);
   const rootRef = useRef(null);
   const rootDiv = useCallback(
@@ -119,6 +144,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
     [summaries, files, datafiles, curatedOnly, includeOther, minCells, minCn]
   );
   const withAmps = per.filter((p) => p.groups.length);
+  const dnaIds = useMemo(() => Object.fromEntries(per.map((p) => [p.patient, new Set(p.cellIds)])), [per]);
 
   const findings = useMemo(
     () =>
@@ -164,6 +190,21 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
     return () => clearTimeout(t);
   }, [link.figPatient]);
   const linkColors = useMemo(() => withCloneOverrides(cloneColors, link.cloneColors), [cloneColors, link]);
+  // Paper style: the manuscript's clade colours and labels (MGH303 EC1-3 / CI); link overrides still win
+  const figCloneColors = useMemo(() => {
+    if (!paper || !current) return linkColors;
+    const clones = [...new Set(current.cells.map((c) => `${c.clone_id ?? ""}`).filter(Boolean))];
+    return withCloneOverrides({ ...cloneColors, ...paperCloneColors(current.patient, clones) }, link.cloneColors);
+  }, [paper, current, cloneColors, linkColors, link]);
+  const figCloneLabels = useMemo(() => {
+    if (!paper || !current) return link.cloneLabels;
+    const out = {};
+    current.cells.forEach((c) => {
+      const id = `${c.clone_id ?? ""}`;
+      if (id) out[id] = paperCladeLabel(current.patient, id);
+    });
+    return { ...out, ...link.cloneLabels };
+  }, [paper, current, link]);
   // the cohort selection drives the loaded patient's selection (tree, heatmap, report side panels)
   const storePatient = useSelector((s) => s.SingleCell.patient?.caseReportId);
   const storeSelection = useSelector((s) => s.SingleCell.selectedCellIds);
@@ -265,17 +306,28 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const selectedViolin = region.group ? { patient: current?.patient, key: region.group.key } : null;
 
   return (
-    <div ref={rootDiv}>
+    <div ref={rootDiv} className={paper ? "sc-fig-paper" : undefined}>
       <div className="sc-fig-selbar-wrap" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
         <div style={{ flex: "1 1 420px" }}>
           <SelectionBar />
         </div>
         <Space size={6}>
           <Text type="secondary">Figure style</Text>
-          <Segmented size="small" value={styleName || DEFAULT_FIGURE_STYLE} onChange={(v) => dispatch(singleCellActions.updateLayout({ figureStyle: v }))} options={Object.entries(FIGURE_STYLES).map(([value, st]) => ({ value, label: st.label }))} />
+          <Segmented size="small" value={styleName || FIGURES_VIEW_STYLE} onChange={(v) => dispatch(singleCellActions.updateLayout({ figuresViewStyle: v }))} options={Object.entries(FIGURE_STYLES).map(([value, st]) => ({ value, label: st.label }))} />
         </Space>
       </div>
       <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Card id="sc-fig-states" size="small" title={<Space><BranchesOutlined />Figure 1 · Cell states</Space>}>
+            <Row gutter={[24, 8]}>
+              <Col xs={24} xl={12}>
+                <ExportPanel name="1e" letter="E" title="Cell-state quadrant" fig="Fig 1e" hint="hover a cell · lasso to select (linked to the patient pages) · click a DNA-profiled cell">
+                  {stateExport.status === "loading" ? <Text type="secondary">Loading state scores…</Text> : <StateQuadrant points={statePoints} dnaIds={dnaIds} selected={selection} onSelect={(p, ids, opts) => focus(p, { marked: { cells: new Set(ids), label: opts.label }, mode: opts.mode, scroll: false })} />}
+                </ExportPanel>
+              </Col>
+            </Row>
+          </Card>
+        </Col>
         <Col span={24}>
           <Card
             id="sc-fig-landscape"
@@ -295,7 +347,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             ) : (
               <Row gutter={[24, 8]}>
                 <Col xs={24} xl={14}>
-                  <PanelHead letter="A" title="Copy number and structures per amplicon" fig="Fig 3A" hint="drag along a violin to select a copy range · click a row to open the patient below" />
+                  <ExportPanel name="3A" letter="A" title="Copy number and structures per amplicon" fig="Fig 3A" hint="drag along a violin to select a copy range · click a row to open the patient below">
                   <AmpliconViolins
                     per={withAmps}
                     selected={selectedViolin}
@@ -303,24 +355,39 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                     onSelectCells={(p, ids, opts) => select(p, ids, opts)}
                     onSelect={({ patient: p, key }, event) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key), mode: event?.shiftKey ? "add" : "replace" })}
                   />
+                  </ExportPanel>
                 </Col>
                 <Col xs={24} xl={10}>
-                  <PanelHead letter="B" title="Amplicon combinations per cell" fig="Fig 3B" hint="click a row to select those cells" />
+                  <ExportPanel name="3B" letter="B" title="Amplicon combinations per cell" fig="Fig 3B" hint="click a row to select those cells">
                   <AmpliconUpset
                     per={withAmps}
                     selected={null}
                     onSelect={({ patient: p, cells, label }) => focus(p, { marked: { cells: new Set(cells), label: `cells with ${label}` }, scroll: false })}
                   />
+                  </ExportPanel>
                 </Col>
               </Row>
             )}
             <Row gutter={[24, 8]} className="sc-fig-block">
               <Col xs={24} xxl={11}>
-                <PanelHead letter="C" title="Inherited or redrawn at each division?" fig="Fig 3E" hint="click a walk to open it below" />
-                <PhyloSignalPanel per={per} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
+                <ExportPanel name="3E" letter="C" title="Inherited or redrawn at each division?" fig="Fig 3E" hint="click a walk to open it below">
+                {signals.length ? (
+                  <PhyloSignalStrip
+                    signals={signals}
+                    onSelectWalk={(p, walkId) => {
+                      setPatient(p);
+                      setRegionKey(`w:${walkId}`);
+                      setTimeout(() => patientRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+                    }}
+                  />
+                ) : (
+                  <PhyloSignalPanel per={per} onSelect={({ patient: p, key }) => focus(p, { region: `g:${key}`, marked: markGroup(per.find((x) => x.patient === p), key) })} />
+                )}
                 <div className="sc-fig-caption">
                   Above the dashed line, copies follow the tree: cells inherit their parent&apos;s load (as for EGFR ecDNA in BWH70). Near the controls, copies are redrawn at each division.
+                  {signals.length ? "" : " (phylo_signal.json not exported: recomputed live in the browser, 199 permutations.)"}
                 </div>
+                </ExportPanel>
               </Col>
               <Col xs={24} xxl={13}>
                 <PanelHead letter="D" title="Subclonal findings" hint="driver events and amplicons in part of a tumor, following the tree · click a row" extra={<Provenance id="figSubclonal" />} />
@@ -353,6 +420,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
               </div>
             )}
             {current && (
+              <div data-figpanel="4B">
               <PatientFigure
                 patient={current.patient}
                 events={current.events}
@@ -361,6 +429,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                 onSelectCells={(ids, label) => select(current.patient, ids, { label })}
                 onView={setFigDomains}
               />
+              </div>
             )}
             <Row gutter={[24, 16]} className="sc-fig-block">
               <Col xs={24} xl={14}>
@@ -373,12 +442,14 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             </Row>
             <Row gutter={[24, 16]} className="sc-fig-block">
               <Col xs={24} xl={9}>
-                <PanelHead letter="E" title="Copies of one amplicon against another" fig="Fig 5E" hint="lasso to select" />
-                {current && <GenePairScatter patient={current.patient} cells={current.cells} groups={current.groups} cnEntry={cnRows[current.patient]} genes={scatterGenes} cloneColors={linkColors} selected={selectedHere} onSelect={selectHere} />}
+                <ExportPanel name="5E-walks" letter="E" title="Copies of one amplicon against another" fig="Fig 5E" hint="lasso to select">
+                {current && <GenePairScatter patient={current.patient} cells={current.cells} groups={current.groups} cnEntry={cnRows[current.patient]} genes={scatterGenes} cloneColors={figCloneColors} selected={selectedHere} onSelect={selectHere} />}
+                </ExportPanel>
               </Col>
               <Col xs={24} xl={7}>
-                <PanelHead letter="F" title="Carriers per clade" fig="Fig 4F" hint="click a bar" />
-                {current && <CladeCarrierBars cells={current.cells} groups={current.groups} minCn={minCn} cloneColors={linkColors} selected={selectedHere} onSelect={selectHere} />}
+                <ExportPanel name="4F" letter="F" title="Carriers per clade" fig="Fig 4F" hint="click a bar">
+                {current && <CladeCarrierBars cells={current.cells} groups={current.groups} minCn={minCn} cloneColors={figCloneColors} selected={selectedHere} onSelect={selectHere} />}
+                </ExportPanel>
               </Col>
               <Col xs={24} xl={8}>
                 <PanelHead letter="G" title="Amplicon state per clade" fig="Fig 5F" hint="focused variant · click a clade" />
@@ -387,12 +458,13 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             </Row>
             <Row gutter={[24, 16]} className="sc-fig-block">
               <Col xs={24} xl={12} id="sc-fig-genepair">
-                <PanelHead letter="H" title="Gene vs gene copy number per clone" fig="Fig 5E" hint="ecDNA vs integrated: slope / R² per clone" extra={<Select size="small" mode="multiple" style={{ minWidth: 180, marginLeft: 8 }} value={genePair || []} onChange={(v) => setPairGenes(v.length ? v.slice(-2) : null)} options={[...genePositions.keys(), ...(genePair || [])].filter((g, i, a) => a.indexOf(g) === i).sort().map((g) => ({ value: g, label: g }))} />} />
+                <ExportPanel name="5E-genes" letter="H" title="Gene vs gene copy number per clone" fig="Fig 5E" hint="ecDNA vs integrated: slope / R² per clone" extra={<Select size="small" mode="multiple" style={{ minWidth: 180, marginLeft: 8 }} value={genePair || []} onChange={(v) => setPairGenes(v.length ? v.slice(-2) : null)} options={[...genePositions.keys(), ...(genePair || [])].filter((g, i, a) => a.indexOf(g) === i).sort().map((g) => ({ value: g, label: g }))} />}>
                 {genePair ? (
-                  <GeneCnScatter cnEntry={cnRows[current?.patient]} genes={genePair} cloneColors={linkColors} cloneLabels={link.cloneLabels} width={520} />
+                  <GeneCnScatter cnEntry={cnRows[current?.patient]} genes={genePair} cloneColors={figCloneColors} cloneLabels={figCloneLabels} width={520} />
                 ) : (
                   <Text type="secondary" style={{ fontSize: 12 }}>Pick two genes on one amplicon (e.g. CDK4 and MDM2).</Text>
                 )}
+                </ExportPanel>
               </Col>
             </Row>
             <Collapse
