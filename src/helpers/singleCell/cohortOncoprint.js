@@ -42,7 +42,7 @@ export function cohortEntries(events = [], opts = {}) {
     const fraction = eventFraction(d.event) ?? (Number.isFinite(Number(d.event.n_cells)) ? null : 0);
     const n = Number.isFinite(Number(d.event.n_cells)) ? Number(d.event.n_cells) : splitIds(d.event.cell_ids).length;
     const fr = fraction == null ? 0 : fraction;
-    const entry = { ...d, n, fraction: fr, subclonal: fr <= CLONAL_FRACTION };
+    const entry = { ...d, n, fraction: fr, subclonal: d.clonality ? d.subclonal : fr <= CLONAL_FRACTION }; // exported dropout-aware call wins
     // re-run the QC on the real cell count
     const reasons = [];
     if (n < 3) reasons.push("fewer than 3 cells");

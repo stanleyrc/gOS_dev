@@ -1,6 +1,7 @@
 // Quality fields of one filtered event for the cohort "All events" table (d3-free). Each one reuses the helper or
 // field the patient Filtered Events table / patient report uses; nothing is invented, missing values are null.
 import { CLONAL_FRACTION, RARE_FRACTION } from "./patientReport";
+import { exportedClonality } from "./exportedClonality";
 import { cladeFitScore } from "./cladeFit";
 import { dnaFusionGenes } from "./rnaFusions";
 import { fusionSupport, indexRnaFusions } from "./fusionSupport";
@@ -51,7 +52,7 @@ export function upstreamOf(event) {
 export function eventQuality(event, cls, { tree = null, rnaFusions = null, fraction } = {}) {
   const sup = supportFields(event, rnaFusions);
   return {
-    clonality: clonalityOf(fraction),
+    clonality: exportedClonality(event) ? (exportedClonality(event) === "indeterminate" ? null : exportedClonality(event)) : clonalityOf(fraction), // dropout-aware export first
     cladeF1: cladeF1Of(event, tree),
     spanMb: spanMb(event, cls),
     driverClass: driverClassOf(event),
