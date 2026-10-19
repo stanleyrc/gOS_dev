@@ -102,7 +102,7 @@ export default function GeneExplorerCard({ summary, matrix, defaultGene = "EGFR"
             </Col>
             <Col xs={24} xl={12}>
               <Text type="secondary">{test ? `${test.test === "kruskal-wallis" ? "Kruskal–Wallis" : "Mann–Whitney"} ${formatP(test.p)}` : ""}</Text>
-              <BoxStrips groups={groups} width={half} height={UMAP_H} yTitle={`${gene} (log-normalized)`} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} />
+              <BoxStrips groups={groups} width={half} height={UMAP_H} yTitle={`${gene} (log-normalized)`} onPoint={(g, i) => dispatch(singleCellActions.updateSelection([g.ids[i]]))} clickHint="Click to select the cell" />
               <Space wrap size={[8, 2]} style={{ fontSize: 12.5 }}>
                 {groups.map((g) => (
                   <span key={g.key}><span className="sc-swatch" style={{ background: g.color }} />{`${g.label}: ${d3.format(".0%")(g.pct)} expressing`}</span>

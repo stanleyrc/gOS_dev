@@ -9,6 +9,7 @@ import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { spearman } from "../../../helpers/singleCell/dosage";
 import { FONT, YAxis, patientColor } from "./charts";
 import HintLine, { Provenance } from "../hintLine";
+import { patientScatterLines } from "../../../helpers/singleCell/plotHover";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
@@ -32,7 +33,7 @@ export default function CohortScatterPanel({ summaries, files, datafiles, onOpen
     [summaries, files, datafiles]
   );
   const points = metrics.map((m, k) => ({ ...m, k, summary: summaries[k] })).filter((m) => Number.isFinite(m[xKey]) && Number.isFinite(m[yKey]));
-  if (!summaries.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+  if (!summaries.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Not available (no patients pass the current filters)" />;
   const M = { top: 16, right: 16, bottom: 56, left: 72 };
   const x = d3.scaleLinear().domain([0, d3.max(points, (p) => p[xKey]) || 1]).nice().range([M.left, width - M.right]);
   const y = d3.scaleLinear().domain([0, d3.max(points, (p) => p[yKey]) || 1]).nice().range([HEIGHT - M.bottom, M.top]);
@@ -83,10 +84,14 @@ export default function CohortScatterPanel({ summaries, files, datafiles, onOpen
           {points.map((p) => (
             <g key={p.patient} style={{ cursor: "pointer" }} onClick={() => onOpen(p.summary)}>
               <circle cx={x(p[xKey])} cy={y(p[yKey])} r={7} fill={patientColor(p.k)} stroke={INK.panel} strokeWidth={1.5} />
+              {Math.abs(labelAt(p).y - y(p[yKey])) > 4 && <line x1={x(p[xKey])} y1={y(p[yKey])} x2={labelAt(p).x + (labelAt(p).textAnchor === "start" ? -2 : 2)} y2={labelAt(p).y} stroke={INK.faint} strokeWidth={0.8} />}
               <text {...labelAt(p)} dy="0.35em" fontSize={FONT.axis} fill={INK.textSecondary}>{p.patient}</text>
-              <title>{`${p.patient}\n${label(xKey)}: ${d3.format("~g")(p[xKey])}\n${label(yKey)}: ${d3.format("~g")(p[yKey])}`}</title>
+              <title>{patientScatterLines({ patient: p.patient, xLabel: label(xKey), xValue: p[xKey], yLabel: label(yKey), yValue: p[yKey], nTumorCells: p.nTumorCells, nClones: p.nClones }).join("\n")}</title>
             </g>
           ))}
+          {!points.length && (
+            <text x={(M.left + width - M.right) / 2} y={HEIGHT / 2} textAnchor="middle" fontSize={FONT.label} fill={INK.muted}>{`Not available: no patient has both ${label(xKey)} and ${label(yKey)}`}</text>
+          )}
           {Number.isFinite(rho) && (
             <text x={width - M.right} y={M.top + 4} textAnchor="end" fontSize={FONT.axis} fill={INK.textSecondary}>{`Spearman ρ = ${rho.toFixed(2)} (n = ${points.length})`}</text>
           )}
