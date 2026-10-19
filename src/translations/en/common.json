@@ -1389,6 +1389,7 @@
         "conv-clonal": "clonal",
         "conv-subclonal": "subclonal",
         "conv-rare": "rare",
+        "conv-indeterminate": "indeterminate",
         "conv-help": "Genes altered in several patients and the clonality of the alteration in each (clonal ≥ 85% of cells, subclonal 10–85%, rare < 10%; the most prevalent alteration per gene and patient). Parallel subclonal hits are candidate convergent events; click a tag for the alteration's cells and reads.",
         "empty": "No single-cell patients in this dataset. Patients are datafiles.json entries with entry_type \"patient\".",
         "patients": "Patients",
