@@ -108,3 +108,7 @@ releases/
 # single-cell analysis service results written into case folders
 shared/data/*/analyses/
 shared/data/_cohort/
+
+# single-cell Welcome screenshots and Methods text are data, copied in at build time (no patient data in git)
+/public/welcome/
+/public/methods/

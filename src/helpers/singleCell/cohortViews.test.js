@@ -19,7 +19,7 @@ describe("cohort views", () => {
     expect(cohortView("nope").key).toBe("overview");
   });
   it("marks the first view of each group after the first", () => {
-    expect(COHORT_VIEWS.filter((v) => startsGroup(v.key)).map((v) => v.key)).toEqual(["drivers", "treeshape", "rna", "events"]);
+    expect(COHORT_VIEWS.filter((v) => startsGroup(v.key)).map((v) => v.key)).toEqual(["drivers", "treeshape", "rna", "events", "welcome"]);
   });
   it("every view and group has a label and a purpose", () => {
     const c = en.components["single-cell"].cohort;

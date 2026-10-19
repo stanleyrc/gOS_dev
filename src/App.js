@@ -16,6 +16,7 @@ import en_US from "antd/lib/locale/en_US";
 import AppHolder from "./commonStyle";
 import { siteConfig } from "./settings";
 import Topbar from "./containers/topbar/topbar";
+import NavRail from "./components/singleCell/guide/navRail";
 import UserSignInModal from "./components/userSignInModal";
 import "./global.css";
 
@@ -58,6 +59,7 @@ function App() {
             <AppHolder>
               <Layout className="ant-full-layout">
                 <Topbar />
+                <NavRail />
                 <Content className="ant-full-content">
                   <PublicRoutes />
                 </Content>
