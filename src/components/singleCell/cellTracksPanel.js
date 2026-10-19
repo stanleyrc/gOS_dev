@@ -287,7 +287,13 @@ export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, e
     const fromLayout = sc.layout.trackYAxis && Y_MODES.includes(sc.layout.trackYAxis.mode) ? sc.layout.trackYAxis : null;
     return fromUrl || fromLayout || { mode: yAxisDefault, custom: null };
   });
+  // the host's default can change after mount (the event windows are set by an effect): follow it until the user chooses
+  const yAxChosen = React.useRef(Boolean(parseYAxis(readViewLink().yax) || sc.layout.trackYAxis));
+  useEffect(() => {
+    if (!yAxChosen.current) setYAx({ mode: yAxisDefault, custom: null });
+  }, [yAxisDefault]);
   const changeYAx = (next) => {
+    yAxChosen.current = true;
     setYAx(next);
     dispatch(singleCellActions.updateLayout({ trackYAxis: next }));
     try {
