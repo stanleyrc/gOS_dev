@@ -7,14 +7,22 @@ import { patientColor } from "../../../helpers/singleCell/patientColors";
 import { casePath, loadRnaMatrix, loadRnaSummary, tryGet } from "../../../redux/singleCell/loaders";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import { cellEventPsi, eventPsi } from "../../../helpers/singleCell/spliceEvents";
+import { useGeneModels } from "../../genes/useGeneModels";
+import { mergeSpliceModels } from "../../../helpers/singleCell/spliceModels";
 import { compareGroups, formatP } from "../../../helpers/singleCell/tests";
 
 const { Text } = Typography;
 const exonCache = new Map();
 const patientSplicingCache = new Map();
 
-/** data/_cohort/rna/splice_exons.json (exon models of the spliced genes), fetched once; null while loading / missing. */
-export function useSpliceExons(dataset) {
+const NONE = [];
+
+/**
+ * Exon models of the spliced genes: data/_cohort/rna/splice_exons.json, extended and (where the canonical transcript
+ * agrees) replaced by the app's genes/hg38_models/<chr>.json for the given chromosomes (those files hold every gene,
+ * with CDS). Null while loading / missing. Pass the chromosomes (and gene names) the view needs, so only those files load.
+ */
+export function useSpliceExons(dataset, chromosomes = NONE, genes = null) {
   const [model, setModel] = useState(null);
   useEffect(() => {
     if (!dataset?.dataPath) return undefined;
@@ -26,7 +34,14 @@ export function useSpliceExons(dataset) {
       active = false;
     };
   }, [dataset]);
-  return model;
+  const chroms = useMemo(() => [...new Set(chromosomes)].sort().map((c) => ({ chromosome: `${c}`.replace(/^chr/, ""), startPlace: 1 })), [chromosomes]);
+  const hg38 = useGeneModels(chroms);
+  const geneKey = genes ? genes.join(",") : "";
+  return useMemo(
+    () => (model || hg38.genes.length ? mergeSpliceModels(model, hg38.genes, genes) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [model, hg38.genes, geneKey]
+  );
 }
 
 export function loadPatientSplicing(dataset, patient) {

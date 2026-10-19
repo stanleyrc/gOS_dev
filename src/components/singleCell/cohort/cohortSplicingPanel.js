@@ -144,7 +144,9 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
     setQueryText("");
   };
   const allRowsRaw = useMemo(() => (data ? cohortClusterRows(data) : []), [data]);
-  const exonModel = useSpliceExons(dataset);
+  const modelChroms = useMemo(() => [...new Set((data?.clusters || []).map((c) => `${c.chromosome}`.replace(/^chr/, "")))], [data]);
+  const modelGenes = useMemo(() => [...new Set((data?.clusters || []).map((c) => c.gene).filter(Boolean))], [data]);
+  const exonModel = useSpliceExons(dataset, modelChroms, modelGenes);
   const cellData = useCohortSpliceData(dataset, data?.patients || NO_PATIENTS);
   // per cluster: exon context, event type and the cells using the aberrant junction (sum over patients)
   const extra = useMemo(() => {
