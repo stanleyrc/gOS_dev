@@ -1,5 +1,5 @@
 import { SBS96 } from "./signatures";
-import { aetiologyTag, formatSiteSignature, siteSignatureModel } from "./siteSignature";
+import { aetiologyTag, formatSigProbability, formatSiteSignature, siteSignatureModel } from "./siteSignature";
 
 // synthetic reference: A is concentrated on channel 0, B is flat, C on channel 1
 const col = (f) => SBS96.map((_, i) => f(i));
@@ -34,7 +34,8 @@ describe("siteSignatureModel", () => {
 describe("formatting", () => {
   it("lists top signatures with tags, set and fit", () => {
     const text = formatSiteSignature({ ranked: [{ signature: "SBS13", prob: 0.72 }, { signature: "SBS2", prob: 0.2 }, { signature: "SBS5", prob: 0.06 }, { signature: "SBS1", prob: 0.02 }], set: "subclonal", fit: "joint" }, { tagOf: (s) => (s === "SBS13" ? "APOBEC" : "") });
-    expect(text).toBe("SBS13 (APOBEC) 0.72 · SBS2 0.20 · SBS5 0.06 · …, set: subclonal, fit: joint");
+    expect(text).toBe("SBS13 (APOBEC) p=0.72 · SBS2 p=0.20 · SBS5 p=0.06 · …, set: subclonal, fit: joint");
+    expect(formatSigProbability([{ signature: "SBS1", prob: 0.72 }, { signature: "SBS5", prob: 0.2 }])).toBe("SBS1 (p = 0.72 that this variant arose from SBS1); runner-up SBS5 (p = 0.20)");
   });
   it("tags aetiologies", () => {
     expect(aetiologyTag("Activity of APOBEC family of cytidine deaminases")).toBe("APOBEC");
