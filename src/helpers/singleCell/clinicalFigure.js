@@ -185,3 +185,35 @@ export function stateComposition(rnaCells) {
   });
   return Object.values(by).sort((a, b) => a.patient.localeCompare(b.patient)).map((p) => ({ ...p, frac: Object.fromEntries(Object.entries(p.counts).map(([k, v]) => [k, p.n ? v / p.n : 0])) }));
 }
+
+const rowGenes = (kind, r = {}) => [r.gene, ...(r.genes || []), r.left?.feature, r.right?.feature, kind === "tert" ? "TERT" : null].filter(Boolean).join(" ").toLowerCase();
+
+/**
+ * Filter the recovery export for the Clinical Assays page. filters: { classes: [], patients: [], statuses: [],
+ * gene: "", tiers: [] }; an empty list / string = no filter. Tiers apply to rows that carry one (SNV / SV /
+ * missed); rows without a tier are kept when no tier filter is set and dropped otherwise. Clonality is not in
+ * the export, so it is not a filter. Returns a recovery of the same shape (patients and rows removed).
+ */
+export function filterRecovery(recovery, { classes = [], patients = [], statuses = [], gene = "", tiers = [] } = {}) {
+  if (!recovery?.patients) return recovery;
+  const q = `${gene || ""}`.trim().toLowerCase();
+  const keep = (kind, r) => {
+    if (classes.length && !classes.includes(alterationClass(kind, r))) return false;
+    if (statuses.length && !statuses.includes(oncoStatus(kind, r))) return false;
+    if (q && !rowGenes(kind, r).includes(q)) return false;
+    if (tiers.length && !tiers.includes(Number(r.tier))) return false;
+    return true;
+  };
+  const out = {};
+  Object.entries(recovery.patients).forEach(([id, rec]) => {
+    if (patients.length && !patients.includes(id)) return;
+    const next = { ...rec };
+    KINDS.forEach((k) => {
+      const key = k === "tert" ? "tert_promoter" : k;
+      if (rec[key]) next[key] = rec[key].filter((r) => keep(k, r));
+    });
+    next.missed = (rec.missed || []).filter((m) => (!q || `${m.gene}`.toLowerCase().includes(q)) && (!tiers.length || tiers.includes(Number(m.tier))) && (!classes.length || classes.includes(m.type === "SCNA" ? (`${m.variant}` === "AMP" ? "amp" : "loss") : m.type === "Fusion" ? "sv" : "snv")));
+    out[id] = next;
+  });
+  return { ...recovery, patients: out };
+}

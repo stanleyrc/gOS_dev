@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from "react";
-import { Alert, Card, Empty, Segmented, Skeleton, Space, Switch, Table, Typography } from "antd";
+import { Alert, Card, Empty, Input, Segmented, Select, Skeleton, Space, Switch, Table, Typography } from "antd";
 import { driverHref } from "../../../helpers/singleCell/driverLink";
 import { KINDS, KIND_LABEL, cnPoints, eventForCell, metaStrip, summarize, tmbRows, vafPoints } from "../../../helpers/singleCell/clinicalConcordance";
-import { ONCO_CLASS_LABEL, clinicalHeader, clinicalOncoprint, recoveryCounts } from "../../../helpers/singleCell/clinicalFigure";
+import { ONCO_CLASS, ONCO_CLASS_LABEL, ONCO_STATUS, ONCO_STATUS_LABEL, clinicalHeader, clinicalOncoprint, filterRecovery, recoveryCounts } from "../../../helpers/singleCell/clinicalFigure";
 import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
 import SvgExportButton from "../svgExportButton";
 import HintLine from "../hintLine";
 import useClinicalAssays from "../clinical/useClinicalAssays";
 import useCohortExport from "./useCohortExport";
-import { ClinicalOncoprint, GlyphLegend, StackedRows } from "../clinical/clinicalViz";
+import { ClinicalOncoprint, GlyphLegend, StackedRows, statusFill } from "../clinical/clinicalViz";
 import { AgreementScatter, TmbPaired } from "../clinical/clinicalCharts";
 import Figure1Layout from "../clinical/figure1Layout";
 
@@ -31,7 +31,11 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {}, files = nu
   const theme = usePlotTheme();
   const [ref, width] = useContainerWidth(900);
   const ocRef = React.useRef(null);
-  const { status, assays, recovery } = useClinicalAssays(dataset);
+  const { status, assays, recovery: fullRecovery } = useClinicalAssays(dataset);
+  const [filters, setFilters] = useState({ classes: [], patients: [], statuses: [], gene: "", tiers: [] });
+  const recovery = useMemo(() => filterRecovery(fullRecovery, filters), [fullRecovery, filters]);
+  const allPatients = useMemo(() => Object.keys(fullRecovery?.patients || {}).sort(), [fullRecovery]);
+  const filtered = ["classes", "patients", "statuses", "tiers"].some((k) => filters[k].length) || !!filters.gene.trim();
   const regionsX = useCohortExport(dataset, "regions.json");
   const [view, setViewState] = useState(initialView);
   const setView = (v) => {
@@ -55,6 +59,7 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {}, files = nu
   const cn = useMemo(() => cnPoints(recovery), [recovery]);
   const tmb = useMemo(() => tmbRows(recovery), [recovery]);
   const missed = useMemo(() => patients.flatMap((p) => (recovery?.patients?.[p]?.missed || []).map((m, i) => ({ ...m, patient: p, key: `${p}-${i}` }))), [patients, recovery]);
+  const fill = statusFill(theme);
   if (status === "loading") return <Skeleton active />;
   if (status === "none" || !recovery) return <Empty description="Clinical assay concordance is not exported yet (_cohort/clinical_recovery.json; srctools gos_sc_clinical_recovery.py)." />;
 
@@ -86,6 +91,17 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {}, files = nu
         <Figure1Layout dataset={dataset} assays={assays} recovery={recovery} summaries={summaries} rawFiles={files || rawFiles} tsg={tsg} onOpenPatient={onOpenPatient} />
       ) : (
         <>
+          <Card size="small" title="Filters">
+            <Space wrap size={[12, 8]}>
+              <Select mode="multiple" allowClear placeholder="Alteration type" style={{ minWidth: 190 }} value={filters.classes} onChange={(v) => setFilters((f) => ({ ...f, classes: v }))} options={ONCO_CLASS.map((c) => ({ value: c, label: ONCO_CLASS_LABEL[c] }))} />
+              <Select mode="multiple" allowClear placeholder="Patient" style={{ minWidth: 150 }} value={filters.patients} onChange={(v) => setFilters((f) => ({ ...f, patients: v }))} options={allPatients.map((p) => ({ value: p, label: p }))} />
+              <Select mode="multiple" allowClear placeholder="Recovery status" style={{ minWidth: 210 }} value={filters.statuses} onChange={(v) => setFilters((f) => ({ ...f, statuses: v }))} options={ONCO_STATUS.map((s) => ({ value: s, label: ONCO_STATUS_LABEL[s] }))} />
+              <Select mode="multiple" allowClear placeholder="Tier" style={{ minWidth: 110 }} value={filters.tiers} onChange={(v) => setFilters((f) => ({ ...f, tiers: v }))} options={[1, 2, 3].map((t) => ({ value: t, label: `Tier ${t}` }))} />
+              <Input allowClear placeholder="Gene search" style={{ width: 150 }} value={filters.gene} onChange={(e) => setFilters((f) => ({ ...f, gene: e.target.value }))} />
+              {filtered && <a onClick={() => setFilters({ classes: [], patients: [], statuses: [], gene: "", tiers: [] })}>Clear filters</a>}
+            </Space>
+            <HintLine text="Filters apply to the oncoprint, the recovery bars, the VAF / copy-number scatters, the TMB panel (patients) and the not-reported table. Tier applies to rows that carry a tier (SNVs, structural variants, single-cell-only drivers). Clonality is not in the clinical export, so it is not offered as a filter." />
+          </Card>
           <Card size="small" title="Clinical assay concordance: Oncopanel / Genexus alterations vs the single-cell data" extra={<SvgExportButton containerRef={ocRef} name="clinical-concordance" />}>
             <div ref={ocRef}>
               <Alert type="info" showIcon style={{ marginBottom: 8 }}
@@ -98,6 +114,15 @@ export default function CohortClinicalPanel({ dataset, rawFiles = {}, files = nu
             </div>
           </Card>
           <Card size="small" title="Recovery by alteration type and patient">
+            <div style={{ display: "flex", flexWrap: "wrap", rowGap: 4, marginBottom: 8, fontSize: 12 }} data-recovery-legend>
+              <Text type="secondary" style={{ marginRight: 8 }}>Bar colour = recovery status; bar length = number of alterations in the clinical report:</Text>
+              {ONCO_STATUS.map((s) => (
+                <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginRight: 12 }}>
+                  <svg width={14} height={14}><rect x={1} y={1} width={12} height={12} fill={s === "germline_like" ? theme.panel : fill[s]} stroke={s === "germline_like" ? theme.text : theme.panel} /></svg>
+                  {ONCO_STATUS_LABEL[s]}
+                </span>
+              ))}
+            </div>
             <Space size={24} align="start" wrap>
               <StackedRows rows={typeRows} width={cw} theme={theme} title="Recovery by alteration type" />
               <StackedRows rows={patRows} width={cw} theme={theme} title="Recovery by patient" />
