@@ -9,7 +9,7 @@ import { geneSetColor } from "../../../helpers/singleCell/figures";
 import { Z_ONE_SIDED, Z_TICKS, phyloSignalColumns, phyloSignalGeneSets, zTransform } from "../../../helpers/singleCell/paperPanels";
 
 const { Text } = Typography;
-const SHAPES = ["circle", "triangle", "square", "diamond", "triangleDown", "plus", "cross", "star", "hex"];
+const SHAPES = ["circle", "triangle", "square", "diamond", "triangleDown", "plus", "cross", "hex"];
 
 function shape(ctx, kind, x, y, r) {
   ctx.beginPath();
