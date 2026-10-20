@@ -1,3 +1,4 @@
+/* global DecompressionStream */
 // Pre-gzipped data files. The web server does not compress responses, so the data folder can hold
 // <file>.gz siblings of its big JSON / text files plus a gz_index.json at the data root listing them
 // ({ schemaVersion: 1, files: ["MGH303/snv_matrix.json", ...] }). The loader fetches the .gz and
