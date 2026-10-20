@@ -1,3 +1,4 @@
+import { viewStorage } from "./singleCell/viewSettingsStore";
 // Browser-local preferences shared by matching column IDs across cases/datasets.
 export const COLUMN_LAYOUT_STORAGE_KEY = "gos.filteredEventsColumnLayout.v1";
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -28,7 +29,7 @@ export function mergeColumnOrder(previous, current) {
 
 function getStorage() {
   try {
-    return typeof window === "undefined" ? null : window.localStorage;
+    return typeof window === "undefined" ? null : viewStorage(window.localStorage);
   } catch (error) {
     return null;
   }
