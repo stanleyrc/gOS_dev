@@ -24,7 +24,7 @@ const tint = (hex, a) => {
 };
 
 /**
- * Fig 1d: Neftel two-dimensional cell-state representation of every
+ * Paper panel "state-quadrant": Neftel two-dimensional cell-state representation of every
  * malignant RNA cell (module scores from _cohort/rna/state_scores.json).
  * Hover a cell for its scores; lasso cells to select them (the patient with
  * most lassoed cells; matched to DNA cells by id); filter to one patient.
@@ -174,7 +174,7 @@ export default function StateQuadrant({ points, dnaIds, selected, onSelect, heig
         height={height}
         draw={draw}
         hitTest={hitTest}
-        ariaLabel="Fig 1d cell-state quadrant"
+        ariaLabel="Cell-state quadrant"
         tooltip={(p) => [p.cell, ["Patient", p.patient], ["State", `${p.state}-like`], ["x · D", `${fmt(p.x)} · ${fmt(p.y)}`], ["MES · AC", `${fmt(p.scores.MES)} · ${fmt(p.scores.AC)}`], ["OPC · NPC", `${fmt(p.scores.OPC)} · ${fmt(p.scores.NPC)}`], dnaIds?.[p.patient]?.has(p.cell) ? "click to select (DNA cell)" : "no DNA profile for this cell"]}
         onClick={(p, event) => dnaIds?.[p.patient]?.has(p.cell) && onSelect?.(p.patient, [p.cell], { label: `${p.cell}`, mode: selectMode(event) })}
         onDragStart={(x, y) => (x >= plot.x0 && x <= plot.x1 && y >= plot.y0 && y <= plot.y1 ? { mode: "lasso", ...plot } : null)}

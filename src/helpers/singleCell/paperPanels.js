@@ -1,5 +1,5 @@
 // Data shaping for the Paper figures panels that read precomputed exports:
-// Fig 1d (state quadrant, _cohort/rna/state_scores.json) and Fig 3E
+// the state quadrant (_cohort/rna/state_scores.json) and the phylogenetic-signal panel
 // (phylogenetic signal, <patient>/phylo_signal.json). d3-free.
 
 import { pointInPolygon } from "./figureMath";
@@ -288,7 +288,7 @@ export function parseEcdnaSnvs(json) {
     .sort((a, b) => a.pos - b.pos);
 }
 
-// ---- Fig 1b/f/g: subclonal SNVs per cell, mutation burden by cell state (_cohort/tmb.json, snv_matrix.json, cell states)
+// ---- subclonal SNVs per cell, mutation burden by cell state (_cohort/tmb.json, snv_matrix.json, cell states)
 
 const quant = (xs, p) => {
   const s = xs.filter(Number.isFinite).sort((a, b) => a - b);
@@ -299,7 +299,7 @@ const quant = (xs, p) => {
 };
 
 /**
- * Fig 1b: per patient, subclonal SNVs carried per tumour cell (sites of category
+ * subclonal-per-cell: per patient, subclonal SNVs carried per tumour cell (sites of category
  * "subclonal" with genotype 1), median and IQR; truncal = the patient's truncal
  * site count (tmb.json). packed: packSnvCells output (with gt); tumourCells: ids.
  */
@@ -318,7 +318,7 @@ export function subclonalPerCell(variants, packed, tumourCells) {
 }
 
 /**
- * Fig 1f/g rows: tumour cells with a malignant state and a corrected TMB, in
+ * burden-by-state / above-mes rows: tumour cells with a malignant state and a corrected TMB, in
  * patients with >= 3 MES-like cells; rel = TMB / the patient's MES-like median.
  * tmb: _cohort/tmb.json; stateOf(patient, cellId) -> "MES" | "AC" | "NPC" | "OPC" | other.
  */
@@ -337,7 +337,7 @@ export function burdenByState(tmb, stateOf) {
   return out;
 }
 
-/** Fig 1g: per patient and state (>= minCells cells), the fraction of cells above the patient's MES-like median. */
+/** above-mes: per patient and state (>= minCells cells), the fraction of cells above the patient's MES-like median. */
 export function fractionAboveMes(rows, minCells = 3) {
   const by = new Map();
   rows.forEach((r) => {
