@@ -51,7 +51,18 @@ export function sourceIsFresh(entry, headers = {}) {
 
 /** Gunzip an ArrayBuffer to text; null when the browser has no DecompressionStream. */
 export async function gunzipText(buffer) {
-  if (typeof DecompressionStream === "undefined" || typeof Response === "undefined") return null;
-  const stream = new Response(buffer).body.pipeThrough(new DecompressionStream("gzip"));
-  return new Response(stream).text();
+  if (typeof DecompressionStream === "undefined") return null;
+  const ds = new DecompressionStream("gzip");
+  const writer = ds.writable.getWriter();
+  writer.write(new Uint8Array(buffer)).catch(() => {});
+  writer.close().catch(() => {});
+  const reader = ds.readable.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+  }
+  return text + decoder.decode();
 }
