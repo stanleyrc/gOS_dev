@@ -144,6 +144,8 @@ async function loadPatientCells(dataset, summary, records, chromoBins, genomeLen
 }
 
 /** Cohort of single-cell patients: composition table and a patients x genome CN heatmap. */
+const NO_SUMMARIES = [];
+
 export default function SingleCellCohortPanel({ datafiles = [] }) {
   const { t } = useTranslation("common");
   const cellLabels = useCellLabels();
@@ -162,7 +164,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const summaries = useMemo(() => cohortSummaries(datafiles), [datafiles]);
   // per-cell SNV reads are big: only the Figures view (all patients) and the open event drawer (its patient) need them
   const [snvCellsFor, setSnvCellsFor] = useState([]);
-  const cohortFiles = useCohortFiles(summaries, datasets, snvCellsFor);
+  // the per-patient cohort files (SNV matrices, events, trees, walks) are not needed on the paper-figure tabs either
+  const [cohortWanted, setCohortWanted] = useState(() => !/^paperfig/.test(new URLSearchParams(window.location.search).get("scview") || ""));
+  const cohortFiles = useCohortFiles(cohortWanted ? summaries : NO_SUMMARIES, datasets, snvCellsFor);
   const tsgDataset = datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null;
   const hotspotRescue = useHotspotRescue(datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null);
   // help-center target first, then ?scview=<key> (deep link, e.g. ?scview=qc), else the overview
@@ -254,7 +258,17 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const datasetOf = (summary) =>
     datasets.find((d) => `${d.id}` === `${summary.record.datasetId}`) || null;
 
+  // per-cell CN of every patient (cohort heatmaps): not needed on the paper-figure tabs, loaded on the first other view
+  const needsRows = !paperFigureLabel(view);
+  const [rowsWanted, setRowsWanted] = useState(needsRows);
   useEffect(() => {
+    if (needsRows) {
+      setRowsWanted(true);
+      setCohortWanted(true);
+    }
+  }, [needsRows]);
+  useEffect(() => {
+    if (!rowsWanted) return undefined;
     let active = true;
     const source = axios.CancelToken.source();
     setRows({});
@@ -285,7 +299,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
       active = false;
       source.cancel("cohort view closed");
     };
-  }, [summaries, datasets, datafiles, chromoBins, genomeLength]);
+  }, [summaries, datasets, datafiles, chromoBins, genomeLength, rowsWanted]);
 
   const cloneColors = useMemo(
     () => cloneColorMap(summaries.flatMap((s) => Object.keys(s.cloneCounts).map((clone_id) => ({ clone_id })))),
