@@ -1,6 +1,6 @@
 // d3-free helpers for complex-SV event families (srctools gos_sc_event_families.py): complex rows that share
 // junction ids carry one `family_id`; gOS counts one entry per family and keeps the member classifications.
-import { kindName, complexChromosomes, twinKindText } from "./complexLabels";
+import { kindName, complexChromosomes, twinKindText, ecdnaText } from "./complexLabels";
 import { mergeIntervals, parseFootprint } from "./complexZoom";
 import { driverKey } from "./driverContrast";
 
@@ -18,7 +18,7 @@ export function dominantMember(rows) {
 export function familyClassifications(rows) {
   const by = new Map();
   rows.forEach((r) => {
-    const label = `${r.Variant || r.vartype}`;
+    const label = ecdnaText(`${r.Variant || kindName(r.vartype)}`);
     by.set(label, Math.max(by.get(label) || 0, n(r)));
   });
   return [...by.entries()].map(([label, count]) => ({ label, n: count })).sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));

@@ -21,7 +21,7 @@ import { exportedClonality, exportedClonalityText } from "./exportedClonality";
 
 export const DRIVER_PRESETS = ["recommended", "subclonal", "hotspots", "all"];
 /** Readable names of gGnome event-classifier classes (raw vartype values such as "Cpxdm"). */
-const COMPLEX_NAMES = { cpxdm: "complex DM", tyfonas: "tyfonas", pyrgo: "pyrgo", rigma: "rigma", qrp: "QRP", chromoplexy: "chromoplexy", chromothripsis: "chromothripsis" };
+const COMPLEX_NAMES = { dm: "ecDNA", cpxdm: "complex ecDNA", tyfonas: "tyfonas", pyrgo: "pyrgo", rigma: "rigma", qrp: "QRP", chromoplexy: "chromoplexy", chromothripsis: "chromothripsis" };
 export const complexName = (v) => (v ? COMPLEX_NAMES[`${v}`.toLowerCase()] || `${v}` : "complex");
 
 export const DRIVER_CLASSES = ["snv", "amp", "homdel", "fusion", "complex"];
@@ -29,7 +29,7 @@ export const DRIVER_GENE_LISTS = ["oncokb", "cgc", "gbm"];
 export const FUSION_SUPPORT = ["any", "dna", "rna", "both"];
 
 /** Full help text of the double-minute label (no question mark). */
-export const DM_HELP = "DM (double minute / ecDNA, gGnome event classifier)";
+export const DM_HELP = "ecDNA (gGnome event classifier \"DM\", double minute)";
 
 /** Carried by more than this fraction of the tumor cells = clonal. */
 export const CLONAL_FRACTION = 0.95;

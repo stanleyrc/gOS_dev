@@ -11,12 +11,13 @@ import { Provenance } from "../hintLine";
 import { isTertPromoterSv, TERT_SV_LABEL } from "../../../helpers/singleCell/cohortStats";
 import { driverHref, linkClick } from "../../../helpers/singleCell/driverLink";
 import TsgBadgeRow from "./tsgBadgeRow";
+import { ecdnaText } from "../../../helpers/singleCell/complexLabels";
 
 const { Text } = Typography;
 
 const CLASS_SHORT = { amp: "amp", homdel: "del", fusion: "fusion", trunc: "trunc", splice: "splice", missense: "mis", complex: "SV", other: "" };
-// complex SVs have no gene: name them by their pattern (e.g. "TIC (19,20)", "DM (7)")
-const driverName = (d) => d.gene || (d.class === "complex" ? `${d.event?.Variant || d.event?.vartype || ""}`.trim() : "") || "?";
+// complex SVs have no gene: name them by their pattern (e.g. "TIC (19,20)", "ecDNA (7)")
+const driverName = (d) => d.gene || (d.class === "complex" ? ecdnaText(`${d.event?.Variant || d.event?.vartype || ""}`).trim() : "") || "?";
 const driverText = (d, withFraction = false) => isTertPromoterSv(d.event) ? `${TERT_SV_LABEL}${withFraction ? ` ${d3.format(".0%")(d.fraction)}` : ""}` : `${driverName(d)}${CLASS_SHORT[d.class] && !(d.class === "complex" && !d.gene) ? ` ${CLASS_SHORT[d.class]}` : ""}${withFraction ? ` ${d3.format(".0%")(d.fraction)}` : ""}`;
 
 function CloneBar({ counts, colors, width = 220 }) {
