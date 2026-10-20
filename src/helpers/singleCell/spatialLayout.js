@@ -27,6 +27,12 @@ export const SPATIAL_SECTIONS = [
   "notes",
 ];
 
+/**
+ * Beside the heatmap the page opens like the gbm-sc Single-Cell page: the sections that page has (gene navigation, IGV,
+ * UMAP, tree bars, cell tracks, legend) stay visible; only the slide-tag analysis cards are collapsed.
+ */
+export const DEFAULT_HIDDEN_BESIDE = ["headline", "clustering", "enrichment", "niche", "mantel", "notes"];
+
 /** Map column width allowed by the available row width: the heatmap keeps HEATMAP_MIN. */
 export function clampMapWidth(width, rowWidth = Infinity) {
   const w = Number.isFinite(+width) ? +width : MAP_DEFAULT;
@@ -45,10 +51,10 @@ export function presetOf(width) {
   return hit ? hit[0] : null;
 }
 
-/** Hidden sections: explicit list, or the default (compact when beside, nothing when below). */
+/** Hidden sections: explicit list, or the default (slide-tag analysis cards collapsed when beside, nothing when below). */
 export function hiddenSections(stored, mode) {
   if (Array.isArray(stored)) return stored.filter((k) => SPATIAL_SECTIONS.includes(k));
-  return mode === "beside" ? [...SPATIAL_SECTIONS] : [];
+  return mode === "beside" ? [...DEFAULT_HIDDEN_BESIDE] : [];
 }
 export const isCompact = (hidden) => SPATIAL_SECTIONS.every((k) => hidden.includes(k));
 export function toggleSection(hidden, key) {

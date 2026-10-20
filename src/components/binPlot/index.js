@@ -268,11 +268,13 @@ class BinPlot extends Component {
     const { t } = this.props;
 
     const { panelHeight, width } = this.getPlotConfiguration();
+    // tooltipAttributes (optional): which fields to show, for data that lacks the bulk segment statistics
+    const attributes = this.props.tooltipAttributes || segmentAttributes();
 
-    let text = Object.keys(segmentAttributes()).map((e) => {
+    let text = Object.keys(attributes).map((e) => {
       return {
         label: t(`metadata.aggregate-ppfit.${e}`),
-        value: d3.format(segmentAttributes()[e])(d[e]),
+        value: d3.format(attributes[e])(d[e]),
       };
     });
     let maxTextWidth = d3.max(
@@ -283,7 +285,7 @@ class BinPlot extends Component {
       5,
       panelHeight -
         e.nativeEvent.offsetY -
-        Object.keys(segmentAttributes()).length * 16,
+        Object.keys(attributes).length * 16,
     ]);
     let diffX = d3.min([
       5,
@@ -493,6 +495,7 @@ BinPlot.propTypes = {
     source: PropTypes.oneOf(["metadata", "preview", "appliedOverride"]).isRequired,
   }),
   onCopyStateFitPreview: PropTypes.func,
+  tooltipAttributes: PropTypes.object,
 };
 BinPlot.defaultProps = {
   data: [],

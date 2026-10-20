@@ -1,6 +1,6 @@
 // Navigation rail of the single-cell pages: which group / entry is current, what each entry says.
 // d3-free pure data and helpers (the rail component is components/singleCell/guide/navRail.js).
-// Patient tabs follow containers/detailView (tabsOrder 7, 12, 18, 14, 8, 10, 9, 11, 15, 13; 16 is merged into 12,
+// Patient tabs follow containers/detailView (tabsOrder 7, 12, 18, 14, 8, 10, 9, 11, 19, 15, 13; 16 is merged into 12,
 // 17 into the Single-Cell tab's Drivers layer).
 
 export const PHONE_MAX_WIDTH = 768;
@@ -35,6 +35,7 @@ export const PATIENT_RAIL = [
   ] },
   { key: "qc", label: "QC", icon: "SafetyCertificateOutlined", tabs: [
     { tab: 11, desc: "Per-cell library and copy-number quality metrics." },
+    { tab: 19, desc: "Purity and ploidy fit of a cell, clade or selection: bin plot with draggable copy-state lines, allelic support, ploidy by clade." },
   ] },
 ];
 

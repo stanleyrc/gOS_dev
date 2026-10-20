@@ -247,3 +247,106 @@ export function cladePloidyRows(clades, cells, { minCells = 5, maxFrac = 0.8 } =
     .filter((r) => r.cells.length >= minCells && r.cells.length <= maxFrac * cells.length && r.summary.median != null)
     .sort((a, b) => b.summary.median - a.summary.median);
 }
+
+// ---- bulk-style bin plot input (components/binPlot) --------------------------------------------------------------
+
+/** Bin positions and normalised means (mean 1) kept aligned: bins with a non-finite or non-positive y are dropped from both. */
+export function normaliseAligned(x, y) {
+  const xs = [];
+  const vals = [];
+  let sum = 0;
+  for (let i = 0; i < y.length; i += 1) {
+    if (Number.isFinite(y[i]) && y[i] > 0) {
+      xs.push(x[i]);
+      vals.push(y[i]);
+      sum += y[i];
+    }
+  }
+  if (!vals.length) return { x: [], m: [], mean: null };
+  const mean = sum / vals.length;
+  return { x: xs, m: vals.map((v) => v / mean), mean };
+}
+
+const bpInterval = (iid, chromosome, startPoint, endPoint, mean, y) => ({
+  iid,
+  chromosome,
+  startPoint,
+  endPoint,
+  y,
+  mean,
+  width: Math.max(1, endPoint - startPoint + 1),
+  metadata: { mean, width: Math.max(1, endPoint - startPoint + 1) },
+});
+
+/**
+ * Genome bins (x = genome position, m = normalised mean) as the intervals the bulk bin plot expects, one per run of
+ * `k` bins on a chromosome (median m). k grows until at most maxIntervals remain, so pooled 10 kb bins stay drawable.
+ * chromoBins: { [chr]: { startPlace, endPoint } } as in state.Settings.chromoBins.
+ */
+export function binIntervals(x, m, chromoBins, { k = 10, binSize = 10000, maxIntervals = 6000 } = {}) {
+  const chroms = Object.entries(chromoBins || {})
+    .map(([chromosome, b]) => ({ chromosome, start: b.startPlace, end: b.startPlace + (b.endPoint - (b.startPoint ?? 0)) }))
+    .sort((a, b) => a.start - b.start);
+  if (!chroms.length || !x.length) return [];
+  let step = Math.max(1, k);
+  while (x.length / step > maxIntervals) step *= 2;
+  const out = [];
+  let c = 0;
+  let i = 0;
+  while (i < x.length) {
+    while (c < chroms.length - 1 && x[i] >= chroms[c + 1].start) c += 1;
+    const chr = chroms[c];
+    const vals = [];
+    let j = i;
+    while (j < x.length && vals.length < step && x[j] < (c + 1 < chroms.length ? chroms[c + 1].start : Infinity)) {
+      vals.push(m[j]);
+      j += 1;
+    }
+    if (j === i) break;
+    vals.sort((a, b) => a - b);
+    const start = Math.round(x[i] - chr.start);
+    const end = Math.round(x[j - 1] - chr.start) + binSize;
+    const mean = vals[vals.length >> 1];
+    out.push(bpInterval(`bin${out.length}`, chr.chromosome, start, end, mean, undefined));
+    i = j;
+  }
+  return out;
+}
+
+/** JaBbA segments (complex.json intervals with y = copy number) as bin-plot intervals, mean under the given solution. */
+export function segmentIntervals(intervals, fitSol) {
+  return (intervals || [])
+    .filter((v) => Number.isFinite(v.y) && v.endPoint > v.startPoint)
+    .map((v, n) => bpInterval(v.iid ?? `seg${n}`, v.chromosome, v.startPoint, v.endPoint, (v.y - fitSol.intercept) / fitSol.slope, v.y));
+}
+
+/** The bulk plot's separatorsConfig ({ beta, purity }) of a solution: beta is the segment-mean spacing of one copy. */
+export const separatorsOf = (sol) => ({ beta: 1 / sol.slope, purity: sol.purity, meanSegmentValue: 1 });
+
+/** Fit choices of the view: the selected cells, the clades (highest median ploidy first) and the highest-ploidy single cells. */
+export function fitOptions({ selectedCellIds = [], rows = [], cells = [], topCells = 15 }) {
+  const fmt = (x) => (x == null || !Number.isFinite(x) ? "n/a" : x.toFixed(2));
+  const opts = [];
+  if (selectedCellIds.length) opts.push({ value: "sel", label: `Selected cells (${selectedCellIds.length})` });
+  rows.forEach((r) => opts.push({ value: `clade:${r.id}`, label: `${r.id}  n=${r.cells.length}  median ploidy ${fmt(r.summary.median)}` }));
+  [...cells]
+    .filter((c) => Number.isFinite(c.ploidy))
+    .sort((a, b) => b.ploidy - a.ploidy)
+    .slice(0, topCells)
+    .forEach((c) => opts.push({ value: `cell:${c.cell_id}`, label: `${c.cell_id}  ploidy ${c.ploidy}` }));
+  return opts;
+}
+
+/** The cells a fit choice stands for: { ids, label } ("sel", "clade:<id>" or "cell:<id>"). */
+export function groupOfChoice(choice, { selectedCellIds = [], rows = [] }) {
+  if (!choice) return { ids: [], label: "" };
+  if (choice === "sel") return { ids: selectedCellIds, label: "selected" };
+  if (choice.startsWith("clade:")) {
+    const r = rows.find((x) => `clade:${x.id}` === choice);
+    return { ids: r ? r.cells : [], label: r ? r.id.replace(/^.*_/, "") : "clade" };
+  }
+  return { ids: [choice.slice(5)], label: "cell" };
+}
+
+/** Choice to open on: the requested one when it is on offer, else the first option. */
+export const activeChoice = (requested, options) => (requested && options.some((o) => o.value === requested) ? requested : options[0]?.value);
