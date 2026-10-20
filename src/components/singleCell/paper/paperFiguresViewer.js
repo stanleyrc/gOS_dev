@@ -112,7 +112,6 @@ export default function PaperFiguresViewer({ manifest, initialFigure = null, onO
   const w = (fig.widthPt || 600) * PT_PX;
   const h = (fig.heightPt || 600) * PT_PX;
   const option = (f) => ({ value: f.id, label: <Tooltip title={f.title}>{f.label}{f.nIncomplete ? <span className="sc-paper-dot" /> : null}</Tooltip> });
-  const target = panel ? panelTarget(panel.view) : null;
   return (
     <div className="sc-paper">
       <div className="sc-paper-bar">
@@ -147,39 +146,7 @@ export default function PaperFiguresViewer({ manifest, initialFigure = null, onO
           </div>
         </>
       )}
-      <Modal
-        open={!!panel}
-        onCancel={() => setPanel(null)}
-        width="min(1200px, 96vw)"
-        title={panel ? `${fig.label}${panel.letter} · ${fig.title}` : ""}
-        footer={
-          panel ? (
-            <Space>
-              {panel.pdf && (
-                <Button icon={<DownloadOutlined />} href={panel.pdf} target="_blank" rel="noopener noreferrer">
-                  Panel PDF
-                </Button>
-              )}
-              {target && (
-                <Button type="primary" icon={<LinkOutlined />} onClick={() => { setPanel(null); onOpenTarget?.(target); }}>
-                  {target.label || (target.kind === "interactive" ? `Interactive view${target.patient ? ` (${target.patient})` : ""}` : target.kind === "scview" ? `Open ${target.scview} view` : `Open ${target.patient}`)}
-                </Button>
-              )}
-            </Space>
-          ) : null
-        }
-      >
-        {panel && (
-          <>
-            {bestImage(panel) ? <PanelLarge panel={panel} /> : <Empty description="No panel file: see the whole figure above." />}
-            <div style={{ marginTop: 8 }}>
-              <Tag color={STATUS_COLOR[panel.status] || "default"}>{panel.status}</Tag>
-              <Text style={{ fontSize: 12 }}>{panel.reason || "no notes"}</Text>
-              {panel.source && <div><Text type="secondary" style={{ fontSize: 12 }}>{`Source: ${panel.source}`}</Text></div>}
-            </div>
-          </>
-        )}
-      </Modal>
+      <PanelModal fig={fig} panel={panel} onClose={() => setPanel(null)} onOpenTarget={onOpenTarget} />
     </div>
   );
 }
@@ -197,3 +164,54 @@ function PanelLarge({ panel }) {
   if (!size) return <Text type="secondary">Loading…</Text>;
   return <ZoomPanImage src={src} alt={`panel ${panel.letter}`} width={size.w} height={size.h} viewHeight={Math.min(720, Math.max(360, (window.innerHeight || 900) - 300))} />;
 }
+
+/** A panel opened large: the exact panel image (zoom / pan), its build status and notes, panel PDF, link to its interactive view. */
+export function PanelModal({ fig, panel, onClose, onOpenTarget }) {
+  const target = panel ? panelTarget(panel.view) : null;
+  return (
+    <Modal
+      open={!!panel}
+      onCancel={onClose}
+      width="min(1200px, 96vw)"
+      title={panel && fig ? `${fig.label}${panel.letter} · ${fig.title}` : ""}
+      footer={
+        panel ? (
+          <Space>
+            {panel.pdf && (
+              <Button icon={<DownloadOutlined />} href={panel.pdf} target="_blank" rel="noopener noreferrer">
+                Panel PDF
+              </Button>
+            )}
+            {target && (
+              <Button type="primary" icon={<LinkOutlined />} onClick={() => { onClose(); onOpenTarget?.(target); }}>
+                {targetLabel(target)}
+              </Button>
+            )}
+          </Space>
+        ) : null
+      }
+    >
+      {panel && (
+        <>
+          {bestImage(panel) ? <PanelLarge panel={panel} /> : <Empty description="No separate panel file: it is shown in the whole figure." />}
+          <div style={{ marginTop: 8 }}>
+            <Tag color={STATUS_COLOR[panel.status] || "default"}>{panel.status}</Tag>
+            <Text style={{ fontSize: 12 }}>{panel.reason || "no notes"}</Text>
+            {panel.source && <div><Text type="secondary" style={{ fontSize: 12 }}>{`Source: ${panel.source}`}</Text></div>}
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+/** Button text for a panel's interactive target. */
+export function targetLabel(target) {
+  if (!target) return "";
+  if (target.label) return target.label;
+  if (target.kind === "interactive") return `Interactive view${target.patient ? ` (${target.patient})` : ""}`;
+  if (target.kind === "scview") return `Open the ${target.scview} view`;
+  return `Open ${target.patient}`;
+}
+
+export const STATUS_TAG_COLOR = STATUS_COLOR;

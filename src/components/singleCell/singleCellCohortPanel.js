@@ -65,7 +65,7 @@ import { buildPatientReport } from "../../helpers/singleCell/patientReport";
 import { isRescued } from "../../helpers/singleCell/cohortStats";
 import useHotspotRescue from "./cohort/useHotspotRescue";
 import { ecdnaWalks } from "../../helpers/singleCell/cohortHeadline";
-import { COHORT_VIEWS, COHORT_VIEW_GROUPS, resolveCohortView, viewsInGroup } from "../../helpers/singleCell/cohortViews";
+import { COHORT_VIEWS, COHORT_VIEW_GROUPS, PAPER_FIGURE_TABS, paperFigureLabel, resolveCohortView, viewsInGroup } from "../../helpers/singleCell/cohortViews";
 import CohortCircosPanel from "./cohort/cohortCircosPanel";
 import CohortEventsTable from "./cohort/cohortEventsTable";
 import CohortEventDrawer from "./cohort/cohortEventDrawer";
@@ -73,6 +73,7 @@ import CohortRnaPanel from "./cohort/cohortRnaPanel";
 import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
 import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
 import CohortFiguresPanel from "./figures/cohortFiguresPanel";
+import PaperFigurePage, { PaperFigureLinks } from "./paper/paperFigurePage";
 import CohortCnExpressionPanel from "./cohort/cohortCnExpressionPanel";
 import HelpDrawer from "./helpDrawer";
 import { announceCohortView, peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
@@ -576,6 +577,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "overview" && (
           <>
             <Col span={24}>
+              <PaperFigureLinks onView={setView} views={PAPER_FIGURE_TABS.map((n) => ({ key: `paperfig${n}`, label: `Fig ${n}` }))} />
+            </Col>
+            <Col span={24}>
               <PortraitHeadlineCard dataset={geneDataset} onView={setView} />
             </Col>
             <Col span={24}>
@@ -676,6 +680,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
             <CohortEcdnaPlasticityPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} />
           </Col>
         )}
+        {paperFigureLabel(view) && (
+          <Col span={24}>
+            <PaperFigurePage label={paperFigureLabel(view)} />
+          </Col>
+        )}
         {view === "figures" && (
           <Col span={24}>
             <CohortFiguresPanel
@@ -743,6 +752,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "welcome" && (
           <Col span={24}>
+            <PaperFigureLinks onView={setView} views={PAPER_FIGURE_TABS.map((n) => ({ key: `paperfig${n}`, label: `Fig ${n}` }))} />
             <WelcomeView onFind={openFinder} />
           </Col>
         )}

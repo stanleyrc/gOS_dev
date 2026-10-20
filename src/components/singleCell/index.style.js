@@ -309,6 +309,58 @@ const Wrapper = styled.div`
     margin-left: auto;
   }
   /* Paper figures mode (components/singleCell/paper) */
+  .sc-paperpage-sheet {
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    margin: 4px 0 12px;
+  }
+  .sc-paperpage-region {
+    position: absolute;
+    border: 1.5px solid #1677ff;
+    background: rgba(22, 119, 255, 0.05);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+  .sc-paperpage-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    padding: 2px 0;
+    border-bottom: 1px dashed var(--sc-border, #eee);
+  }
+  .sc-paperlinks {
+    margin-bottom: 12px;
+  }
+  .sc-paperlinks-head {
+    margin-bottom: 6px;
+  }
+  .sc-paperlinks-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sc-paperlinks-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 92px;
+    padding: 4px;
+    border: 1px solid var(--sc-border, #e5e5e5);
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .sc-paperlinks-item:hover {
+    border-color: #1677ff;
+  }
+  .sc-paperlinks-item img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+  }
   .sc-paper-modebar {
     display: flex;
     flex-wrap: wrap;
