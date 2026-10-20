@@ -1,4 +1,4 @@
-import { all, takeLatest, put, call, delay } from "redux-saga/effects";
+import { all, takeLatest, put, call, delay, select } from "redux-saga/effects";
 import axios from "axios";
 import i18n from "../../i18n";
 import { updateChromoBins, locationToDomains } from "../../helpers/utility";
@@ -74,6 +74,12 @@ function* updateCaseReportFollowUp(action) {
     return;
   }
   yield put(caseReportActions.fetchCaseReport());
+  // the gene annotation (genes/<ref>.arrow, ~40 MB) is only fetched with the dataset when a report is open;
+  // the cohort / list page skips it, so opening a report from there loads it now
+  const { genes, dataset } = yield select((state) => ({ genes: state.Genes, dataset: state.Settings.dataset }));
+  if (dataset && !genes.loadingGenesData && (!genes.data || genes.reference !== dataset.reference)) {
+    yield put({ type: genesActions.FETCH_GENES_DATA_REQUEST });
+  }
 }
 
 function* settingsFetchedFollowUp(action) {
@@ -120,9 +126,10 @@ export function* updateDatasetFollowUp(action) {
     biomarkersActions.FETCH_BIOMARKERS_REQUEST,
     curatedGenesActions.FETCH_CURATED_GENES_REQUEST,
     genesActions.FETCH_HIGLASS_GENES_INFO_REQUEST,
-    genesActions.FETCH_GENES_DATA_REQUEST,
     cytobandsActions.FETCH_CYTOBANDS_REQUEST,
   ];
+  // gene annotation arrow (~40 MB): with a report open it loads now, else when a report is opened (updateCaseReportFollowUp)
+  if (action.report) actionTypes.splice(actionTypes.length - 1, 0, genesActions.FETCH_GENES_DATA_REQUEST);
   if (action.refreshBrowseResults !== false) {
     actionTypes.unshift(caseReportsActions.FETCH_CASE_REPORTS_REQUEST);
   }
