@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { filtersSidebarVisible, filtersSidebarSpans } from "../../helpers/singleCell/filtersSidebar";
 import { withTranslation } from "react-i18next";
 import { connect } from "react-redux";
 import {
@@ -87,6 +88,7 @@ export class ListView extends Component {
   constructor(props) {
     super(props);
     this.state = {
+      filtersOpen: false,
       isChatOpen: false,
       // ?scview=<view> deep-links into the Single-Cell Cohort tab (the panel reads the view itself)
       activeTab:
@@ -689,6 +691,8 @@ export class ListView extends Component {
     const initialValues = {
       ...searchFilters,
     };
+    const filtersVisible = filtersSidebarVisible(isScDataset, this.state.filtersOpen);
+    const filtersSpans = filtersSidebarSpans(filtersVisible);
 
     let filterFormItemRenderer = (d) => {
       if (d.filter.renderer === "cascader") {
@@ -1026,7 +1030,8 @@ export class ListView extends Component {
         >
           <div className="ant-panel-list-container">
             <Row gutter={[16, 16]} align="stretch">
-              <Col className="gutter-row" span={4} style={{ display: "flex" }}>
+              {/* kept mounted when hidden so the form keeps its default values */}
+              <Col className="gutter-row" span={filtersSpans.sidebar || 4} style={{ display: filtersVisible ? "flex" : "none" }}>
                 <Card
                   className="filters-box"
                   title={this.renderFiltersTitle()}
@@ -1081,7 +1086,17 @@ export class ListView extends Component {
                   </Space>
                 </Card>
               </Col>
-              <Col className="gutter-row" span={20}>
+              <Col className="gutter-row" span={filtersSpans.content}>
+                {isScDataset && (
+                  <Button
+                    size="small"
+                    data-testid="toggle-search-filters"
+                    style={{ marginBottom: 8 }}
+                    onClick={() => this.setState({ filtersOpen: !this.state.filtersOpen })}
+                  >
+                    {filtersVisible ? "Hide filters" : "Filters"}
+                  </Button>
+                )}
                 <Tabs
                   activeKey={this.state.activeTab}
                   onChange={this.handleTabChange}
