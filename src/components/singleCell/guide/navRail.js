@@ -10,7 +10,7 @@ import { announceCohortView, currentCohortView, requestHelpTarget, subscribeCoho
 import { HOVER_CLOSE_MS, HOVER_OPEN_MS, PATIENT_RAIL, RAIL_WIDTH, cohortGroupOfView, cohortRail, firstEnabledItem, isPhoneWidth, patientGroupOfTab, railContext } from "../../../helpers/singleCell/navRail";
 import settingsActions from "../../../redux/settings/actions";
 
-const GROUP_ICON = { findings: "StarOutlined", genome: "RadarChartOutlined", evolution: "ApartmentOutlined", rna: "DotChartOutlined", explore: "SearchOutlined", guide: "ReadOutlined" };
+const GROUP_ICON = { paper: "FileImageOutlined", findings: "StarOutlined", genome: "RadarChartOutlined", evolution: "ApartmentOutlined", rna: "DotChartOutlined", explore: "SearchOutlined", guide: "ReadOutlined" };
 const Icon = ({ name }) => {
   const C = Icons[name] || Icons.AppstoreOutlined;
   return <C />;
@@ -91,6 +91,7 @@ export default function NavRail() {
   const groups = ctx === "patient" ? patientGroups : cohortGs;
   const currentGroup = ctx === "patient" ? patientGroupOfTab(tab) : cohortGroupOfView(COHORT_VIEWS, view || "overview");
   const extras = [
+    ctx === "patient" && { id: "to-paper", label: "Paper figures", icon: "FileImageOutlined", desc: "The manuscript figures, one tab each.", go: () => goCohort("paperfig1") },
     ctx === "patient" && { id: "to-cohort", label: "Cohort", icon: "TeamOutlined", desc: "Back to the cohort pages.", go: () => goCohort(view || "overview") },
     { id: "welcome", label: "Welcome", icon: "HomeOutlined", desc: "How to use gOS and where to find things.", go: () => goCohort("welcome") },
     { id: "methods", label: "Methods", icon: "ReadOutlined", desc: "How each result is produced.", go: () => goCohort("methods") },

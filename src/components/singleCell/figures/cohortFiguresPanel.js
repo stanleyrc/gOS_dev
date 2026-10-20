@@ -12,6 +12,9 @@ import PatientEcdnaView from "./patientEcdnaView";
 import { Provenance } from "../hintLine";
 import { FigureStyleDefault, useFigureStyleName } from "./figureCanvas";
 import { ExportPanel, PanelHead } from "./figureKit";
+import PaperFiguresViewer from "../paper/paperFiguresViewer";
+import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, panelLettersById, parsePaperManifest, targetSearch } from "../../../helpers/singleCell/paperManifest";
+import { PaperLettersContext } from "../paper/paperContext";
 import StateQuadrant from "./stateQuadrant";
 import PhyloSignalStrip from "./phyloSignalStrip";
 import useCohortExport from "../cohort/useCohortExport";
@@ -82,13 +85,64 @@ function eventLoci(e) {
  * shown in a popup (SelectedCellsModal).
  */
 export default function CohortFiguresPanel(props) {
-  // the view opens in the manuscript look (Paper style) unless a figure style was chosen
+  // two modes: "paper" = the built manuscript figures exactly as made (default), "interactive" = the live re-implementations
+  const params = useMemo(() => new URLSearchParams(window.location.search), []);
+  const [mode, setMode] = useState(params.get("figmode") === "interactive" || params.get("figpatient") ? "interactive" : "paper");
+  const [bodyKey, setBodyKey] = useState(0);
+  const dataset = useSelector((s) => s.Settings?.dataset);
+  const base = dataset?.dataPath ? `${dataset.dataPath}_cohort/${PAPER_FIGURES_DIR}/` : "";
+  const manifestExport = useCohortExport(dataset?.dataPath ? dataset : null, PAPER_MANIFEST_FILE);
+  const manifest = useMemo(() => parsePaperManifest(manifestExport.data, base), [manifestExport.data, base]);
+  const paperLetters = useMemo(() => (manifest ? panelLettersById(manifest) : null), [manifest]);
+  const openTarget = (t) => {
+    const search = targetSearch(t, window.location.search);
+    if (t.kind !== "interactive") {
+      window.location.assign(`${window.location.pathname}${search}`);
+      return;
+    }
+    // the interactive body reads figpatient / figpanel from the URL once: update it and remount
+    window.history.replaceState(null, "", `${window.location.pathname}${search}`);
+    setMode("interactive");
+    setBodyKey((k) => k + 1);
+  };
+  const switchMode = (m) => {
+    const p = new URLSearchParams(window.location.search);
+    if (m === "interactive") p.set("figmode", "interactive");
+    else p.delete("figmode");
+    window.history.replaceState(null, "", `${window.location.pathname}?${p.toString()}`);
+    setMode(m);
+  };
   return (
-    <FigureStyleDefault.Provider value={FIGURES_VIEW_STYLE}>
-      <CellSelectionProvider>
-        <FiguresBody {...props} />
-      </CellSelectionProvider>
-    </FigureStyleDefault.Provider>
+    <div>
+      <div className="sc-paper-modebar">
+        <Segmented
+          value={mode}
+          onChange={switchMode}
+          options={[
+            { value: "paper", label: "Paper figures" },
+            { value: "interactive", label: "Interactive" },
+          ]}
+        />
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {mode === "paper" ? "The manuscript figures exactly as built (vector), with links to the interactive views." : "Live, linked re-implementations of the figure panels."}
+        </Text>
+      </div>
+      {mode === "paper" ? (
+        manifestExport.status === "loading" ? (
+          <Text type="secondary">Loading paper figures…</Text>
+        ) : (
+          <PaperFiguresViewer manifest={manifest} initialFigure={params.get("figure")} onOpenTarget={openTarget} />
+        )
+      ) : (
+        <PaperLettersContext.Provider value={paperLetters}>
+          <FigureStyleDefault.Provider value={FIGURES_VIEW_STYLE}>
+            <CellSelectionProvider>
+              <FiguresBody key={bodyKey} {...props} />
+            </CellSelectionProvider>
+          </FigureStyleDefault.Provider>
+        </PaperLettersContext.Provider>
+      )}
+    </div>
   );
 }
 
@@ -104,7 +158,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   }, [clear, popupOpen]);
   const styleName = useFigureStyleName();
   const paper = isPaperStyle(figureStyle(styleName));
-  // precomputed exports read by the paper panels: Fig 1e state scores, Fig 3E phylogenetic signal
+  // precomputed exports read by the paper panels: Fig 1d state scores, Fig 3E phylogenetic signal
   const dataset = useSelector((s) => s.Settings?.dataset);
   const stateExport = useCohortExport(dataset?.dataPath ? dataset : null, STATE_SCORES_FILE);
   const statePoints = useMemo(() => parseStateScores(stateExport.data) || [], [stateExport.data]);
@@ -149,7 +203,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const withAmps = per.filter((p) => p.groups.length);
   // Fig 3A/B as in the paper: amplicon classes (per-cell gene clusters) and graph-level structures, when exported
   const ampExport = useCohortExport(dataset?.dataPath ? dataset : null, AMPLICON_STRUCTURES_FILE);
-  // Fig 1d/f/g: _cohort/tmb.json (per-cell corrected TMB, truncal site counts) with the cells' states and SNV matrices
+  // Fig 1b/f/g: _cohort/tmb.json (per-cell corrected TMB, truncal site counts) with the cells' states and SNV matrices
   const tmbExport = useCohortExport(dataset?.dataPath ? dataset : null, "tmb.json");
   const idMaps = useMemo(() => Object.fromEntries(per.map((p) => [p.patient, new Map(p.cells.map((c) => [`${c.cell_id}`.toUpperCase(), c]))])), [per]);
   const burdenRows = useMemo(() => {
@@ -212,6 +266,19 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
     if (link.figSelect) select(current.patient, carriers, { label: `${w.label} carriers` });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, files, link, minCn]);
+  // ?figpanel=<data-figpanel> (from the Paper figures mode): scroll to that panel once it renders
+  useEffect(() => {
+    const target = new URLSearchParams(window.location.search).get("figpanel");
+    if (!target) return undefined;
+    let n = 0;
+    const t = setInterval(() => {
+      const el = document.querySelector(`[data-figpanel="${CSS.escape(target)}"]`);
+      n += 1;
+      if (el || n > 60) clearInterval(t);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
+    }, 500);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => {
     if (!link.figPatient) return undefined;
     const t = setTimeout(() => patientRef.current?.scrollIntoView({ block: "start" }), 1500);
@@ -349,22 +416,22 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
           <Card id="sc-fig-states" size="small" title={<Space><BranchesOutlined />Figure 1 · Cell states</Space>}>
             <Row gutter={[24, 8]}>
               <Col xs={24} xl={12}>
-                <ExportPanel name="1e" letter="E" title="Cell-state quadrant" fig="Fig 1e" hint="hover a cell · lasso to select (linked to the patient pages) · click a DNA-profiled cell">
+                <ExportPanel name="state-quadrant" letter="D" title="Cell-state quadrant" fig="Fig 1d" hint="hover a cell · lasso to select (linked to the patient pages) · click a DNA-profiled cell">
                   {stateExport.status === "loading" ? <Text type="secondary">Loading state scores…</Text> : <StateQuadrant points={statePoints} dnaIds={dnaIds} selected={selection} onSelect={(p, ids, opts) => focus(p, { marked: { cells: new Set(ids), label: opts.label }, mode: opts.mode, scroll: false })} />}
                 </ExportPanel>
               </Col>
               <Col xs={24} xl={12}>
-                <ExportPanel name="1d" letter="D" title="Subclonal mutations per cell" fig="Fig 1d" hint="click a patient to open it below">
+                <ExportPanel name="subclonal-per-cell" letter="B" title="Subclonal mutations per cell" fig="Fig 1b" hint="click a patient to open it below">
                   {tmbExport.status === "loading" ? <Text type="secondary">Loading tmb.json…</Text> : subclonal.rows.length ? <SubclonalPerPatient rows={subclonal.rows} missing={subclonal.missing} onSelectPatient={(p) => focus(p, {})} /> : <Text type="secondary">not available (no tmb.json or per-cell SNV matrices)</Text>}
                 </ExportPanel>
               </Col>
               <Col xs={24} xl={12}>
-                <ExportPanel name="1f" letter="F" title="Mutation burden by cell state" fig="Fig 1f" hint="click a state to select its cells">
+                <ExportPanel name="burden-by-state" letter="F" title="Mutation burden by cell state" fig="Fig 1f" hint="click a state to select its cells">
                   {burdenRows.length ? <BurdenByState rows={burdenRows} onSelectCells={(p, ids, opts) => focus(p, { marked: { cells: new Set(ids), label: opts.label }, mode: opts.mode, scroll: false })} /> : <Text type="secondary">not available (no tmb.json, or no patient with ≥ 3 MES-like cells)</Text>}
                 </ExportPanel>
               </Col>
               <Col xs={24} xl={12}>
-                <ExportPanel name="1g" letter="G" title="Cells above the MES-like median" fig="Fig 1g" hint="click a point to select those cells">
+                <ExportPanel name="above-mes" letter="G" title="Cells above the MES-like median" fig="Fig 1g" hint="click a point to select those cells">
                   {burdenRows.length ? <FractionAboveMes rows={burdenRows} onSelectCells={(p, ids, opts) => focus(p, { marked: { cells: new Set(ids), label: opts.label }, mode: opts.mode, scroll: false })} /> : <Text type="secondary">not available</Text>}
                 </ExportPanel>
               </Col>
@@ -390,7 +457,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             {ampClasses ? (
               <Row gutter={[24, 8]}>
                 <Col xs={24} xl={14}>
-                  <ExportPanel name="3A" letter="A" title="Copy number and structures per amplicon" fig="Fig 3A" hint="drag along a violin to select a copy range · click a row for the class's cells">
+                  <ExportPanel name="amplicon-classes" letter="A" title="Copy number and structures per amplicon" fig="Fig 3A" hint="drag along a violin to select a copy range · click a row for the class's cells">
                     <AmpliconClassViolins
                       data={ampClasses}
                       selection={selection}
@@ -403,7 +470,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                   </ExportPanel>
                 </Col>
                 <Col xs={24} xl={10}>
-                  <ExportPanel name="3B" letter="B" title="Amplicon(s) in cell" fig="Fig 3B" hint="click a row to select those cells">
+                  <ExportPanel name="amplicon-combinations" letter="B" title="Amplicon(s) in cell" fig="Fig 3B" hint="click a row to select those cells">
                     <AmpliconClassUpset data={ampClasses} onSelectCells={(p, ids, opts) => focus(p, { marked: { cells: new Set(ids), label: opts.label }, mode: opts.mode, scroll: false })} />
                   </ExportPanel>
                 </Col>
@@ -413,7 +480,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             ) : (
               <Row gutter={[24, 8]}>
                 <Col xs={24} xl={14}>
-                  <ExportPanel name="3A" letter="A" title="Copy number and structures per amplicon" fig="Fig 3A" hint="drag along a violin to select a copy range · click a row to open the patient below">
+                  <ExportPanel name="amplicon-classes" letter="A" title="Copy number and structures per amplicon" fig="Fig 3A" hint="drag along a violin to select a copy range · click a row to open the patient below">
                   <AmpliconViolins
                     per={withAmps}
                     selected={selectedViolin}
@@ -424,7 +491,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
                   </ExportPanel>
                 </Col>
                 <Col xs={24} xl={10}>
-                  <ExportPanel name="3B" letter="B" title="Amplicon combinations per cell" fig="Fig 3B" hint="click a row to select those cells">
+                  <ExportPanel name="amplicon-combinations" letter="B" title="Amplicon combinations per cell" fig="Fig 3B" hint="click a row to select those cells">
                   <AmpliconUpset
                     per={withAmps}
                     selected={null}
@@ -436,7 +503,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             )}
             <Row gutter={[24, 8]} className="sc-fig-block">
               <Col xs={24} xxl={11}>
-                <ExportPanel name="3E" letter="C" title="Inherited or redrawn at each division?" fig="Fig 3E" hint="click a walk to open it below">
+                <ExportPanel name="phylo-signal" letter="C" title="Inherited or redrawn at each division?" fig="Fig 3E" hint="click a walk to open it below">
                 {signals.length ? (
                   <PhyloSignalStrip
                     signals={signals}
@@ -486,7 +553,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
               </div>
             )}
             {current && (
-              <div data-figpanel="4B">
+              <div data-figpanel="patient-figure">
               <PatientFigure
                 patient={current.patient}
                 events={current.events}
@@ -508,12 +575,12 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             </Row>
             <Row gutter={[24, 16]} className="sc-fig-block">
               <Col xs={24} xl={9}>
-                <ExportPanel name="5E-walks" letter="E" title="Copies of one amplicon against another" fig="Fig 5E" hint="lasso to select">
+                <ExportPanel name="walk-pair" letter="E" title="Copies of one amplicon against another" fig="Fig 5E" hint="lasso to select">
                 {current && <GenePairScatter patient={current.patient} cells={current.cells} groups={current.groups} cnEntry={cnRows[current.patient]} genes={scatterGenes} cloneColors={figCloneColors} selected={selectedHere} onSelect={selectHere} />}
                 </ExportPanel>
               </Col>
               <Col xs={24} xl={7}>
-                <ExportPanel name="4F" letter="F" title="Carriers per clade" fig="Fig 4F" hint="click a bar">
+                <ExportPanel name="carriers-per-clade" letter="F" title="Carriers per clade" fig="Fig 4F" hint="click a bar">
                 {current && <CladeCarrierBars cells={current.cells} groups={current.groups} minCn={minCn} cloneColors={figCloneColors} selected={selectedHere} onSelect={selectHere} />}
                 </ExportPanel>
               </Col>
@@ -524,7 +591,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
             </Row>
             <Row gutter={[24, 16]} className="sc-fig-block">
               <Col xs={24} xl={12} id="sc-fig-genepair">
-                <ExportPanel name="5E-genes" letter="H" title={paper && pooledScatter ? "Gene vs gene copy number: ecDNA vs integrated" : "Gene vs gene copy number per clone"} fig="Fig 5E" hint="ecDNA vs integrated: slope / R² per clone" extra={<><Checkbox checked={pooledScatter} onChange={(e) => setPooledScatter(e.target.checked)}>pooled</Checkbox><Select size="small" mode="multiple" style={{ minWidth: 180, marginLeft: 8 }} value={genePair || []} onChange={(v) => setPairGenes(v.length ? v.slice(-2) : null)} options={[...genePositions.keys(), ...(genePair || [])].filter((g, i, a) => a.indexOf(g) === i).sort().map((g) => ({ value: g, label: g }))} /></>}>
+                <ExportPanel name="gene-pair" letter="H" title={paper && pooledScatter ? "Gene vs gene copy number: ecDNA vs integrated" : "Gene vs gene copy number per clone"} fig="Fig 5E" hint="ecDNA vs integrated: slope / R² per clone" extra={<><Checkbox checked={pooledScatter} onChange={(e) => setPooledScatter(e.target.checked)}>pooled</Checkbox><Select size="small" mode="multiple" style={{ minWidth: 180, marginLeft: 8 }} value={genePair || []} onChange={(v) => setPairGenes(v.length ? v.slice(-2) : null)} options={[...genePositions.keys(), ...(genePair || [])].filter((g, i, a) => a.indexOf(g) === i).sort().map((g) => ({ value: g, label: g }))} /></>}>
                 {genePair ? (
                   <GeneCnScatter cnEntry={cnRows[current?.patient]} genes={paper && pooledScatter ? [...genePair].sort() : genePair} cloneColors={figCloneColors} cloneLabels={figCloneLabels} width={520} pooled={paper && pooledScatter} fontFamily={paper ? PAPER_FONT : null} />
                 ) : (

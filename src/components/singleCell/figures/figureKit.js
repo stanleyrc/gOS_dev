@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import SvgExportButton from "../svgExportButton";
+import { usePaperLetters } from "../paper/paperContext";
 import { FONT_FAMILY } from "../../../helpers/singleCell/plotTheme";
 import { formatTick, styleFontSize, styleFontWeight } from "../../../helpers/singleCell/figureStyle";
 
@@ -192,8 +193,12 @@ export function PanelHead({ letter, title, fig, hint, extra }) {
  * publication size, 1 px = 0.75 pt, or PNG presets) for everything drawn
  * inside it. `name` also tags the panel (data-figpanel) for screenshots.
  */
-export function ExportPanel({ name, letter, title, fig, hint, extra, children, style }) {
+export function ExportPanel({ name, letter: letter0, title, fig: fig0, hint, extra, children, style }) {
   const ref = useRef(null);
+  // the paper's current letters for this panel (synced manifest), else the given ones
+  const paper = usePaperLetters(name);
+  const letter = paper ? paper.letter : letter0;
+  const fig = paper ? paper.label : fig0;
   return (
     <div ref={ref} data-figpanel={name} style={style}>
       <PanelHead
