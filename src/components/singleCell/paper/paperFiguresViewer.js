@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Empty, Modal, Segmented, Space, Tag, Tooltip, Typography } from "antd";
 import { CompressOutlined, DownloadOutlined, LinkOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
+import PanelDataTable from "./panelDataTable";
 import { bestImage, fitView, formatBuilt, panelTarget, zoomAt } from "../../../helpers/singleCell/paperManifest";
 
 const { Text } = Typography;
@@ -166,8 +167,10 @@ function PanelLarge({ panel }) {
 }
 
 /** A panel opened large: the exact panel image (zoom / pan), its build status and notes, panel PDF, link to its interactive view. */
-export function PanelModal({ fig, panel, onClose, onOpenTarget }) {
+export function PanelModal({ fig, panel, onClose, onOpenTarget, tables = [], initialTab = "panel" }) {
   const target = panel ? panelTarget(panel.view) : null;
+  const [tab, setTab] = useState(initialTab);
+  useEffect(() => setTab(initialTab), [panel, initialTab]);
   return (
     <Modal
       open={!!panel}
@@ -193,7 +196,14 @@ export function PanelModal({ fig, panel, onClose, onOpenTarget }) {
     >
       {panel && (
         <>
-          {bestImage(panel) ? <PanelLarge panel={panel} /> : <Empty description="No separate panel file: it is shown in the whole figure." />}
+          {tables.length > 0 && <Segmented size="small" value={tab} onChange={setTab} options={[{ value: "panel", label: "Panel" }, { value: "data", label: `Data (${tables.length})` }]} style={{ marginBottom: 8 }} />}
+          {tab === "data" && tables.length > 0 ? (
+            <PanelDataTable tables={tables} name={`${fig?.id || "figure"}_${panel.letter}`} />
+          ) : bestImage(panel) ? (
+            <PanelLarge panel={panel} />
+          ) : (
+            <Empty description="No separate panel file: it is shown in the whole figure." />
+          )}
           <div style={{ marginTop: 8 }}>
             <Tag color={STATUS_COLOR[panel.status] || "default"}>{panel.status}</Tag>
             <Text style={{ fontSize: 12 }}>{panel.reason || "no notes"}</Text>
