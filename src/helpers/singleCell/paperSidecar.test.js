@@ -1,4 +1,4 @@
-import { panelTables, tableTsv, sidecarExtras, axisReadout, markPositions, plotHitAt, toData, toPage, axisPosition, highlightRects, hitAt, parseSidecar, rowBand, rowIndexAt, rowsBetween } from "./paperSidecar";
+import { selectionTable, panelTables, tableTsv, sidecarExtras, axisReadout, markPositions, plotHitAt, toData, toPage, axisPosition, highlightRects, hitAt, parseSidecar, rowBand, rowIndexAt, rowsBetween } from "./paperSidecar";
 
 const side = parseSidecar({
   format: "gos-paper-sidecar/1",
@@ -105,5 +105,19 @@ describe("panel data tables", () => {
     expect(t[0].rows).toEqual([["P1", 3], ["P2", 4]]);
     expect(t[1].rows[1]).toEqual([2, "c2", "Clone2"]);
     expect(tableTsv(t[0])).toBe("patient\tn\nP1\t3\nP2\t4");
+  });
+});
+
+describe("selection table", () => {
+  it("collects what the figure shows about selected cells", () => {
+    const sc = parseSidecar({
+      regions: [
+        { id: "k", panel: "B", x: 0, y: 0, w: 5, h: 10, rows: ["c1", "c2"], rowset: "B", values: ["Clone1", "Clone2"], value_label: "clade (fig)" },
+        { id: "p#1", panel: "g", kind: "plot", x: 0, y: 0, w: 10, h: 10, xscale: { range: [0, 1] }, yscale: { range: [0, 1] }, marks: [{ type: "points", x: [0.1, 0.2], y: [0.1, 0.2], fields: { cell: ["c2", "c9"], state: ["AC", "MES"] } }] },
+      ],
+    });
+    const t = selectionTable(sc, ["c2", "c1"], (id) => ({ c1: { clone_id: "Clone1", state: "NPC" } })[id] || null);
+    expect(t.columns).toEqual(["cell", "clade", "state", "clade (fig)", "g:state"]);
+    expect(t.rows).toEqual([["c2", null, null, "Clone2", "AC"], ["c1", "Clone1", "NPC", "Clone1", null]]);
   });
 });

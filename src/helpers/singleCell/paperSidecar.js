@@ -262,3 +262,36 @@ export function tableTsv(table) {
   const esc = (v) => (v == null ? "" : `${v}`.replace(/[\t\n\r]/g, " "));
   return [table.columns.map(esc).join("\t"), ...table.rows.map((r) => r.map(esc).join("\t"))].join("\n");
 }
+
+/**
+ * Table of selected cells with what the figure shows about them: clade / state (from the cell records) and every
+ * per-row value of the rows regions and per-mark field of point marks that carry the cell. recordOf(id) -> cell record.
+ */
+export function selectionTable(sidecar, ids, recordOf = () => null, cladeOf = (c) => c?.clone_id ?? null) {
+  const cols = ["cell", "clade", "state"];
+  const extra = new Map(); // column -> Map(id -> value)
+  const put = (col, id, v) => {
+    if (v == null || v === "") return;
+    if (!extra.has(col)) extra.set(col, new Map());
+    if (!extra.get(col).has(id)) extra.get(col).set(id, v);
+  };
+  const want = new Set(ids.map(String));
+  (sidecar?.regions || []).forEach((r) => {
+    if (r.kind === "rows" && r.values) r.rows.forEach((id, i) => want.has(id) && put(r.valueLabel || r.label, id, r.values[i]));
+    if (r.kind === "plot")
+      r.marks.forEach((m) => {
+        const f = m.fields.cell || m.fields.cell_id;
+        if (m.type !== "points" || !f) return;
+        f.forEach((id, i) => {
+          if (!want.has(`${id}`)) return;
+          Object.entries(m.fields).forEach(([k, v]) => k !== "cell" && k !== "cell_id" && put(`${r.panel || ""}:${k}`, `${id}`, v.length === 1 ? v[0] : v[i]));
+        });
+      });
+  });
+  const extraCols = [...extra.keys()];
+  const rows = ids.map((id) => {
+    const rec = recordOf(id);
+    return [`${id}`, rec ? cladeOf(rec) : null, rec?.state ?? null, ...extraCols.map((c) => extra.get(c).get(`${id}`) ?? null)];
+  });
+  return { title: "selected cells", columns: [...cols, ...extraCols], rows };
+}
