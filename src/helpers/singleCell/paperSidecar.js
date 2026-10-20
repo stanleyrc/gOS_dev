@@ -45,6 +45,7 @@ export function parseSidecar(json) {
       xscale: scaleOf(r.xscale),
       yscale: scaleOf(r.yscale),
       marks: arr(r.marks).map(markOf).filter(Boolean),
+      table: r.table && typeof r.table === "object" ? r.table : null,
     }))
     .filter((r) => [r.x, r.y, r.w, r.h].every(Number.isFinite) && r.w > 0 && r.h > 0);
   return { page: { w: Number(json.page?.w) || null, h: Number(json.page?.h) || null }, regions, data: json.data && typeof json.data === "object" ? json.data : {} };
@@ -223,4 +224,41 @@ export function sidecarExtras(sidecar, patient) {
     out.ecdnaSnvs = sites.map((id, i) => ({ id: `${e.chromosome || ""}${e.chromosome ? "_" : ""}${id}`, pos: pos[i], cls: cls[i] ?? null, frac: by.get(id), gene: `${cls[i] ?? ""} · fraction of copies mutated`.trim() }));
   }
   return out;
+}
+
+// ---- panel data tables (the data behind a panel, for sortable / filterable / downloadable views)
+
+/**
+ * Tables of one panel: for ggplot areas the plot's data frame (sidecar `table`), for row areas one table of the rows
+ * with every per-row value of the rowset. [{ title, columns: [name], rows: [[...]] }]
+ */
+export function panelTables(sidecar, letter) {
+  if (!sidecar) return [];
+  const want = `${letter}`.toLowerCase();
+  const mine = sidecar.regions.filter((r) => `${r.panel ?? ""}`.toLowerCase() === want);
+  const out = [];
+  mine.forEach((r) => {
+    const t = r.table;
+    if (!t || !Array.isArray(t.columns) || !t.data) return;
+    const cols = t.columns.map(String);
+    const data = cols.map((c) => arr(t.data[c]));
+    const n = Math.max(0, ...data.map((d) => d.length));
+    out.push({ title: r.label || r.id, columns: cols, rows: Array.from({ length: n }, (_, i) => data.map((d) => (d.length === 1 && n > 1 ? d[0] : d[i]))) });
+  });
+  const rowsets = [...new Set(mine.filter((r) => r.kind === "rows").map((r) => r.rowset || r.id))];
+  rowsets.forEach((rs) => {
+    const regs = sidecar.regions.filter((r) => r.kind === "rows" && (r.rowset || r.id) === rs);
+    const ids = regs[0]?.rows || [];
+    const withVals = regs.filter((r) => r.values);
+    const cols = ["row", "cell", ...withVals.map((r) => r.valueLabel || r.label)];
+    const rows = ids.map((id, i) => [i + 1, id, ...withVals.map((r) => r.values[r.rows.indexOf(id)] ?? null)]);
+    out.push({ title: `${regs[0]?.patient ? `${regs[0].patient} · ` : ""}rows (top to bottom)`, columns: cols, rows });
+  });
+  return out;
+}
+
+/** Tab-separated text of a table (header + rows). */
+export function tableTsv(table) {
+  const esc = (v) => (v == null ? "" : `${v}`.replace(/[\t\n\r]/g, " "));
+  return [table.columns.map(esc).join("\t"), ...table.rows.map((r) => r.map(esc).join("\t"))].join("\n");
 }
