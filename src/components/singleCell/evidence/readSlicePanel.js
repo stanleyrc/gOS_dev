@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { Alert, Card, Col, Row, Segmented, Select, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
-import igv from "../../../../node_modules/igv/dist/igv.esm.min.js";
+import igv from "../../../helpers/singleCell/igvLazy";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { casePath } from "../../../redux/singleCell/loaders";
 import { siteCloneSummary, siteEvidence } from "../../../helpers/singleCell/precompute";

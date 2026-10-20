@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
+import igv from "../../helpers/singleCell/igvLazy";
 import { withTranslation } from "react-i18next";
 import {
   parseCenterFromLocus,
