@@ -147,5 +147,5 @@ export const paperCnCss = (cn) => rgbHex(paperCnRgb(cn));
 
 // patient colours (figlib.R PAT_COL), in the cohort order
 export const PAPER_PATIENT = { BWH69: "#8C1D1D", BWH70: "#B07A2B", BWH75: "#2E7D4F", MGH285: "#1B8F7A", MGH301: "#1F6F9F", MGH302: "#5A55A8", MGH303: "#B03A9A", MGH304: "#C0508E", MGH305: "#7A7A7A" };
-// Fig 1d truncal-SNV strip
+// subclonal-per-cell panel: truncal-SNV strip
 export const PAPER_TRUNCAL_COLORS = ["#3B2F8F", "#8E3B9F", "#D7307A", "#F0201A"];
