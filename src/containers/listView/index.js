@@ -56,7 +56,7 @@ import {
 } from "../../helpers/browseScope";
 import { userAuthRepository } from "../../helpers/userAuth";
 import PatientCaseCard from "../../components/singleCell/patientCaseCard";
-import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
+import { currentCohortView, peekHelpTarget, subscribeCohortView, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import {
   isCellRecord,
   isPatientRecord,
@@ -93,6 +93,8 @@ export class ListView extends Component {
         peekHelpTarget()?.scope === "cohort" || new URLSearchParams(window.location.search).get("scview")
           ? "singleCellCohort"
           : props.listViewTarget?.tab || "cases",
+      // the paper-figure tabs take the full width: the search-filter column is hidden there
+      cohortView: currentCohortView() || new URLSearchParams(window.location.search).get("scview"),
       favoriteModalOpen: false,
       favoriteName: "",
       editingFavoriteSearch: null,
@@ -133,6 +135,7 @@ export class ListView extends Component {
     );
     this.props.fetchFavoriteSearches();
     // Help Center "Go" to a single-cell cohort view
+    this.unsubscribeCohortView = subscribeCohortView((v) => this.setState({ cohortView: v }));
     this.unsubscribeHelpTarget = subscribeHelpTarget((target) => {
       if (target?.scope === "cohort")
         this.setState({ activeTab: "singleCellCohort" });
@@ -141,11 +144,15 @@ export class ListView extends Component {
 
   componentWillUnmount() {
     if (this.unsubscribeHelpTarget) this.unsubscribeHelpTarget();
+    if (this.unsubscribeCohortView) this.unsubscribeCohortView();
     userAuthRepository.emitter.off(
       "userChanged",
       this.handleSavedSearchUserChanged,
     );
   }
+
+  /** On a paper-figure tab of the Single-Cell Cohort: no filter column, the figure gets the full width. */
+  fullWidthPaper = () => this.state.activeTab === "singleCellCohort" && /^paperfig/.test(`${this.state.cohortView || ""}`);
 
   renderCascaderOption = (option) => {
     const { t } = this.props;
@@ -1026,7 +1033,7 @@ export class ListView extends Component {
         >
           <div className="ant-panel-list-container">
             <Row gutter={[16, 16]} align="stretch">
-              <Col className="gutter-row" span={4} style={{ display: "flex" }}>
+              <Col className="gutter-row" span={4} style={{ display: this.fullWidthPaper() ? "none" : "flex" }}>
                 <Card
                   className="filters-box"
                   title={this.renderFiltersTitle()}
@@ -1081,7 +1088,7 @@ export class ListView extends Component {
                   </Space>
                 </Card>
               </Col>
-              <Col className="gutter-row" span={20}>
+              <Col className="gutter-row" span={this.fullWidthPaper() ? 24 : 20}>
                 <Tabs
                   activeKey={this.state.activeTab}
                   onChange={this.handleTabChange}
