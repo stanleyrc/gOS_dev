@@ -1141,7 +1141,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         </span>
         {showAnc && focusWalk && (
           <span className="sc-fig-key">
-            <b>{`${focusWalk.label || "variant"} status`}</b>
+            <b>{`${nameOf(focusWalk) || "variant"} status`}</b>
             <span><span className="sc-fig-swatch" style={{ background: keepInkP, borderRadius: 5 }} />present</span>
             <span><span className="sc-fig-swatch" style={{ background: lostInkP, borderRadius: 5 }} />lost (red lineage)</span>
             <span><span className="sc-fig-swatch" style={{ background: "transparent", border: `1.5px solid ${keepInkP}`, borderRadius: 6 }} />ringed: state changes here</span>
