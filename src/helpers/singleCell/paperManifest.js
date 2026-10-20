@@ -56,6 +56,7 @@ export function parsePaperManifest(json, base = "") {
         widthPt: Number(f.width_pt) || null,
         heightPt: Number(f.height_pt) || null,
         built: f.built || null,
+        interactive: url(f.interactive),
         panels,
         nIncomplete: panels.filter((p) => p.status !== "ready").length,
       };
