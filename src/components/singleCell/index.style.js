@@ -375,6 +375,8 @@ const Wrapper = styled.div`
   }
   .sc-paperctl {
     position: absolute;
+    width: max-content;
+    white-space: nowrap;
     z-index: 9;
     display: flex;
     flex-direction: column;
@@ -387,6 +389,7 @@ const Wrapper = styled.div`
   }
   .sc-paperctl-row {
     display: flex;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 4px;
   }
