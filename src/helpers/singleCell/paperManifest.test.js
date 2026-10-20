@@ -1,4 +1,4 @@
-import { bestImage, figureGroup, figureLabel, fitView, formatBuilt, panelStatus, panelTarget, parsePaperManifest, targetSearch, zoomAt } from "./paperManifest";
+import { anchoredPanels, bestImage, lettersLabel, panelAt, panelLettersById, panelRegions, figureGroup, figureLabel, fitView, formatBuilt, panelStatus, panelTarget, parsePaperManifest, targetSearch, zoomAt } from "./paperManifest";
 
 const manifest = {
   format: "gos-sc-paper-figures/1",
@@ -59,5 +59,41 @@ describe("paper figures manifest", () => {
     expect(zoomAt({ k: 10, x: 0, y: 0 }, 4, 0, 0).k).toBe(12);
     const f = fitView(200, 100, 416, 216, 8);
     expect(f).toEqual({ k: 2, x: 8, y: 8 });
+  });
+});
+
+describe("paper figure layout", () => {
+  const fig = {
+    id: "Figure9",
+    panels: [
+      { letter: "A", anchor: { x: 0, y: 0 } },
+      { letter: "B", anchor: { x: 0, y: 100 } },
+      { letter: "C", anchor: { x: 200, y: 0 } },
+      { letter: "D", anchor: { x: 150, y: 102 } },
+      { letter: "E" },
+    ],
+  };
+  const a = anchoredPanels(fig);
+  it("finds the panel under a point", () => {
+    expect(a.map((p) => p.letter)).toEqual(["A", "B", "C", "D"]);
+    expect(panelAt(a, 50, 50).letter).toBe("A");
+    expect(panelAt(a, 250, 50).letter).toBe("C");
+    expect(panelAt(a, 50, 150).letter).toBe("B");
+    expect(panelAt(a, 180, 150).letter).toBe("D");
+    expect(panelAt(a, -20, -20)).toBeNull();
+  });
+  it("approximates panel rectangles", () => {
+    const r = Object.fromEntries(panelRegions(a, 300, 200, { grid: 30 }).map((b) => [b.letter, b]));
+    expect(r.A).toMatchObject({ x0: 0, y0: 0, x1: 200 });
+    expect(r.D.x0).toBe(150);
+    expect(r.C.y1).toBeGreaterThan(90);
+    expect(r.C.y1).toBeLessThanOrEqual(100);
+  });
+  it("maps interactive panels to their paper letters", () => {
+    const m = parsePaperManifest({ figures: [{ id: "Figure4", panels: [{ letter: "B", view: { panel: "pf" } }, { letter: "F", view: { panel: "bars" } }] }, { id: "Figure5", panels: [{ letter: "D", view: { panel: "pf" } }] }] });
+    const l = panelLettersById(m);
+    expect(lettersLabel(l.get("pf"))).toBe("Fig 4B · Fig 5D");
+    expect(lettersLabel([{ figure: "Fig 1", letter: "f" }, { figure: "Fig 1", letter: "g" }])).toBe("Fig 1f, g");
+    expect(lettersLabel(undefined)).toBe("");
   });
 });

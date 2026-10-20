@@ -43,6 +43,7 @@ export function parsePaperManifest(json, base = "") {
         png: url(p.png),
         pdf: url(p.pdf),
         view: p.view && typeof p.view === "object" ? p.view : null,
+        anchor: p.anchor && Number.isFinite(Number(p.anchor.x)) ? { x: Number(p.anchor.x), y: Number(p.anchor.y), w: Number(p.anchor.w) || 0, h: Number(p.anchor.h) || 0 } : null,
       }));
       return {
         id: `${f.id}`,
@@ -116,4 +117,67 @@ export function fitView(w, h, vw, vh, pad = 8) {
   if (!(w > 0 && h > 0 && vw > 0 && vh > 0)) return { k: 1, x: 0, y: 0 };
   const k = Math.min((vw - 2 * pad) / w, (vh - 2 * pad) / h);
   return { k, x: (vw - w * k) / 2, y: (vh - h * k) / 2 };
+}
+
+/**
+ * Paper letters of the interactive panels, from the manifest's panel -> view links (so a relettering of the paper
+ * needs no code change): Map(view panel id -> [{ figureId, figure: "Fig 4", letter: "B" }]) in figure order.
+ */
+export function panelLettersById(manifest) {
+  const out = new Map();
+  (manifest?.figures || []).forEach((f) =>
+    f.panels.forEach((p) => {
+      const id = p.view?.panel;
+      if (!id) return;
+      if (!out.has(id)) out.set(id, []);
+      out.get(id).push({ figureId: f.id, figure: f.label, letter: p.letter });
+    })
+  );
+  return out;
+}
+
+/** "Fig 4B · Fig 5D" style label of a panel id's paper letters (same figure collapsed: "Fig 1f, g"). */
+export function lettersLabel(entries) {
+  if (!entries?.length) return "";
+  const by = new Map();
+  entries.forEach((e) => by.set(e.figure, [...(by.get(e.figure) || []), e.letter]));
+  return [...by.entries()].map(([f, ls]) => `${f}${ls.join(", ")}`).join(" · ");
+}
+
+/** Panels of a figure with a letter anchor (pt, page top-left origin). */
+export const anchoredPanels = (figure) => (figure?.panels || []).filter((p) => p.anchor);
+
+/**
+ * The panel under a page point (pt): among anchors above-left of the point (tolerance `tol`), the lowest row of
+ * letters (rows: within `rowTol` pt), and in that row the right-most letter. Null when no anchor is above-left.
+ */
+export function panelAt(anchors, x, y, { tol = 4, rowTol = 12 } = {}) {
+  const c = anchors.filter((a) => a.anchor.x <= x + tol && a.anchor.y <= y + tol);
+  if (!c.length) return null;
+  const maxY = Math.max(...c.map((a) => a.anchor.y));
+  const row = c.filter((a) => a.anchor.y >= maxY - rowTol);
+  return row.reduce((best, a) => (a.anchor.x > best.anchor.x ? a : best));
+}
+
+/**
+ * Approximate panel rectangles on a page (w x h pt) for hover outlines: the page sampled on a grid, each cell
+ * assigned with panelAt, then each panel's bounding box. [{ letter, x0, y0, x1, y1 }].
+ */
+export function panelRegions(anchors, w, h, { grid = 96 } = {}) {
+  const box = new Map();
+  for (let i = 0; i < grid; i += 1) {
+    for (let j = 0; j < grid; j += 1) {
+      const x = ((i + 0.5) * w) / grid;
+      const y = ((j + 0.5) * h) / grid;
+      const p = panelAt(anchors, x, y);
+      if (!p) continue;
+      const b = box.get(p.letter) || { letter: p.letter, x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+      b.x0 = Math.min(b.x0, (i * w) / grid);
+      b.y0 = Math.min(b.y0, (j * h) / grid);
+      b.x1 = Math.max(b.x1, ((i + 1) * w) / grid);
+      b.y1 = Math.max(b.y1, ((j + 1) * h) / grid);
+      box.set(p.letter, b);
+    }
+  }
+  return [...box.values()];
 }

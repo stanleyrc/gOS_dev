@@ -16,6 +16,7 @@ import SnvSiteDrawer from "../snvSiteDrawer";
 import WalkDiagram from "../ecdna/walkDiagram";
 import VariantTree from "./variantTree";
 import SvgExportButton from "../svgExportButton";
+import { usePaperLetters } from "../paper/paperContext";
 import TriangleCorrelation from "./triangleCorrelation";
 import CladeStateTree from "./cladeStateTree";
 import GenomeTracks from "./genomeTracks";
@@ -132,6 +133,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const dark = useDarkTheme();
   const paper = isPaperStyle(figureStyle(useFigureStyleName()));
   const figRef = useRef(null);
+  const paperLetters = usePaperLetters("patient-figure");
 
   // ---- amplicons: every main amplicon of the patient by default (hide / reorder with the chips)
   const tumorIds = useMemo(() => order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)), [order, cellById]);
@@ -1045,7 +1047,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
           })}
         </div>
       )}
-      <PanelHead letter="A" title="Clonal structure of the amplicons" fig="Fig 4B · 5D" hint="hover a row for its cell · click or drag rows, or click a node, to select · scroll to zoom genome (heatmap) or rows (tree) · double-click a node for its clade (Fig 4D)" extra={
+      <PanelHead letter="A" title="Clonal structure of the amplicons" fig={paperLetters?.label || "Fig 4B · 5D"} hint="hover a row for its cell · click or drag rows, or click a node, to select · scroll to zoom genome (heatmap) or rows (tree) · double-click a node for its clade (Fig 4D)" extra={
           <Space size={8}>
             <Segmented size="small" value={copyMode} onChange={setCopyMode} options={[{ value: "bars", label: "Copies as bars" }, { value: "heatmap", label: "Copies as heatmap" }]} />
             <SvgExportButton containerRef={figRef} name={`figure-4B-${patient}`} title="Export SVG (vector, publication size) or PNG" />
