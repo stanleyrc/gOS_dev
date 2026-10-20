@@ -44,6 +44,7 @@ import settingsActions from "../../redux/settings/actions";
 import scaActions from "../../redux/scAnalysis/actions";
 import useTreeView from "./useTreeView";
 import HideLowQcControl from "./hideLowQcControl";
+import CnSourceControl from "./cnSourceControl";
 import { useQcCells } from "./useCovQc";
 import { withQcColumn } from "../../helpers/singleCell/cellQc";
 import {
@@ -1276,6 +1277,9 @@ export default function CellHeatmapPanel() {
                 }))}
               />
             </Space>
+          )}
+          {(heatmapType === "cn" || heatmapType === "junctions") && (
+            <CnSourceControl cnSource={sc.cnSource} cnSourceRequested={sc.cnSourceRequested} cnJoint={sc.cnJoint} />
           )}
           {heatmapType === "junctions" && junctions.status === "ok" && (
             <Space size={4} wrap>
