@@ -16,6 +16,21 @@ function fieldsOf(f) {
   return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, arr(v)]));
 }
 
+/** Sidecar `controls`: [{ panel, type: "patient" | "gene" | "clade" | "patient-view", field?, options?, default?, source?, label? }] (invalid entries dropped). */
+export function parseControls(list) {
+  return arr(list)
+    .filter((c) => c && typeof c === "object" && c.panel != null && ["patient", "gene", "clade", "patient-view"].includes(`${c.type}`))
+    .map((c) => ({
+      panel: `${c.panel}`,
+      type: `${c.type}`,
+      field: c.field == null ? `${c.type}` : `${c.field}`,
+      options: c.options == null ? null : arr(c.options).map(String),
+      default: c.default == null ? null : `${arr(c.default)[0]}`,
+      source: c.source == null ? null : `${c.source}`,
+      label: c.label == null ? null : `${arr(c.label)[0]}`,
+    }));
+}
+
 function markOf(m) {
   if (!m || typeof m !== "object") return null;
   if (m.type === "points") return { type: "points", x: arr(m.x).map(Number), y: arr(m.y).map(Number), fields: fieldsOf(m.fields) };
@@ -46,10 +61,11 @@ export function parseSidecar(json) {
       yscale: scaleOf(r.yscale),
       marks: arr(r.marks).map(markOf).filter(Boolean),
       table: r.table && typeof r.table === "object" ? r.table : null,
+      zoom: ["x", "y", "xy", "none"].includes(`${r.zoom}`) ? `${r.zoom}` : null,
       cols: r.cols && typeof r.cols === "object" ? { ...r.cols, ids: r.cols.ids == null ? null : arr(r.cols.ids).map(String) } : null,
     }))
     .filter((r) => [r.x, r.y, r.w, r.h].every(Number.isFinite) && r.w > 0 && r.h > 0);
-  return { page: { w: Number(json.page?.w) || null, h: Number(json.page?.h) || null }, regions, data: json.data && typeof json.data === "object" ? json.data : {} };
+  return { page: { w: Number(json.page?.w) || null, h: Number(json.page?.h) || null }, regions, data: json.data && typeof json.data === "object" ? json.data : {}, controls: parseControls(json.controls) };
 }
 
 /** Row index of a page y inside a rows region, or -1. */
