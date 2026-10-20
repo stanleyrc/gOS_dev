@@ -373,6 +373,11 @@ const Wrapper = styled.div`
   .sc-paperpage-ring.is-sel {
     border-color: #1677ff;
   }
+  .sc-paperlens {
+    outline: 1.5px solid rgba(22, 119, 255, 0.7);
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  }
   .sc-paperzoom-badge {
     position: absolute;
     z-index: 4;
