@@ -13,6 +13,7 @@ import actions, {
 } from "./actions";
 import { effectiveTracks, hetBlocksToGraph } from "../../helpers/singleCell/hetTracks";
 import { arrowScatter, casePath, loadCellHeatmapFiles, tryGet } from "./loaders";
+import { JOINT_MANIFEST, defaultCnSource, jointCellFile, parseJointManifest } from "../../helpers/singleCell/cnSource";
 import { PRECOMPUTE_FILES, mergePrecomputeIntoCells } from "../../helpers/singleCell/precompute";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
@@ -387,6 +388,51 @@ function* loadCnMapped() {
   }
 }
 
+/** sc_cn_joint/manifest.json of the open patient (optional); opens on joint when the manifest declares it the default. */
+function* loadJointManifest(action) {
+  const { Settings } = yield select(getState);
+  const id = action.patient?.caseReportId;
+  if (!Settings.dataset || !id) return;
+  const res = yield call(tryGet, casePath(Settings.dataset, id, JOINT_MANIFEST));
+  const manifest = res.status === "ok" ? parseJointManifest(res.data) : null;
+  yield put({ type: actions.SC_CN_JOINT_MANIFEST_LOADED, patient: id, manifest });
+  if (defaultCnSource(manifest) === "joint") yield put(actions.updateCnSource("joint"));
+}
+
+/** Per-cell joint complex.json files (same schema as the regular ones), the first time joint is asked for. */
+function* loadJointCn(action) {
+  if (action.source !== "joint") return;
+  const state = yield select(getState);
+  const { SingleCell } = state;
+  const { dataset, chromoBins } = state.Settings;
+  const id = SingleCell.patient?.caseReportId;
+  const manifest = SingleCell.cnJoint.manifest;
+  if (!dataset || !id || !manifest || SingleCell.cnJoint.status !== "loading") return;
+  const done = (payload) => put({ type: actions.SC_CN_JOINT_LOADED, patient: id, ...payload });
+  try {
+    const cellIds = SingleCell.cnRegular?.cn?.data?.cells || SingleCell.cells.map((c) => c.cell_id);
+    const want = cellIds.filter((c) => manifest.cellSet.has(`${c}`));
+    const genomes = {};
+    for (let k = 0; k < want.length; k += SC_FETCH_CONCURRENCY) {
+      const batch = want.slice(k, k + SC_FETCH_CONCURRENCY);
+      const res = yield all(batch.map((c) => call(tryGet, casePath(dataset, id, jointCellFile(c)))));
+      res.forEach((r, i) => {
+        if (r.status === "ok" && r.data) genomes[batch[i]] = r.data;
+      });
+    }
+    if (!Object.keys(genomes).length) {
+      yield done({ status: "error", error: new Error("no joint per-cell files could be read") });
+      return;
+    }
+    const cn = { status: "ok", data: { cells: cellIds, rows: cellIds.map((c) => (genomes[c] ? cnRowFromGenome(genomes[c], chromoBins) : null)), failedCells: want.filter((c) => !genomes[c]) }, error: null };
+    const jr = junctionsFromGenomes(cellIds, genomes, chromoBins);
+    const junctions = jr.junctions.length ? { status: "ok", data: jr, error: null } : { status: "missing", data: null, error: null };
+    yield done({ status: "ok", data: { cn, junctions, genomes } });
+  } catch (error) {
+    yield done({ status: "error", error });
+  }
+}
+
 function* persistPalette() {
   const { SingleCell } = yield select(getState);
   try {
@@ -409,6 +455,8 @@ function* actionWatcher() {
   yield takeLatest(actions.SC_LAYOUT_UPDATED, persistLayout);
   yield takeLatest(actions.SC_CN_MODE_UPDATED, loadAllelic);
   yield takeLatest(actions.SC_CN_MAPPED_REQUEST, loadCnMapped);
+  yield takeLatest(actions.FETCH_SINGLE_CELL_DATA_SUCCESS, loadJointManifest);
+  yield takeLatest(actions.SC_CN_SOURCE_UPDATED, loadJointCn);
   yield takeLatest(actions.SC_PALETTE_UPDATED, persistPalette);
   yield takeLatest(actions.FETCH_SINGLE_CELL_DATA_REQUEST, fetchSingleCellData);
   yield takeEvery(

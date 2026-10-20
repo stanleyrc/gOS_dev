@@ -19,6 +19,7 @@ import { hideLowQcFromSearch, thresholdsFromSearch } from "../../helpers/singleC
 import { effectiveSignatures, sigFitMode } from "../../helpers/singleCell/signatureJoint";
 import { annotationFromSearch } from "../../helpers/singleCell/cellSignatures";
 import { readLayout, readPref } from "../../helpers/singleCell/viewSettingsStore";
+import { withCnSource } from "../../helpers/singleCell/cnSource";
 
 // Saved cell groups shared through the URL join the stored ones.
 const withUrlGroups = (layout) => {
@@ -105,6 +106,11 @@ const initState = {
   snv: emptySource,
   // CN-mapped SNVs (cn_mapped_snvs.sites.json): snvFromColumnar shape + meta (method, validation), loaded on demand (layout.snvCnMapped)
   cnMapped: emptySource,
+  // copy-number source (helpers/singleCell/cnSource.js): regular per-cell JaBbA or the joint junction balance (sc_cn_joint/)
+  cnSource: "regular", // shown
+  cnSourceRequested: "regular", // asked for (joint shows once loaded)
+  cnRegular: null, // { cn, junctions, cellFiles } of the regular graphs, saved at load
+  cnJoint: { status: "idle", manifest: null, data: null, error: null }, // manifest: parseJointManifest; data: { cn, junctions, genomes }
   junctions: emptySource,
   allelic: emptySource, // { cells, rows: [{ binIndex, major, minor } | null] }, loaded on demand
   rna: emptySource, // static rna/ summary: { cells, genes, fields, hasUmap }
@@ -167,6 +173,21 @@ export default function appReducer(state = initState, action) {
       };
     case actions.SC_CN_MAPPED_REQUEST:
       return state.cnMapped.status === "idle" ? { ...state, cnMapped: { ...emptySource, status: "loading" } } : state;
+    case actions.SC_CN_JOINT_MANIFEST_LOADED:
+      return action.patient === state.patient?.caseReportId
+        ? { ...state, cnJoint: { ...state.cnJoint, status: action.manifest ? "available" : "missing", manifest: action.manifest || null } }
+        : state;
+    case actions.SC_CN_SOURCE_UPDATED: {
+      if (action.source !== "joint") return withCnSource(state, "regular");
+      if (!state.cnJoint.manifest) return state;
+      const next = state.cnJoint.status === "ok" ? state : { ...state, cnJoint: { ...state.cnJoint, status: state.cnJoint.status === "error" ? "error" : "loading" } };
+      return withCnSource(next, "joint");
+    }
+    case actions.SC_CN_JOINT_LOADED: {
+      if (action.patient !== state.patient?.caseReportId) return state;
+      const next = { ...state, cnJoint: { ...state.cnJoint, status: action.status, data: action.data || null, error: action.error || null } };
+      return next.cnSourceRequested === "joint" && action.status === "ok" ? withCnSource(next, "joint") : next;
+    }
     case actions.SC_CN_MAPPED_LOADED:
       return action.patient === state.patient?.caseReportId ? { ...state, cnMapped: action.cnMapped } : state;
     case actions.FETCH_SINGLE_CELL_DATA_PROGRESS:
@@ -213,6 +234,10 @@ export default function appReducer(state = initState, action) {
         altTrees: action.altTrees || emptySource,
         precompute: action.precompute || {},
         cellFiles: action.cellFiles,
+        cnSource: "regular",
+        cnSourceRequested: "regular",
+        cnRegular: { cn: action.cn, junctions: action.junctions, cellFiles: action.cellFiles },
+        cnJoint: { status: "idle", manifest: null, data: null, error: null },
         selectedCellIds: linkedCells.length ? linkedCells : action.selectedCellIds,
         heatmapType: linked && link.heatmap && (link.heatmap === "drivers" || action[link.heatmap]?.status === "ok") ? link.heatmap : defaultHeatmap,
         driverDrawer: linked && link.driverOpen ? link.driverOpen : null,
