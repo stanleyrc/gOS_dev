@@ -4,6 +4,25 @@
 
 const arr = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
 
+function scaleOf(sc) {
+  if (!sc || typeof sc !== "object") return null;
+  const r = arr(sc.range).map(Number);
+  if (r.length < 2 || !(r[1] !== r[0])) return null;
+  return { discrete: !!sc.discrete, lo: r[0], hi: r[1], labels: sc.labels == null ? null : arr(sc.labels).map(String) };
+}
+
+function fieldsOf(f) {
+  if (!f || typeof f !== "object") return {};
+  return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, arr(v)]));
+}
+
+function markOf(m) {
+  if (!m || typeof m !== "object") return null;
+  if (m.type === "points") return { type: "points", x: arr(m.x).map(Number), y: arr(m.y).map(Number), fields: fieldsOf(m.fields) };
+  if (m.type === "rects") return { type: "rects", xmin: arr(m.xmin).map(Number), xmax: arr(m.xmax).map(Number), ymin: arr(m.ymin).map(Number), ymax: arr(m.ymax).map(Number), fields: fieldsOf(m.fields) };
+  return null;
+}
+
 /** Sidecar JSON -> { page: { w, h }, regions: [{ id, panel, kind, x, y, w, h, rows, rowset, values, valueLabel, axis, patient, label }] } | null. */
 export function parseSidecar(json) {
   if (!json || !Array.isArray(json.regions)) return null;
@@ -23,6 +42,9 @@ export function parseSidecar(json) {
       axis: r.axis && typeof r.axis === "object" ? r.axis : null,
       patient: r.patient == null ? null : `${r.patient}`,
       label: r.label || "",
+      xscale: scaleOf(r.xscale),
+      yscale: scaleOf(r.yscale),
+      marks: arr(r.marks).map(markOf).filter(Boolean),
     }))
     .filter((r) => [r.x, r.y, r.w, r.h].every(Number.isFinite) && r.w > 0 && r.h > 0);
   return { page: { w: Number(json.page?.w) || null, h: Number(json.page?.h) || null }, regions };
@@ -99,5 +121,82 @@ export function highlightRects(sidecar, rowset, regionId, ids) {
         }
       });
     });
+  return out;
+}
+
+// ---- ggplot plot areas (kind "plot": scales + point / rect marks with their identifying fields)
+
+/** Data -> page coordinates in a plot region (y up in data, down on the page). */
+export function toPage(region, dx, dy) {
+  const xs = region.xscale;
+  const ys = region.yscale;
+  return [region.x + ((dx - xs.lo) / (xs.hi - xs.lo)) * region.w, region.y + (1 - (dy - ys.lo) / (ys.hi - ys.lo)) * region.h];
+}
+
+/** Page -> data coordinates in a plot region. */
+export function toData(region, px, py) {
+  const xs = region.xscale;
+  const ys = region.yscale;
+  return [xs.lo + ((px - region.x) / region.w) * (xs.hi - xs.lo), ys.lo + (1 - (py - region.y) / region.h) * (ys.hi - ys.lo)];
+}
+
+const fieldsAt = (m, i) => Object.fromEntries(Object.entries(m.fields).map(([k, v]) => [k, v.length === 1 && m.x?.length !== 1 && m.xmin?.length !== 1 ? v[0] : v[i]]).filter(([, v]) => v != null && v !== ""));
+
+/** Axis readout of a page point: { x, y } as category labels (discrete) or numbers. */
+export function axisReadout(region, px, py) {
+  const [dx, dy] = toData(region, px, py);
+  const read = (sc, v) => (sc.discrete && sc.labels ? sc.labels[Math.round(v) - 1] ?? null : v);
+  return { x: read(region.xscale, dx), y: read(region.yscale, dy) };
+}
+
+/**
+ * What is under a page point in a plot region: the nearest point mark within `tol` pt, else a rect mark that
+ * contains it: { region, mark, index, fields, page: [x, y] }, or { region, axis } when only the axes apply; null outside.
+ */
+export function plotHitAt(sidecar, px, py, { tol = 3 } = {}) {
+  if (!sidecar) return null;
+  const region = sidecar.regions.find((r) => r.kind === "plot" && r.xscale && r.yscale && px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h);
+  if (!region) return null;
+  let best = null;
+  region.marks.forEach((m) => {
+    if (m.type !== "points") return;
+    m.x.forEach((dx, i) => {
+      const [qx, qy] = toPage(region, dx, m.y[i]);
+      const d = Math.hypot(qx - px, qy - py);
+      if (d <= tol && (!best || d < best.d)) best = { d, mark: m, index: i, page: [qx, qy] };
+    });
+  });
+  if (best) return { region, mark: best.mark, index: best.index, fields: fieldsAt(best.mark, best.index), page: best.page };
+  const [dx, dy] = toData(region, px, py);
+  for (let k = region.marks.length - 1; k >= 0; k -= 1) {
+    const m = region.marks[k];
+    if (m.type !== "rects") continue;
+    for (let i = 0; i < m.xmin.length; i += 1) {
+      const [x0, x1] = [Math.min(m.xmin[i], m.xmax[i]), Math.max(m.xmin[i], m.xmax[i])];
+      const [y0, y1] = [Math.min(m.ymin[i], m.ymax[i]), Math.max(m.ymin[i], m.ymax[i])];
+      if (dx >= x0 && dx <= x1 && dy >= y0 && dy <= y1) {
+        const [a, b] = toPage(region, x0, y1);
+        const [c, d] = toPage(region, x1, y0);
+        return { region, mark: m, index: i, fields: fieldsAt(m, i), rect: { x: a, y: b, w: c - a, h: d - b } };
+      }
+    }
+  }
+  return { region, axis: axisReadout(region, px, py) };
+}
+
+/** Page positions of point marks whose `field` value is in `ids`, across every plot region (linked highlighting). */
+export function markPositions(sidecar, field, ids, limit = 4000) {
+  const out = [];
+  if (!sidecar || !ids?.size) return out;
+  sidecar.regions.forEach((r) => {
+    if (r.kind !== "plot" || !r.xscale || !r.yscale) return;
+    r.marks.forEach((m) => {
+      const f = m.fields[field];
+      if (m.type !== "points" || !f) return;
+      m.x.forEach((dx, i) => {
+        if (out.length < limit && ids.has(`${f[i]}`)) out.push(toPage(r, dx, m.y[i]));
+      });
+    });
+  });
   return out;
 }

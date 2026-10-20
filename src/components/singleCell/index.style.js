@@ -338,6 +338,17 @@ const Wrapper = styled.div`
     border: 1px dashed #1677ff;
     pointer-events: none;
   }
+  .sc-paperpage-ring {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 2px solid #fa8c16;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .sc-paperpage-ring.is-sel {
+    border-color: #1677ff;
+  }
   .sc-paperpage-selbar {
     display: flex;
     flex-wrap: wrap;
