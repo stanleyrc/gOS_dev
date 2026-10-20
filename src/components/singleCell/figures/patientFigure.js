@@ -7,6 +7,7 @@ import { parseEcdnaSnvs, snvBlockOrder } from "../../../helpers/singleCell/paper
 import { resolveAnchors } from "../../../helpers/singleCell/branchSnvs";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import { paperAmpCnRgb, rgbHex, PAPER_AMPCN_STOPS } from "../../../helpers/singleCell/paperPalette";
+import { paperTokensVersion } from "../../../helpers/singleCell/paperPalette";
 import { PAPER_EGFR, paperCladeLabel, paperCloneColors, paperCnCss, paperCnPacked, paperEgfrColor, paperStateColor } from "../../../helpers/singleCell/paperPalette";
 import { PanelHead, textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
@@ -121,7 +122,7 @@ export function useFocusFamily(focusWalkId) {
  * genome, over the tree zooms the rows; double-click resets. Click a node,
  * row, variant header, gene or SNV for its cells / card.
  */
-export default function PatientFigure({ patient, events = [], focusWalkId, onFocusWalk, onSelectCells, onView, maxPlotHeight = 640 }) {
+export default function PatientFigure({ patient, events = [], focusWalkId, onFocusWalk, onSelectCells, onView, maxPlotHeight = 640, walkNames = null, ecdnaSnvs = null }) {
   const dispatch = useDispatch();
   const { ready, loading, pct } = usePatientLoaded(patient);
   const sc = useSelector((s) => s.SingleCell);
@@ -134,6 +135,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const paper = isPaperStyle(figureStyle(useFigureStyleName()));
   const figRef = useRef(null);
   const paperLetters = usePaperLetters("patient-figure");
+  const tokensVersion = paperTokensVersion(); // the paper's style tokens (CN scale, states, clades) may load after the first render
 
   // ---- amplicons: every main amplicon of the patient by default (hide / reorder with the chips)
   const tumorIds = useMemo(() => order.filter((id) => !isNormalClone(cellById.get(id)?.clone_id)), [order, cellById]);
@@ -153,7 +155,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const shownAmps = useMemo(() => ampOrder.map((k) => amps.find((x) => x.key === k)).filter((x) => x && shownKeys.has(x.key)), [ampOrder, amps, shownKeys]);
   const setAmps = (orderKeys, shown) => setAmpState({ order: orderKeys, shown: [...shown] });
   const grouping = useMemo(() => variantGrouping(patient, all), [patient, all]);
-  const nameOf = grouping.nameOf;
+  // figure context: the paper's walk display names (figure sidecar, e.g. wEGFR_var1 -> "ecEGFR Long 1"); walks.json is unchanged
+  const nameOf = useMemo(() => (walkNames ? (w) => (w && walkNames[`${w.label}`]) || grouping.nameOf(w) : grouping.nameOf), [walkNames, grouping]);
 
   // bar columns: one per shown amplicon, split into the paper's variant groups where defined (BWH70: long / short EGFR); each stacks its variants
   // copies per cell as stacked bars (Fig 4B) or a CN heatmap (Fig 5B); the paper uses the heatmap for BWH69
@@ -267,13 +270,18 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
   const [ecExport, setEcExport] = useState(null);
   useEffect(() => {
     setEcExport(null);
+    // figure context: the exact SNV set the figure draws (figure sidecar), else the exported file
+    if (ecdnaSnvs?.length) {
+      setEcExport(ecdnaSnvs);
+      return undefined;
+    }
     if (!dataset?.dataPath || !patient) return undefined;
     let live = true;
     tryGet(casePath(dataset, patient, "ecdna_snvs.json")).then((r) => live && setEcExport(r.status === "ok" ? parseEcdnaSnvs(r.data) : null));
     return () => {
       live = false;
     };
-  }, [dataset, patient]);
+  }, [dataset, patient, ecdnaSnvs]);
   const ecSites = useMemo(() => {
     if (ecExport?.length) {
       const idx = new Map((snvData?.variants || []).map((v, i) => [`${v.id}`.replace(/^chr/, ""), i]));
@@ -297,9 +305,11 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
     const base = annotationColors(sc.cells.map((c) => c.state).filter((s) => s != null && s !== ""));
     if (!paper) return base;
     return Object.fromEntries(Object.entries(base).map(([k, col]) => [k, paperStateColor(k) || col]));
-  }, [sc.cells, paper]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sc.cells, paper, tokensVersion]);
   // clade strip: the manuscript's clade colours and names in the Paper style (MGH303: EC1-3, CI)
-  const cloneColors = useMemo(() => (paper ? { ...sc.cloneColors, ...paperCloneColors(patient, Object.keys(sc.cloneColors || {})) } : sc.cloneColors), [paper, sc.cloneColors, patient]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cloneColors = useMemo(() => (paper ? { ...sc.cloneColors, ...paperCloneColors(patient, Object.keys(sc.cloneColors || {})) } : sc.cloneColors), [paper, sc.cloneColors, patient, tokensVersion]);
   const cloneLabel = useCallback((k) => (paper ? paperCladeLabel(patient, k) : k), [paper, patient]);
   const cnPacked = paper ? paperCnPacked : ampliconRGBA;
   const cnCss = paper ? paperCnCss : ampliconCss;
@@ -379,7 +389,12 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       return toCanvas(ecSites.length, n, (px) =>
         order.forEach((id, r) =>
           ecSites.forEach((v, c) => {
-            const rd = v.reads.get(id);
+            if (v.frac) {
+              const f = v.frac.get(id);
+              px[r * ecSites.length + c] = f == null ? (dark ? DARK_BG : WHITE) : gray(250 * f, dark);
+              return;
+            }
+            const rd = v.reads?.get(id);
             const d = rd ? rd[0] + rd[1] : 0;
             px[r * ecSites.length + c] = d > 0 ? gray((250 * rd[1]) / d, dark) : dark ? DARK_BG : WHITE;
           })
@@ -425,7 +440,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         }
       })
     );
-  }, [cnGeo, cnById, order, n, cnPacked]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cnGeo, cnById, order, n, cnPacked, tokensVersion]);
   const bars = useMemo(
     () =>
       columns.map((col) => {
@@ -859,7 +875,8 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       ctx.textBaseline = "middle";
       return [];
     },
-    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, lostBelow, nameOf, cellById, cloneColors, stateColors, cnCss, lostInkP, keepInkP, copyMode, L, snvImg, ecImg, cnImg, bars, barMax, barLabH, colorOf, hoverRow, cnGeo, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [TOP, width, plotH, treeLayout, r0, r1, n, nv, order, selected, nodePx, rh, showAnc, anc, lostBelow, nameOf, cellById, cloneColors, stateColors, cnCss, lostInkP, keepInkP, copyMode, L, snvImg, ecImg, cnImg, bars, barMax, barLabH, colorOf, hoverRow, cnGeo, focusWalk, chromoBins, geneMarks, cytobands, ecSites.length, tokensVersion]
   );
 
   // ---- interaction
@@ -1124,7 +1141,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
         </span>
         {showAnc && focusWalk && (
           <span className="sc-fig-key">
-            <b>{`${focusWalk.label || "variant"} status`}</b>
+            <b>{`${nameOf(focusWalk) || "variant"} status`}</b>
             <span><span className="sc-fig-swatch" style={{ background: keepInkP, borderRadius: 5 }} />present</span>
             <span><span className="sc-fig-swatch" style={{ background: lostInkP, borderRadius: 5 }} />lost (red lineage)</span>
             <span><span className="sc-fig-swatch" style={{ background: "transparent", border: `1.5px solid ${keepInkP}`, borderRadius: 6 }} />ringed: state changes here</span>

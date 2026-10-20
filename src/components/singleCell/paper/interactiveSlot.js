@@ -87,7 +87,7 @@ function CellDrawer({ patient, open, ids, label, onClose, focusWalkId, domains }
  * heatmap (zoom / pan to a locus), SNV matrix, clade and state strips and walk copies, row-aligned, with the
  * walk lanes and genome tracks under it. Selecting cells (brush rows, click a node or walk) opens the cell drawer.
  */
-export default function InteractiveSlot({ patient }) {
+export default function InteractiveSlot({ patient, walkNames = null, ecdnaSnvs = null }) {
   const dispatch = useDispatch();
   const dataset = useSelector((s) => s.Settings?.dataset);
   const [events, setEvents] = useState([]);
@@ -118,6 +118,8 @@ export default function InteractiveSlot({ patient }) {
           onFocusWalk={setFocusWalkId}
           onView={setDomains}
           onSelectCells={(sel, label) => sel?.length && setDrawer({ ids: sel, label })}
+          walkNames={walkNames}
+          ecdnaSnvs={ecdnaSnvs}
         />
         {`${loaded}` === `${patient}` && selected?.length > 0 && !drawer && (
           <div className="sc-paperpage-selbar">

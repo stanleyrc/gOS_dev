@@ -8,10 +8,12 @@ import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, form
 import { announceCohortView, requestHelpTarget } from "../../../helpers/singleCell/helpNav";
 import { PanelModal, STATUS_TAG_COLOR, ZoomPanImage, targetLabel } from "./paperFiguresViewer";
 import { tryGet } from "../../../redux/singleCell/loaders";
-import { highlightRects, hitAt, markPositions, parseSidecar, plotHitAt, rowsBetween } from "../../../helpers/singleCell/paperSidecar";
+import { highlightRects, hitAt, markPositions, panelTables, parseSidecar, plotHitAt, rowsBetween, sidecarExtras } from "../../../helpers/singleCell/paperSidecar";
+import { applyPaperTokens, paperTokensVersion } from "../../../helpers/singleCell/paperPalette";
 import { encodeGroups } from "../../../helpers/singleCell/savedGroups";
 
 const InteractiveSlot = React.lazy(() => import("./interactiveSlot"));
+const PatientDrawer = React.lazy(() => import("./patientDrawer"));
 
 const rowsets = (sidecar) => [...new Set((sidecar?.regions || []).filter((r) => r.kind === "rows").map((r) => r.rowset || r.id))];
 /** Highlight rectangles of cell ids in every rows region, and ring positions of matching point marks. */
@@ -113,8 +115,26 @@ export default function PaperFigurePage({ label }) {
       live = false;
     };
   }, [fig?.interactive]);
+  // the paper's style tokens (CN scale, states, clades): applied before the live panels draw
+  const [tokens, setTokens] = useState("loading");
+  useEffect(() => {
+    if (!manifest) return undefined;
+    if (!manifest.styleTokens) {
+      setTokens("none");
+      return undefined;
+    }
+    let live = true;
+    tryGet(manifest.styleTokens).then((r) => {
+      if (!live) return;
+      setTokens(r.status === "ok" && applyPaperTokens(r.data) ? `v${paperTokensVersion()}` : "none");
+    });
+    return () => {
+      live = false;
+    };
+  }, [manifest]);
   const [hit, setHit] = useState(null);
   const [plotHit, setPlotHit] = useState(null);
+  const [patientOpen, setPatientOpen] = useState(null); // patient summary drawer (cohort panels)
   const [sel, setSel] = useState(null); // { rowset, regionId, ids: Set, patient, label }
   const brush = useRef(null);
   const [brushBox, setBrushBox] = useState(null);
@@ -206,10 +226,7 @@ export default function PaperFigurePage({ label }) {
             return;
           }
           if (ph?.fields?.patient) {
-            const q = new URLSearchParams(window.location.search);
-            ["scview", "figmode", "figpanel", "figpatient"].forEach((key) => q.delete(key));
-            q.set("report", ph.fields.patient);
-            window.open(`${window.location.pathname}?${q.toString()}`, "_blank", "noopener");
+            setPatientOpen(`${ph.fields.patient}`);
             return;
           }
           const p = panelAt(anchors, x, y);
@@ -241,7 +258,7 @@ export default function PaperFigurePage({ label }) {
                 .filter(([key]) => key !== "cell")
                 .map(([key, v]) => <div key={key}>{`${key}: ${fmtVal(v)}`}</div>)}
             {plotHit.axis && <div>{`x: ${plotHit.axis.x == null ? "–" : fmtVal(plotHit.axis.x)} · y: ${plotHit.axis.y == null ? "–" : fmtVal(plotHit.axis.y)}`}</div>}
-            <div style={{ opacity: 0.8 }}>{plotHit.fields?.cell ? "click to select (shift adds)" : plotHit.fields?.patient ? "click to open the patient" : "click: open the panel"}</div>
+            <div style={{ opacity: 0.8 }}>{plotHit.fields?.cell ? "click to select (shift adds)" : plotHit.fields?.patient ? "click for the patient summary" : "click: open the panel"}</div>
           </div>
         )}
         {hit &&
@@ -303,7 +320,7 @@ export default function PaperFigurePage({ label }) {
         <Segmented size="small" value="interactive" onChange={(v) => setMode(seg.slot.key, v)} options={[{ value: "interactive", label: "Interactive" }, { value: "pdf", label: "PDF" }]} />
       </div>
       <React.Suspense fallback={<Text type="secondary">Loading the interactive panel…</Text>}>
-        <InteractiveSlot patient={seg.slot.patient} />
+        {tokens === "loading" ? <Text type="secondary">Loading the figure style…</Text> : <InteractiveSlot patient={seg.slot.patient} {...sidecarExtras(sidecar, seg.slot.patient)} />}
       </React.Suspense>
     </div>
   );
@@ -355,6 +372,11 @@ export default function PaperFigurePage({ label }) {
                 {p.status}
               </Tag>
               <Text style={{ fontSize: 12 }}>{p.reason || "no notes"}</Text>
+              {panelTables(sidecar, p.letter).length > 0 && (
+                <Button type="link" size="small" onClick={() => setOpen({ panel: p, tab: "data" })}>
+                  data
+                </Button>
+              )}
               {t && (
                 <Button type="link" size="small" icon={<LinkOutlined />} onClick={() => openPaperTarget(t)}>
                   {targetLabel(t)}
@@ -364,7 +386,12 @@ export default function PaperFigurePage({ label }) {
           );
         })}
       </div>
-      <PanelModal fig={fig} panel={open} onClose={() => setOpen(null)} onOpenTarget={openPaperTarget} />
+      {patientOpen && (
+        <React.Suspense fallback={null}>
+          <PatientDrawer patient={patientOpen} onClose={() => setPatientOpen(null)} />
+        </React.Suspense>
+      )}
+      <PanelModal fig={fig} panel={open?.panel || open} initialTab={open?.tab || "panel"} tables={open ? panelTables(sidecar, (open.panel || open).letter) : []} onClose={() => setOpen(null)} onOpenTarget={openPaperTarget} />
       <Modal open={zoom} onCancel={() => setZoom(false)} footer={null} width="96vw" title={`${fig.label} · ${fig.title}`}>
         {zoom && <ZoomPanImage src={bestImage(fig)} alt={fig.label} width={natW} height={(fig.heightPt || 600) * PT_PX} viewHeight={Math.max(400, (window.innerHeight || 900) - 220)} />}
       </Modal>

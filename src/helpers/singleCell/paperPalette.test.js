@@ -1,4 +1,4 @@
-import { PAPER_CLADE_NAMED, PAPER_CLADE_SEQ, PAPER_STATE, paperAmpColor, paperCladeLabel, paperCloneColors, paperCnCss, paperCnPacked, paperEgfrColor, paperStateColor, ramp, rgbHex } from "./paperPalette";
+import { applyPaperTokens, PAPER_CLADE_NAMED, PAPER_CLADE_SEQ, PAPER_STATE, paperAmpColor, paperCladeLabel, paperCloneColors, paperCnCss, paperCnPacked, paperEgfrColor, paperStateColor, paperTokensVersion, ramp, rgbHex, rgbPacked, tokenRamp } from "./paperPalette";
 
 describe("paper palette", () => {
   it("ramps interpolate and clamp", () => {
@@ -36,5 +36,24 @@ describe("paper palette", () => {
     expect(paperEgfrColor("shorter_sEGFR")).toBe("#2E9E3E");
     expect(paperEgfrColor("wEGFR_var2")).toBe("#8E3FA0");
     expect(paperEgfrColor("MAP3K1")).toBeNull();
+  });
+});
+
+describe("paper style tokens", () => {
+  it("interpolates a token ramp by stop index in Lab and applies the CN scale, states and clades", () => {
+    const r = tokenRamp([0, 1, 2, 100], ["#000000", "#FF0000", "#FFFFFF", "#0000FF"]);
+    expect(rgbHex(r(0))).toBe("#000000");
+    expect(rgbHex(r(1))).toBe("#FF0000");
+    expect(rgbHex(r(2))).toBe("#FFFFFF");
+    expect(rgbHex(r(500))).toBe("#0000FF");
+    const v = paperTokensVersion();
+    expect(applyPaperTokens({ cn: { stops: [0, 2, 100], colors: ["#08519C", "#F7F7F7", "#1A0606"] }, cell_state: { OPC: "#16A085" }, clades: { PX: { name: { "Clone 1": "EC1" }, color: { EC1: "#E69F00" } } } })).toBe(true);
+    expect(paperTokensVersion()).toBe(v + 1);
+    expect(paperCnCss(2)).toBe("#F7F7F7");
+    expect(paperCnPacked(2)).toBe(rgbPacked([247, 247, 247]));
+    expect(paperStateColor("OPC")).toBe("#16A085");
+    expect(paperCladeLabel("PX", "Clone 1")).toBe("EC1");
+    expect(paperCloneColors("PX", ["Clone 1"])).toEqual({ "Clone 1": "#E69F00" });
+    expect(applyPaperTokens(null)).toBe(false);
   });
 });

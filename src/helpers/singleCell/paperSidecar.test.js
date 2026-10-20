@@ -1,4 +1,4 @@
-import { axisReadout, markPositions, plotHitAt, toData, toPage, axisPosition, highlightRects, hitAt, parseSidecar, rowBand, rowIndexAt, rowsBetween } from "./paperSidecar";
+import { panelTables, tableTsv, sidecarExtras, axisReadout, markPositions, plotHitAt, toData, toPage, axisPosition, highlightRects, hitAt, parseSidecar, rowBand, rowIndexAt, rowsBetween } from "./paperSidecar";
 
 const side = parseSidecar({
   format: "gos-paper-sidecar/1",
@@ -77,5 +77,33 @@ describe("ggplot plot regions", () => {
     expect(m).toHaveLength(1);
     expect(m[0][0]).toBeCloseTo(175);
     expect(m[0][1]).toBeCloseTo(20);
+  });
+});
+
+describe("sidecar figure extras", () => {
+  it("reads walk display names and the figure's ecDNA SNV set for a patient", () => {
+    const sc = parseSidecar({ regions: [], data: { walk_names: { patient: "P1", names: { w1: "Long 1" }, colors: { w1: "#000000" } }, ecdna_snvs: { patient: "P1", chromosome: "7", sites: ["100_A_T", "200_G_C"], pos: [100, 200], class: ["a", "b"], cell: ["c1", "c2"], site: ["100_A_T", "200_G_C"], frac: [0.5, 1] } } });
+    const x = sidecarExtras(sc, "P1");
+    expect(x.walkNames).toEqual({ w1: "Long 1" });
+    expect(x.ecdnaSnvs.map((v) => v.id)).toEqual(["7_100_A_T", "7_200_G_C"]);
+    expect(x.ecdnaSnvs[1].frac.get("c2")).toBe(1);
+    expect(sidecarExtras(sc, "P2").walkNames).toBeNull();
+  });
+});
+
+describe("panel data tables", () => {
+  it("builds tables from plot data frames and row areas", () => {
+    const sc = parseSidecar({
+      regions: [
+        { id: "b#1", panel: "b", kind: "plot", x: 0, y: 0, w: 10, h: 10, xscale: { range: [0, 1] }, yscale: { range: [0, 1] }, label: "burden", table: { columns: ["patient", "n"], data: { patient: ["P1", "P2"], n: [3, 4] } } },
+        { id: "B-k", panel: "B", x: 0, y: 0, w: 5, h: 10, rows: ["c1", "c2"], rowset: "B", values: ["Clone1", "Clone2"], value_label: "clade", patient: "P9" },
+        { id: "B-t", panel: "B", x: 5, y: 0, w: 5, h: 10, rows: ["c1", "c2"], rowset: "B" },
+      ],
+    });
+    const t = panelTables(sc, "b");
+    expect(t.map((x) => x.columns)).toEqual([["patient", "n"], ["row", "cell", "clade"]]);
+    expect(t[0].rows).toEqual([["P1", 3], ["P2", 4]]);
+    expect(t[1].rows[1]).toEqual([2, "c2", "Clone2"]);
+    expect(tableTsv(t[0])).toBe("patient\tn\nP1\t3\nP2\t4");
   });
 });
