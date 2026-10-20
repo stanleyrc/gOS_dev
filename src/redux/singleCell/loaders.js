@@ -26,8 +26,8 @@ function gzIndexFor(path) {
       root,
       axios
         .get(`${root}${GZ_INDEX_FILE}`, { responseType: "json" })
-        .then((r) => (isMissingDataResponse(r) ? new Set() : parseGzIndex(r.data)))
-        .catch(() => new Set())
+        .then((r) => (isMissingDataResponse(r) ? new Map() : parseGzIndex(r.data)))
+        .catch(() => new Map())
     );
   }
   return gzIndexCache.get(root);
