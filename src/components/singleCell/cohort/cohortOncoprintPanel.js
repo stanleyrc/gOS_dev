@@ -47,6 +47,7 @@ import { linkGenes } from "../../../helpers/singleCell/externalLinks";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { biallelicOnlyRows } from "../../../helpers/singleCell/twoHit";
 import { BiallelicSwitch, TwoHitCell, TwoHitLegend } from "./twoHitGlyph";
+import { ecdnaHoverLines } from "../../../helpers/singleCell/ecdnaStatus";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", snv: "#1B9E77", complex: "#E66101" };
@@ -426,6 +427,7 @@ export default function CohortOncoprintPanel({ summaries, files, tsg = null }) {
                           <title>
                             {`${r.gene} in ${p}\n` +
                               cell.entries.map((d) => `${classLabel(d)}${d.event.Variant && d.event.Variant !== "None" ? ` ${d.event.Variant}` : ""}: ${d.n} cells (${pct(d.fraction)}, ${d.subclonal ? "subclonal" : "clonal"}${d.tier ? `, tier ${d.tier}` : ""}${Number.isFinite(d.fit) ? `, Clade F1 ${d.fit.toFixed(2)}` : ", Clade F1 n/a"})`).join("\n") +
+                              ecdnaHoverLines(cell.entries, files[p]?.ecdnaStatus).map((l) => `\n${l}`).join("") +
                               (call ? `\nTwo-hit check: ${call.text}${call.state === "monoallelic" ? `\n(loss data: ${call.lossSource})` : ""}` : tsg && tsg.hasLoss && /suppressor/i.test(`${cell.best?.event?.role || ""}`) ? "\nTwo-hit check: no second hit in the allelic CN" : "") +
                               "\nClick to open the patient on this event."}
                           </title>

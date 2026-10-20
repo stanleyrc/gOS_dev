@@ -16,6 +16,7 @@ import { biallelicOnlyRows } from "../../../helpers/singleCell/twoHit";
 import { BiallelicSwitch, TwoHitCell, TwoHitLegend } from "./twoHitGlyph";
 import { useCladeF1Filter } from "./cladeF1Chip";
 import { f1Of, f1Tooltip } from "../../../helpers/singleCell/cladeF1View";
+import { ecdnaHoverLines } from "../../../helpers/singleCell/ecdnaStatus";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#E7298A", complex: "#E66101", other: "#8c8c8c" };
@@ -175,7 +176,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
                       <rect x={x + 2} y={y + 2} width={cellW - 4} height={CELL_H - 4} fill={INK.panelAlt} rx={2} />
                       {cell && (
                         <title>
-                          {[`${p} · ${g.gene}`, ...cell.all.slice(0, 6).map((a) => `${a.class}: ${a.event?.Variant && a.event.Variant !== "None" ? a.event.Variant : a.event?.type || ""}${a.event?.Tier ? ` · tier ${a.event.Tier}` : ""}${a.fraction != null ? ` · ${d3.format(".0%")(a.fraction)} of tumor cells` : ""}${a.event?.effect && a.event.effect !== "Unknown" ? ` · ${a.event.effect}` : ""}${f1Text(a.event, p)}`), "click for the event details", ...(f1Filter ? [f1Tooltip(null, f1Filter).replace(/^[^.]*\.\s*/, "")] : [])].join("\n")}
+                          {[`${p} · ${g.gene}`, ...cell.all.slice(0, 6).map((a) => `${a.class}: ${a.event?.Variant && a.event.Variant !== "None" ? a.event.Variant : a.event?.type || ""}${a.event?.Tier ? ` · tier ${a.event.Tier}` : ""}${a.fraction != null ? ` · ${d3.format(".0%")(a.fraction)} of tumor cells` : ""}${a.event?.effect && a.event.effect !== "Unknown" ? ` · ${a.event.effect}` : ""}${f1Text(a.event, p)}`), ...ecdnaHoverLines(cell.all, files[p]?.ecdnaStatus), "click for the event details", ...(f1Filter ? [f1Tooltip(null, f1Filter).replace(/^[^.]*\.\s*/, "")] : [])].join("\n")}
                         </title>
                       )}
                       {classes.map((c, k) => {
