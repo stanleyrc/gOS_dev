@@ -18,6 +18,8 @@ import { INK, inkOn } from "../../helpers/singleCell/plotTheme";
 import usePlotTheme from "./usePlotTheme";
 import { YAxis, useChartText } from "./cohort/charts";
 import { Provenance } from "./hintLine";
+import BurdenToggle, { useBurdenMode } from "./signatures/burdenToggle";
+import { barLengths, burdenLabel, burdenRows, fmtBurden } from "../../helpers/singleCell/signatureBurden";
 
 const { Text } = Typography;
 const COSMIC_FILE = "COSMIC_v3.4_SBS_GRCh38.txt";
@@ -74,39 +76,48 @@ export const setSignatureTheme = (theme) => {
   signatureTheme = theme;
 };
 
-/** One stacked bar per set: each signature's share of the set's mutations. */
-export function ActivityBars({ rows, width }) {
+/**
+ * One stacked bar per set. Count mode (default): bar length = the set's SNVs (relative to the largest row),
+ * each segment = mutations attributed (share x SNVs); percent mode: every bar full width. Labels and
+ * tooltips show both the count and the percentage.
+ */
+export function ActivityBars({ rows, width, mode: modeProp }) {
   const txt = useChartText();
+  const layoutMode = useBurdenMode();
+  const mode = modeProp || layoutMode;
   const labelWidth = 150;
   const barWidth = Math.max(80, width - labelWidth - 70);
+  const lengths = barLengths(rows, barWidth, mode);
   return (
     <svg width={width} height={rows.length * (BAR_HEIGHT + 6) + 4}>
       {rows.map((row, i) => {
-        const total = row.activities.reduce((s, a) => s + a.activity, 0) || 1;
+        const parts = burdenRows(row.activities, row.n);
+        const len = lengths[i];
         let x = labelWidth;
         return (
           <g key={row.name} transform={`translate(0, ${i * (BAR_HEIGHT + 6) + 2})`}>
             <text x={labelWidth - 8} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="end" {...txt.label}>
               {row.name.length > 22 ? `${row.name.slice(0, 21)}…` : row.name}
             </text>
-            {row.activities.map((a) => {
-              const w = (a.activity / total) * barWidth;
+            {parts.map((a) => {
+              const w = a.fraction * len;
               const rect = (
                 <rect key={a.signature} x={x} y={0} width={Math.max(0, w - 0.5)} height={BAR_HEIGHT} fill={signatureColor(a.signature)}>
-                  <title>{`${a.signature}: ${Math.round(a.activity)} mutations (${((100 * a.activity) / total).toFixed(0)}%)${aetiologyText(a.signature) ? `\n${aetiologyText(a.signature)}` : ""}`}</title>
+                  <title>{`${a.signature}: ${fmtBurden(a.count, a.fraction)} mutations${aetiologyText(a.signature) ? `\n${aetiologyText(a.signature)}` : ""}`}</title>
                 </rect>
               );
-              const label =
-                w > 34 ? (
-                  <text key={`${a.signature}-l`} x={x + w / 2} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="middle" fontSize={txt.tick.fontSize} fill={inkOn(signatureColor(a.signature))} pointerEvents="none">
-                    {a.signature}
-                  </text>
-                ) : null;
+              const full = `${a.signature} ${burdenLabel(a.count, a.fraction, mode)}`;
+              const text = w > full.length * 6 ? full : w > 34 ? a.signature : null;
+              const label = text ? (
+                <text key={`${a.signature}-l`} x={x + w / 2} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="middle" fontSize={txt.tick.fontSize} fill={inkOn(signatureColor(a.signature))} pointerEvents="none">
+                  {text}
+                </text>
+              ) : null;
               x += w;
               return [rect, label];
             })}
-            <text x={labelWidth + barWidth + 8} y={BAR_HEIGHT / 2} dy="0.35em" {...txt.caption}>
-              {`n=${row.n}`}
+            <text x={labelWidth + len + 8} y={BAR_HEIGHT / 2} dy="0.35em" {...txt.caption}>
+              {`n=${row.n ?? "n/a"}`}
             </text>
           </g>
         );
@@ -292,6 +303,7 @@ export default function SignaturePanel() {
           </Text>
         </Space>
       }
+      extra={<BurdenToggle />}
     >
       <div ref={containerRef}>
         <Row gutter={SC_GUTTER_INNER}>

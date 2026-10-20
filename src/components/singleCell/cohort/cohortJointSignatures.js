@@ -4,6 +4,7 @@ import { ExperimentOutlined } from "@ant-design/icons";
 import useCohortExport from "./useCohortExport";
 import { signatureColorOf } from "../signaturePanel";
 import { cohortDifferences, fmtDiff, fmtP } from "../../../helpers/singleCell/signatureJoint";
+import { fmtBurden } from "../../../helpers/singleCell/signatureBurden";
 
 const { Text } = Typography;
 
@@ -21,7 +22,7 @@ export default function CohortJointSignatures({ dataset }) {
   const columns = [
     { title: "Signature", dataIndex: "signature", render: (s) => <Tag color={signatureColorOf(s)} style={{ color: "#fff" }}>{s}</Tag> },
     { title: "Contrast", dataIndex: "contrast" },
-    { title: "Patients (difference [95% CI], q)", dataIndex: "patients", render: (ps) => ps.map((p) => <div key={p.patient}><b>{p.patient}</b> {fmtDiff(p)}, q {fmtP(p.q)}</div>) },
+    { title: "Patients (difference [95% CI], q · mutations (share) in the set vs truncal)", dataIndex: "patients", render: (ps) => ps.map((p) => <div key={p.patient}><b>{p.patient}</b> {fmtDiff(p)}, q {fmtP(p.q)} <Text type="secondary">{`· ${fmtBurden(p.count_a, p.frac_a)} vs ${fmtBurden(p.count_b, p.frac_b)} mutations`}</Text></div>) },
     { title: "Direction", dataIndex: "direction" },
   ];
   return (
@@ -32,7 +33,7 @@ export default function CohortJointSignatures({ dataset }) {
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="no signature differs between a non-truncal set and truncal with a CI excluding 0 and q <= 0.05" />
       )}
       <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 4 }}>
-        {`Patients: ${(data.patients || []).map((p) => `${p.patient} (${p.signatures.join(", ")})`).join("; ")}. Difference = exposure fraction in the first set minus truncal.`}
+        {`Patients: ${(data.patients || []).map((p) => `${p.patient} (${p.signatures.join(", ")})`).join("; ")}. Difference = exposure fraction in the first set minus truncal; mutations = fraction x the set's SNVs.`}
       </Text>
     </Card>
   );
