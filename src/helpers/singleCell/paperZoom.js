@@ -4,42 +4,58 @@
 
 export const LENS_MAX = 40;
 
+// Zoom axes of a lens: "xy" (free), "x" (columns / genome only; the vertical window is fixed, as in the single-cell
+// page's matrices), "y", or "none" (no zoom). A lens has one scale per axis (sx, sy); `s` is the larger of the two.
+export const ZOOM_MODES = ["x", "y", "xy", "none"];
+const hasX = (m) => m === "x" || m === "xy";
+const hasY = (m) => m === "y" || m === "xy";
+const withS = (l) => ({ ...l, s: Math.max(l.sx, l.sy) });
+
 /** New lens on a panel rectangle (page pt): scale 1, showing the rectangle from its top-left. */
-export const lensOn = (rect) => ({ rect, s: 1, ox: rect.x, oy: rect.y });
+export const lensOn = (rect, mode = "xy") => ({ rect, mode, sx: 1, sy: 1, s: 1, ox: rect.x, oy: rect.y });
 
 /** Page pt -> display px (k = px per pt at scale 1). */
 export function lensToDisplay(lens, k, x, y) {
-  return [lens.rect.x * k + (x - lens.ox) * k * lens.s, lens.rect.y * k + (y - lens.oy) * k * lens.s];
+  return [lens.rect.x * k + (x - lens.ox) * k * lens.sx, lens.rect.y * k + (y - lens.oy) * k * lens.sy];
 }
 
 /** Display px -> page pt. */
 export function lensToPage(lens, k, px, py) {
-  return [lens.ox + (px - lens.rect.x * k) / (k * lens.s), lens.oy + (py - lens.rect.y * k) / (k * lens.s)];
+  return [lens.ox + (px - lens.rect.x * k) / (k * lens.sx), lens.oy + (py - lens.rect.y * k) / (k * lens.sy)];
 }
 
 /** Whether a display point is inside the lens rectangle. */
 export const lensContains = (lens, k, px, py) => px >= lens.rect.x * k && px <= (lens.rect.x + lens.rect.w) * k && py >= lens.rect.y * k && py <= (lens.rect.y + lens.rect.h) * k;
 
+/** Whether the lens is back at scale 1 on every axis. */
+export const lensIsHome = (lens) => lens.sx <= 1.001 && lens.sy <= 1.001;
+
 function clampLens(l) {
-  const vw = l.rect.w / l.s;
-  const vh = l.rect.h / l.s;
-  return { ...l, ox: Math.max(l.rect.x, Math.min(l.rect.x + l.rect.w - vw, l.ox)), oy: Math.max(l.rect.y, Math.min(l.rect.y + l.rect.h - vh, l.oy)) };
+  const vw = l.rect.w / l.sx;
+  const vh = l.rect.h / l.sy;
+  return withS({ ...l, ox: Math.max(l.rect.x, Math.min(l.rect.x + l.rect.w - vw, l.ox)), oy: Math.max(l.rect.y, Math.min(l.rect.y + l.rect.h - vh, l.oy)) });
 }
 
-/** Zoom by `factor` about a display point (the page point under it stays put); scale clamped to [1, LENS_MAX]. */
+/** Zoom by `factor` about a display point (the page point under it stays put); scales clamped to [1, LENS_MAX] on the lens's zoom axes only. */
 export function lensZoom(lens, k, factor, px, py) {
+  const m = lens.mode || "xy";
+  if (m === "none") return lens;
   const [x, y] = lensToPage(lens, k, px, py);
-  const s = Math.min(LENS_MAX, Math.max(1, lens.s * factor));
-  const ox = x - (px - lens.rect.x * k) / (k * s);
-  const oy = y - (py - lens.rect.y * k) / (k * s);
-  return clampLens({ ...lens, s, ox, oy });
+  const sx = hasX(m) ? Math.min(LENS_MAX, Math.max(1, lens.sx * factor)) : 1;
+  const sy = hasY(m) ? Math.min(LENS_MAX, Math.max(1, lens.sy * factor)) : 1;
+  const ox = x - (px - lens.rect.x * k) / (k * sx);
+  const oy = y - (py - lens.rect.y * k) / (k * sy);
+  return clampLens({ ...lens, sx, sy, ox, oy });
 }
 
-/** Pan by display px. */
-export const lensPan = (lens, k, dpx, dpy) => clampLens({ ...lens, ox: lens.ox - dpx / (k * lens.s), oy: lens.oy - dpy / (k * lens.s) });
+/** Pan by display px (only along the lens's zoom axes). */
+export const lensPan = (lens, k, dpx, dpy) => clampLens({ ...lens, ox: hasX(lens.mode || "xy") ? lens.ox - dpx / (k * lens.sx) : lens.ox, oy: hasY(lens.mode || "xy") ? lens.oy - dpy / (k * lens.sy) : lens.oy });
 
 /** The page window visible through the lens: { x0, x1, y0, y1 } (pt). */
-export const lensView = (lens) => ({ x0: lens.ox, x1: lens.ox + lens.rect.w / lens.s, y0: lens.oy, y1: lens.oy + lens.rect.h / lens.s });
+export const lensView = (lens) => ({ x0: lens.ox, x1: lens.ox + lens.rect.w / lens.sx, y0: lens.oy, y1: lens.oy + lens.rect.h / lens.sy });
+
+/** Scale factor of a two-finger pinch from the finger distances before and after (clamped to a sane step). */
+export const pinchFactor = (d0, d1) => (d0 > 1 && d1 > 1 ? Math.min(2, Math.max(0.5, d1 / d0)) : 1);
 
 // ---- genome-graph tracks
 
