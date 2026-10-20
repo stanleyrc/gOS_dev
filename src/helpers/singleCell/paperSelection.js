@@ -1,7 +1,29 @@
 // Cell selection of a figure tab across panels and patients: { byPatient: Map(patient -> Set(cell)), label }. d3-free.
 
-/** Select cells of one patient: replace the selection, or add to it (add = true); toggle = remove cells already selected. */
-export function selectCells(sel, ids, patient, { add = false, toggle = false, label = null } = {}) {
+const PATIENT_RX = /^((?:BWH|MGH)\d{2,3})_/;
+/** Patient of a cell id from its prefix (BWH70_MR_1_pl1_6d -> BWH70), else null. */
+export const patientOfCell = (id) => PATIENT_RX.exec(`${id ?? ""}`)?.[1] || null;
+
+/**
+ * Select cells of one patient: replace the selection, or add to it (add = true); toggle = remove cells already
+ * selected. patient null: each cell goes to the patient named by its id prefix.
+ */
+export function selectCells(sel, ids, patient, opts = {}) {
+  if (patient == null && ids.some((id) => patientOfCell(id))) {
+    const by = new Map();
+    ids.forEach((id) => by.set(patientOfCell(id), [...(by.get(patientOfCell(id)) || []), id]));
+    let s = opts.add || opts.toggle ? sel : null;
+    let first = true;
+    by.forEach((cells, p) => {
+      s = selectOne(s, cells, p, { ...opts, add: opts.add || !first });
+      first = false;
+    });
+    return s;
+  }
+  return selectOne(sel, ids, patient, opts);
+}
+
+function selectOne(sel, ids, patient, { add = false, toggle = false, label = null } = {}) {
   const key = patient == null ? "" : `${patient}`;
   const by = new Map(add || toggle ? [...(sel?.byPatient || new Map()).entries()].map(([p, s]) => [p, new Set(s)]) : []);
   const set = by.get(key) || new Set();

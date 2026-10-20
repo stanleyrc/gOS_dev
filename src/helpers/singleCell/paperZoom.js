@@ -50,8 +50,40 @@ export function cellFromLabel(label) {
   return m ? m[1] : null;
 }
 
+/**
+ * Axis windows of a genome-axis region: `axis.windows` [{ chr, from, to, f0, f1 }] (f0 / f1: fractions of the region
+ * width; broken axes such as chr2 14-16 Mb | chr2 33 Mb | chr12 57.5 Mb), else the single axis over the whole width.
+ */
+export function axisWindows(region) {
+  const a = region.axis || {};
+  if (Array.isArray(a.windows) && a.windows.length) return a.windows.map((w) => ({ chr: `${w.chr}`.replace(/^chr/, ""), from: Number(w.from), to: Number(w.to), f0: Number(w.f0), f1: Number(w.f1) }));
+  return [{ chr: `${a.chr}`.replace(/^chr/, ""), from: Number(a.from), to: Number(a.to), f0: 0, f1: 1 }];
+}
+
+/**
+ * Visible windows of a genome-axis region between page x0 and x1: [{ chr, from, to, x0, x1 }] (page pt), one per axis
+ * window that overlaps.
+ */
+export function regionWindows(region, x0, x1) {
+  return axisWindows(region)
+    .map((w) => {
+      const wx0 = region.x + w.f0 * region.w;
+      const wx1 = region.x + w.f1 * region.w;
+      const a = Math.max(x0, wx0);
+      const b = Math.min(x1, wx1);
+      if (!(b > a)) return null;
+      const pos = (x) => Math.round(w.from + ((x - wx0) / (wx1 - wx0)) * (w.to - w.from));
+      return { chr: w.chr, from: pos(a), to: pos(b), x0: a, x1: b };
+    })
+    .filter(Boolean);
+}
+
 /** The genomic window of a genome-axis region seen between page x0 and x1 (clamped to the region). */
 export function regionWindow(region, x0, x1) {
+  if (Array.isArray(region.axis?.windows) && region.axis.windows.length) {
+    const ws = regionWindows(region, Math.min(x0, x1 - 1e-9), Math.max(x1, x0 + 1e-9));
+    if (ws.length) return { chr: ws[0].chr, from: ws[0].from, to: ws[ws.length - 1].to };
+  }
   const a = region.axis;
   const from = Number(a.from);
   const to = Number(a.to);
