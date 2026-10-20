@@ -120,7 +120,8 @@ function PathToy() {
         </div>
         <div style={{ width: col }}>
           <Text strong>Moran's I per state</Text>
-          <table style={{ fontSize: 13, borderCollapse: "collapse", marginTop: 4 }}>
+          <table className="sc-concepts-table" style={{ fontSize: 13, borderCollapse: "collapse", marginTop: 4 }}>
+            <style>{".sc-concepts-table td { padding: 2px 12px 2px 0; }"}</style>
             <thead><tr>{["state", "cells", "I", "z", "p"].map((c) => <th key={c} style={{ textAlign: "left", padding: "2px 10px 2px 0", color: theme.textSecondary, fontWeight: 600 }}>{c}</th>)}</tr></thead>
             <tbody>
               {TOY_STATES.map((s) => (
