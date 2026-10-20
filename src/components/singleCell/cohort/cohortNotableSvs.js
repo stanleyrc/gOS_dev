@@ -5,6 +5,8 @@ import { cohortEntries } from "../../../helpers/singleCell/cohortOncoprint";
 import { cohortNotableSvs } from "../../../helpers/singleCell/notableSvs";
 import { GenesText, NOTE } from "../notableSvCard";
 import useGeneSpans from "./useGeneSpans";
+import { EcdnaStatusChip } from "../ecdnaStatusChip";
+import { statusForEvent } from "../../../helpers/singleCell/ecdnaStatus";
 
 const { Text } = Typography;
 
@@ -24,6 +26,15 @@ export default function CohortNotableSvs({ summaries = [], files = {}, onPatient
     { title: "Patient", dataIndex: "patient", width: 90, render: (p) => <a onClick={() => onPatient && onPatient(p)}>{p}</a> },
     { title: "Type", render: (_, r) => <Text>{r.members.split(",")[0].replace(/ in \d+ cells?/, "")}</Text> },
     { title: "Family", dataIndex: "label" },
+    {
+      title: "ecDNA status",
+      width: 190,
+      render: (_, r) => {
+        if (!r.isEcdna) return null;
+        const doc = files[r.patient]?.ecdnaStatus;
+        return <EcdnaStatusChip status={doc ? statusForEvent(doc, r.entry) : null} missing={!doc} />;
+      },
+    },
     { title: "Chromosomes", render: (_, r) => r.chromosomes.join(", ") },
     { title: "Cells", width: 110, render: (_, r) => `${r.n}${r.fraction ? ` (${Math.round(100 * r.fraction)}%)` : ""}` },
     { title: "Genes inside (drivers first)", render: (_, r) => <GenesText r={r} /> },
