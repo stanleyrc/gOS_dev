@@ -18,6 +18,7 @@ import { cellFromLabel, lensContains, lensIsHome, lensOn, lensPan, lensToPage, l
 import { controlKey, figureControls, liveCellsOnPlot, livePatients, zoomTarget } from "../../../helpers/singleCell/paperAxes";
 import { STATE_SCORES_FILE, parseStateScores } from "../../../helpers/singleCell/paperPanels";
 import { isPatientRecord, patientKeyOf } from "../../../helpers/singleCell/cellFiles";
+import { ringBox } from "../../../helpers/singleCell/paperRing";
 import PanelControls, { controlOverlays } from "./panelControls";
 import { selectCells, selectedIds, selectionGroups, selectionText } from "../../../helpers/singleCell/paperSelection";
 import { colIndexAt, graphInWindow, regionWindows, snvAt } from "../../../helpers/singleCell/paperZoom";
@@ -121,6 +122,7 @@ export default function PaperFigurePage({ label }) {
   const fig = manifest?.figures.find((f) => f.label === label) || null;
   const [ref, measured] = useContainerWidth(1100);
   const [hover, setHover] = useState(null);
+  const [focusPanel, setFocusPanel] = useState(null); // panel letter whose toolbar group is hovered
   const [tip, setTip] = useState(null);
   const [open, setOpen] = useState(null);
   const [zoom, setZoom] = useState(false);
@@ -289,7 +291,7 @@ export default function PaperFigurePage({ label }) {
     const [x, y] = toPt(px, py);
     return [x, y, px, py];
   };
-  const region = hover ? regions.find((b) => b.letter === hover.letter) : null;
+  const region = hover ? regions.find((b) => b.letter === hover.letter) : focusPanel ? regions.find((b) => `${b.letter}`.toLowerCase() === focusPanel) : null;
   const ids = selectedIds(sel);
   const select = (cells, patient, lbl, e) => setSel((cur) => selectCells(cur, cells, patient, { add: !!e?.shiftKey, toggle: !e?.shiftKey && cells.length === 1 && selectedIds(cur).has(`${cells[0]}`), label: lbl }));
   const zoomWin = (id) => (cnZoom[id] && cnZoom[id] !== true ? cnZoom[id] : null);
@@ -314,15 +316,15 @@ export default function PaperFigurePage({ label }) {
     if (sel) {
       const lm = linkedMarks(sidecar, ids);
       lm.rects.forEach((r, i) => out.push(<div key={`${keyp}s${i}`} className="sc-paperpage-sel" style={{ left: r.x * kx, top: r.y * ky, width: r.w * kx, height: Math.max(1.5, r.h * ky) }} />));
-      lm.rings.forEach(([x, y], i) => out.push(<div key={`${keyp}sr${i}`} className="sc-paperpage-ring is-sel" style={{ left: x * kx - 5, top: y * ky - 5 }} />));
+      lm.rings.forEach(([x, y], i) => out.push(<div key={`${keyp}sr${i}`} className="sc-paperpage-ring is-sel" style={ringBox([x, y], kx, ky)} />));
       tracks.filter((t) => ids.has(t.cell)).forEach((t) => out.push(<div key={`${keyp}st${t.id}`} className="sc-paperpage-sel" style={{ left: t.rect.x * kx, top: t.rect.y * ky, width: t.rect.w * kx, height: t.rect.h * ky, background: "transparent" }} />));
     }
     if (hit) linkedMarks(sidecar, new Set([hit.id])).rects.forEach((r, i) => out.push(<div key={`${keyp}h${i}`} className="sc-paperpage-hover" style={{ left: r.x * kx, top: r.y * ky, width: r.w * kx, height: Math.max(2, r.h * ky) }} />));
-    if (plotHit?.page) out.push(<div key={`${keyp}pr`} className="sc-paperpage-ring" style={{ left: plotHit.page[0] * kx - 6, top: plotHit.page[1] * ky - 6, width: 12, height: 12 }} />);
-    if (plotHit?.rect) out.push(<div key={`${keyp}pt`} className="sc-paperpage-hover" style={{ left: plotHit.rect.x * kx, top: plotHit.rect.y * ky, width: Math.max(2, plotHit.rect.w * kx), height: Math.max(2, plotHit.rect.h * ky), background: "transparent", outline: "2px solid #fa8c16" }} />);
+    if (plotHit?.page) out.push(<div key={`${keyp}pr`} className="sc-paperpage-ring" style={ringBox(plotHit.page, kx, ky)} />);
+    if (plotHit?.rect) out.push(<div key={`${keyp}pt`} className="sc-paperpage-hover" style={{ left: plotHit.rect.x * kx, top: plotHit.rect.y * ky, width: Math.max(2, plotHit.rect.w * kx), height: Math.max(2, plotHit.rect.h * ky), background: "transparent", outline: "2px solid #1677ff" }} />);
     if (trackHit) {
       const t = trackHit.track;
-      out.push(<div key={`${keyp}tr`} className="sc-paperpage-hover" style={{ left: t.rect.x * kx, top: t.rect.y * ky, width: t.rect.w * kx, height: t.rect.h * ky, background: "transparent", outline: "1.5px solid #fa8c16" }} />);
+      out.push(<div key={`${keyp}tr`} className="sc-paperpage-hover" style={{ left: t.rect.x * kx, top: t.rect.y * ky, width: t.rect.w * kx, height: t.rect.h * ky, background: "transparent", outline: "1.5px solid #1677ff" }} />);
     }
     controlOverlays({ controls, values: ctrlVals, sidecar, live, kx, ky, keyp }).forEach((el) => out.push(el));
     if (brushBox) out.push(<div key={`${keyp}bb`} className="sc-paperpage-brush" style={{ left: brushBox.x * kx, top: brushBox.y0 * ky, width: brushBox.w * kx, height: (brushBox.y1 - brushBox.y0) * ky }} />);
@@ -403,7 +405,10 @@ export default function PaperFigurePage({ label }) {
   };
   const lensBox = lens ? { left: lens.rect.x * k, top: lens.rect.y * k, width: lens.rect.w * k, height: lens.rect.h * k } : null;
   const groups = selectionGroups(sel);
-  const tooltipStyle = { position: "absolute", left: Math.min((tip?.px || 0) + 14, width - 280), top: (tip?.py || 0) + 14, maxWidth: 300, pointerEvents: "none", zIndex: 8 };
+  // tooltip next to the cursor; flips above it when it would run past the bottom of the window (estimated 170 px tall)
+  const sheetTop = sheetRef.current ? sheetRef.current.getBoundingClientRect().top : 0;
+  const tipAbove = typeof window !== "undefined" && sheetTop + (tip?.py || 0) + 14 + 170 > window.innerHeight && sheetTop + (tip?.py || 0) - 14 - 170 > 0;
+  const tooltipStyle = { position: "absolute", left: Math.min((tip?.px || 0) + 14, width - 280), top: (tip?.py || 0) + (tipAbove ? -14 : 14), transform: tipAbove ? "translateY(-100%)" : undefined, maxWidth: 300, pointerEvents: "none", zIndex: 8 };
   return (
     <div ref={ref} className="sc-paperpage">
       <div className="sc-paper-bar">
@@ -484,6 +489,19 @@ export default function PaperFigurePage({ label }) {
             </Button>
           )}
         </div>
+      )}
+      {controls.length > 0 && (
+        <PanelControls
+          controls={controls}
+          values={ctrlVals}
+          label={fig.label}
+          live={live}
+          optionsOf={optionsOf}
+          onFocusPanel={setFocusPanel}
+          onChange={(c, v) => (c.type === "patient-view" ? v && setPatientView(v) : setCtrlVals((m) => ({ ...m, [controlKey(c)]: v })))}
+          onClear={(c) => setCtrlVals((m) => ({ ...m, [controlKey(c)]: null }))}
+          onSelectCells={(cells, patient, lbl) => setSel(selectCells(null, cells.map((c) => c.cell), patient, { label: lbl }))}
+        />
       )}
       <div
         ref={sheetRef}
@@ -641,19 +659,6 @@ export default function PaperFigurePage({ label }) {
       >
         <img src={bestImage(fig)} alt={`${fig.label}: ${fig.title}`} draggable={false} onLoad={() => setImgReady(true)} style={{ width, height, display: "block", userSelect: "none" }} />
         {overlays(k, k, "p")}
-        {controls.length > 0 && (
-          <PanelControls
-            controls={controls}
-            values={ctrlVals}
-            panelBox={panelBox}
-            k={k}
-            live={live}
-            optionsOf={optionsOf}
-            onChange={(c, v) => (c.type === "patient-view" ? v && setPatientView(v) : setCtrlVals((m) => ({ ...m, [controlKey(c)]: v })))}
-            onClear={(c) => setCtrlVals((m) => ({ ...m, [controlKey(c)]: null }))}
-            onSelectCells={(cells, patient, lbl) => setSel(selectCells(null, cells.map((c) => c.cell), patient, { label: lbl }))}
-          />
-        )}
         {region && !hit && !plotHit?.fields && !trackHit && !lens && (
           <div className="sc-paperpage-region" style={{ left: region.x0 * k, top: region.y0 * k, width: (region.x1 - region.x0) * k, height: (region.y1 - region.y0) * k }} />
         )}
