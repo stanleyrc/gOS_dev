@@ -69,6 +69,7 @@ export const SC_DEFAULT_LAYOUT = {
   snvSets: {}, // named mutation sets per patient: { [patient]: [{ name, ids }] }
   stripWidth: 14, // px per annotation strip beside the heatmaps (clone, state, region, ...)
   snvSiteIds: null, // only these SNV sites (e.g. picked in Filtered Events); null = no restriction
+  snvCnMapped: false, // add the CN-mapped sites (copy-number-altered regions placed on the tree; cn_mapped_snvs.sites.json) to the SNV matrix and tree; URL cnmapped=1
   showSignatures: true, // SBS signature panel below the heatmap
   theme: "tableau", // categorical colour theme (helpers/singleCell/themes.js)
   branchSnvs: false, // SNV counts on the tree branches
@@ -114,9 +115,13 @@ const actions = {
   SC_PER_CELL_TRACK_FAILED: "SC_PER_CELL_TRACK_FAILED",
   SC_DRIVER_FOCUS_UPDATED: "SC_DRIVER_FOCUS_UPDATED",
   SC_DRIVER_DRAWER_UPDATED: "SC_DRIVER_DRAWER_UPDATED",
+  SC_CN_MAPPED_REQUEST: "SC_CN_MAPPED_REQUEST",
+  SC_CN_MAPPED_LOADED: "SC_CN_MAPPED_LOADED",
 
   // caseReportId: load another patient than the open case report (cohort figures)
   fetchSingleCellData: (caseReportId) => ({ type: actions.FETCH_SINGLE_CELL_DATA_REQUEST, caseReportId }),
+  /** CN-mapped SNVs (cn_mapped_snvs.sites.json + .cells.bin) of the open patient, fetched the first time the toggle is on. */
+  fetchCnMapped: () => ({ type: actions.SC_CN_MAPPED_REQUEST }),
   /** Driver opened in the Drivers tab: driverKey(event) from helpers/singleCell/driverContrast, or null. */
   updateDriverFocus: (key) => ({ type: actions.SC_DRIVER_FOCUS_UPDATED, key }),
   /** Open (key) or close (null) the driver drawer on the Drivers heatmap layer. */

@@ -13,6 +13,7 @@ import { AnnotationStrips } from "./snvAnnotTracks";
 import {
   wheelZoomFactor,
   columnBins,
+  groupedColumnBins,
   snvBinSummary,
   snvMetricRGBA,
   snvMetricValue,
@@ -52,6 +53,7 @@ export const SNV_CATEGORIES = [
   { key: "private", color: "#33a02c" },
   { key: "outside_tumor", color: "var(--sc-muted)" },
   { key: "unmapped", color: "#d9d9d9" },
+  { key: "cn_mapped", color: "#1b9e9e" }, // CN-aware mapping (copy-number-altered regions); opt-in layer
 ];
 
 const clampRange = (start, span, total) => {
@@ -74,6 +76,7 @@ export default function MutationSidePanel({
   rows,
   nRows,
   columnOrder,
+  binKeys = null,
   metric,
   max,
   width,
@@ -127,7 +130,23 @@ export default function MutationSidePanel({
   rangeRef.current = range;
 
   const deviceWidth = Math.floor(width * pixelRatio);
-  const bins = useMemo(() => columnBins(total, deviceWidth, range), [total, deviceWidth, range]);
+  const bins = useMemo(
+    () => (binKeys && binKeys.length === total ? groupedColumnBins(binKeys, deviceWidth, range) : columnBins(total, deviceWidth, range)),
+    [binKeys, total, deviceWidth, range]
+  );
+  // first draw with sites (perf probes read window.__gosSnvFirstDraw / the performance mark)
+  useEffect(() => {
+    if (!total || typeof window === "undefined") return;
+    const draw = { t: performance.now(), sites: total, cells: rows?.length ?? null };
+    window.__gosSnvDraws = [...(window.__gosSnvDraws || []), draw].slice(-20);
+    if (window.__gosSnvFirstDraw) return;
+    window.__gosSnvFirstDraw = draw;
+    try {
+      performance.mark("gos-snv-first-draw");
+    } catch (e) {
+      // no User Timing
+    }
+  }, [total, rows]);
   const cols = useMemo(() => Int32Array.from({ length: deviceWidth }, (_, x) => (bins.binStart[x] < 0 ? -1 : x)), [bins, deviceWidth]);
 
   // Chromosome labels when columns are in genomic order.
