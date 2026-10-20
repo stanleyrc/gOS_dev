@@ -12,6 +12,8 @@ import PatientEcdnaView from "./patientEcdnaView";
 import { Provenance } from "../hintLine";
 import { FigureStyleDefault, useFigureStyleName } from "./figureCanvas";
 import { ExportPanel, PanelHead } from "./figureKit";
+import PaperFiguresViewer from "../paper/paperFiguresViewer";
+import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, parsePaperManifest, targetSearch } from "../../../helpers/singleCell/paperManifest";
 import StateQuadrant from "./stateQuadrant";
 import PhyloSignalStrip from "./phyloSignalStrip";
 import useCohortExport from "../cohort/useCohortExport";
@@ -82,13 +84,61 @@ function eventLoci(e) {
  * shown in a popup (SelectedCellsModal).
  */
 export default function CohortFiguresPanel(props) {
-  // the view opens in the manuscript look (Paper style) unless a figure style was chosen
+  // two modes: "paper" = the built manuscript figures exactly as made (default), "interactive" = the live re-implementations
+  const params = useMemo(() => new URLSearchParams(window.location.search), []);
+  const [mode, setMode] = useState(params.get("figmode") === "interactive" || params.get("figpatient") ? "interactive" : "paper");
+  const [bodyKey, setBodyKey] = useState(0);
+  const dataset = useSelector((s) => s.Settings?.dataset);
+  const base = dataset?.dataPath ? `${dataset.dataPath}_cohort/${PAPER_FIGURES_DIR}/` : "";
+  const manifestExport = useCohortExport(dataset?.dataPath ? dataset : null, PAPER_MANIFEST_FILE);
+  const manifest = useMemo(() => parsePaperManifest(manifestExport.data, base), [manifestExport.data, base]);
+  const openTarget = (t) => {
+    const search = targetSearch(t, window.location.search);
+    if (t.kind !== "interactive") {
+      window.location.assign(`${window.location.pathname}${search}`);
+      return;
+    }
+    // the interactive body reads figpatient / figpanel from the URL once: update it and remount
+    window.history.replaceState(null, "", `${window.location.pathname}${search}`);
+    setMode("interactive");
+    setBodyKey((k) => k + 1);
+  };
+  const switchMode = (m) => {
+    const p = new URLSearchParams(window.location.search);
+    if (m === "interactive") p.set("figmode", "interactive");
+    else p.delete("figmode");
+    window.history.replaceState(null, "", `${window.location.pathname}?${p.toString()}`);
+    setMode(m);
+  };
   return (
-    <FigureStyleDefault.Provider value={FIGURES_VIEW_STYLE}>
-      <CellSelectionProvider>
-        <FiguresBody {...props} />
-      </CellSelectionProvider>
-    </FigureStyleDefault.Provider>
+    <div>
+      <div className="sc-paper-modebar">
+        <Segmented
+          value={mode}
+          onChange={switchMode}
+          options={[
+            { value: "paper", label: "Paper figures" },
+            { value: "interactive", label: "Interactive" },
+          ]}
+        />
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {mode === "paper" ? "The manuscript figures exactly as built (vector), with links to the interactive views." : "Live, linked re-implementations of the figure panels."}
+        </Text>
+      </div>
+      {mode === "paper" ? (
+        manifestExport.status === "loading" ? (
+          <Text type="secondary">Loading paper figures…</Text>
+        ) : (
+          <PaperFiguresViewer manifest={manifest} initialFigure={params.get("figure")} onOpenTarget={openTarget} />
+        )
+      ) : (
+        <FigureStyleDefault.Provider value={FIGURES_VIEW_STYLE}>
+          <CellSelectionProvider>
+            <FiguresBody key={bodyKey} {...props} />
+          </CellSelectionProvider>
+        </FigureStyleDefault.Provider>
+      )}
+    </div>
   );
 }
 
@@ -212,6 +262,19 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
     if (link.figSelect) select(current.patient, carriers, { label: `${w.label} carriers` });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current, files, link, minCn]);
+  // ?figpanel=<data-figpanel> (from the Paper figures mode): scroll to that panel once it renders
+  useEffect(() => {
+    const target = new URLSearchParams(window.location.search).get("figpanel");
+    if (!target) return undefined;
+    let n = 0;
+    const t = setInterval(() => {
+      const el = document.querySelector(`[data-figpanel="${CSS.escape(target)}"]`);
+      n += 1;
+      if (el || n > 60) clearInterval(t);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
+    }, 500);
+    return () => clearInterval(t);
+  }, []);
   useEffect(() => {
     if (!link.figPatient) return undefined;
     const t = setTimeout(() => patientRef.current?.scrollIntoView({ block: "start" }), 1500);
