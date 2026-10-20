@@ -40,7 +40,7 @@ function yAxis(ctx, c, { x, y0, y1, ticks, sy, title, fmt = formatTick }) {
 }
 
 /**
- * Fig 1b: subclonal SNVs per cell (median, IQR) per patient, ordered by the
+ * Paper panel "subclonal-per-cell": subclonal SNVs per cell (median, IQR) per patient, ordered by the
  * median, over a strip of each patient's truncal SNV count; patients without
  * a per-cell SNV matrix shown as n/a. Click a patient to open it below.
  * rows: [{ patient, med, lo, hi, k, truncal }]; missing: [patient].
@@ -120,7 +120,7 @@ export function SubclonalPerPatient({ rows, missing, onSelectPatient }) {
   );
   return (
     <div ref={ref}>
-      <FigureCanvas width={width} height={height} draw={draw} ariaLabel="Fig 1b subclonal SNVs per cell" tooltip={(h) => [h.r.patient, ["median (IQR)", `${Math.round(h.r.med)} (${Math.round(h.r.lo)}–${Math.round(h.r.hi)})`], ["tumour cells", h.r.k], ["truncal SNVs", h.r.truncal ?? "–"], "click to open the patient"]} onClick={(h) => onSelectPatient?.(h.r.patient)} />
+      <FigureCanvas width={width} height={height} draw={draw} ariaLabel="Subclonal SNVs per cell" tooltip={(h) => [h.r.patient, ["median (IQR)", `${Math.round(h.r.med)} (${Math.round(h.r.lo)}–${Math.round(h.r.hi)})`], ["tumour cells", h.r.k], ["truncal SNVs", h.r.truncal ?? "–"], "click to open the patient"]} onClick={(h) => onSelectPatient?.(h.r.patient)} />
       <div className="sc-fig-caption">Median and IQR across tumour cells (subclonal sites with genotype 1).{missing.length ? ` No per-cell SNV matrix: ${missing.join(", ")}.` : ""}</div>
     </div>
   );
@@ -132,7 +132,7 @@ const useStateColors = () => {
 };
 
 /**
- * Fig 1f: mutation burden relative to the patient's MES-like median, by cell
+ * Paper panel "burden-by-state": mutation burden relative to the patient's MES-like median, by cell
  * state (cells as jittered points, boxes, Wilcoxon vs MES). Click a state to
  * select its cells (of the patient with most cells in it). rows: burdenByState output.
  */
@@ -226,13 +226,13 @@ export function BurdenByState({ rows, onSelectCells }) {
         width={width}
         height={height}
         draw={draw}
-        ariaLabel="Fig 1f mutation burden by cell state"
+        ariaLabel="Mutation burden by cell state"
         tooltip={(h) => [`${h.s}-like`, ["cells", h.n], ...(h.s !== "MES" ? [["vs MES", fmtP(tests.find((t) => t.s === h.s)?.p)]] : []), "click to select these cells (largest patient)"]}
         onClick={(h, event) => {
           const by = new Map();
           h.rows.forEach((r) => by.set(r.patient, [...(by.get(r.patient) || []), r.cell]));
           const [p, ids] = [...by.entries()].sort((a, b) => b[1].length - a[1].length)[0] || [];
-          if (p) onSelectCells?.(p, ids, { label: `${ids.length} ${p} ${h.s}-like cells (Fig 1f)`, mode: selectMode(event) });
+          if (p) onSelectCells?.(p, ids, { label: `${ids.length} ${p} ${h.s}-like cells (burden by state)`, mode: selectMode(event) });
         }}
       />
       <div className="sc-fig-caption">{rows.length.toLocaleString()} cells, {patients.size} patients (≥ 3 MES-like cells); corrected TMB / the patient&apos;s MES-like median; Wilcoxon vs MES.</div>
@@ -240,7 +240,7 @@ export function BurdenByState({ rows, onSelectCells }) {
   );
 }
 
-/** Fig 1g: per patient, fraction of each state's cells above the MES-like median (lines). Click a point to select those cells. */
+/** Paper panel "above-mes": per patient, fraction of each state's cells above the MES-like median (lines). Click a point to select those cells. */
 export function FractionAboveMes({ rows, onSelectCells }) {
   const [ref, measured] = useContainerWidth(420);
   const width = Math.max(320, Math.min(measured, 440));
@@ -319,7 +319,7 @@ export function FractionAboveMes({ rows, onSelectCells }) {
         width={width}
         height={height}
         draw={draw}
-        ariaLabel="Fig 1g fraction above the MES median"
+        ariaLabel="Fraction above the MES median"
         tooltip={(h) => [`${h.z.patient} · ${h.z.state}-like`, ["above MES median", `${h.z.above} / ${h.z.n}`], "click to select these cells"]}
         onClick={(h, event) => {
           const ids = rows.filter((r) => r.patient === h.z.patient && r.state === h.z.state && r.rel > 1).map((r) => r.cell);
