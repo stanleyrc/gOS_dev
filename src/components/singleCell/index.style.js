@@ -373,6 +373,25 @@ const Wrapper = styled.div`
   .sc-paperpage-ring.is-sel {
     border-color: #1677ff;
   }
+  .sc-paperzoom-badge {
+    position: absolute;
+    z-index: 4;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(22, 119, 255, 0.4);
+    border-radius: 3px;
+    padding: 0 4px;
+    pointer-events: none;
+  }
+  .sc-paperzoom {
+    outline: 1px solid rgba(22, 119, 255, 0.6);
+  }
+  .sc-paperpage-walks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    margin: 4px 0;
+  }
   .sc-paperpage-selbar {
     display: flex;
     flex-wrap: wrap;
