@@ -1,3 +1,4 @@
+import { writeLayout, writePref } from "../../helpers/singleCell/viewSettingsStore";
 import { mergeSiteQc } from "../../helpers/singleCell/siteQc";
 import { all, call, put, select, takeEvery, takeLatest } from "redux-saga/effects";
 import axios from "axios";
@@ -347,7 +348,7 @@ function* loadAllelic() {
 function* persistPalette() {
   const { SingleCell } = yield select(getState);
   try {
-    window.localStorage.setItem(SC_PALETTE_STORAGE_KEY, JSON.stringify(SingleCell.palette));
+    writePref(SC_PALETTE_STORAGE_KEY, JSON.stringify(SingleCell.palette)); // no-op unless saving is on
   } catch (error) {
     // storage unavailable (private window): keep the in-memory palette only
   }
@@ -356,7 +357,7 @@ function* persistPalette() {
 function* persistLayout() {
   const { SingleCell } = yield select(getState);
   try {
-    window.localStorage.setItem(SC_LAYOUT_STORAGE_KEY, JSON.stringify(SingleCell.layout));
+    writeLayout(SC_LAYOUT_STORAGE_KEY, SingleCell.layout); // no-op unless saving is on
   } catch (error) {
     // storage unavailable: keep the in-memory layout only
   }
