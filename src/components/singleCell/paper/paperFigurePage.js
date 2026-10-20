@@ -8,8 +8,17 @@ import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, form
 import { announceCohortView, requestHelpTarget } from "../../../helpers/singleCell/helpNav";
 import { PanelModal, STATUS_TAG_COLOR, ZoomPanImage, targetLabel } from "./paperFiguresViewer";
 import { tryGet } from "../../../redux/singleCell/loaders";
-import { highlightRects, hitAt, parseSidecar, rowsBetween } from "../../../helpers/singleCell/paperSidecar";
+import { highlightRects, hitAt, markPositions, parseSidecar, plotHitAt, rowsBetween } from "../../../helpers/singleCell/paperSidecar";
 import { encodeGroups } from "../../../helpers/singleCell/savedGroups";
+
+const rowsets = (sidecar) => [...new Set((sidecar?.regions || []).filter((r) => r.kind === "rows").map((r) => r.rowset || r.id))];
+/** Highlight rectangles of cell ids in every rows region, and ring positions of matching point marks. */
+function linkedMarks(sidecar, ids) {
+  if (!sidecar || !ids?.size) return { rects: [], rings: [] };
+  const rects = rowsets(sidecar).flatMap((rs) => highlightRects(sidecar, rs, rs, ids));
+  return { rects, rings: markPositions(sidecar, "cell", ids) };
+}
+const fmtVal = (v) => (typeof v === "number" ? (Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 100) / 100) : `${v}`);
 
 /** gOS link that opens a patient's Single-Cell tab with these cells selected (saved group carried in the URL). */
 function cellsUrl(patient, cells, name) {
@@ -77,6 +86,7 @@ export default function PaperFigurePage({ label }) {
     };
   }, [fig?.interactive]);
   const [hit, setHit] = useState(null);
+  const [plotHit, setPlotHit] = useState(null);
   const [sel, setSel] = useState(null); // { rowset, regionId, ids: Set, patient, label }
   const brush = useRef(null);
   const [brushBox, setBrushBox] = useState(null);
@@ -146,9 +156,11 @@ export default function PaperFigurePage({ label }) {
           }
           const h = hitAt(sidecar, x, y);
           setHit(h);
-          const p = h ? null : panelAt(anchors, x, y);
+          const ph = h ? null : plotHitAt(sidecar, x, y);
+          setPlotHit(ph && (ph.fields || ph.axis) ? ph : null);
+          const p = h || (ph && ph.fields) ? null : panelAt(anchors, x, y);
           setHover(p);
-          setTip(h || p ? { px, py } : null);
+          setTip(h || ph || p ? { px, py } : null);
         }}
         onPointerUp={(e) => {
           const b = brush.current;
@@ -166,25 +178,63 @@ export default function PaperFigurePage({ label }) {
           setHover(null);
           setTip(null);
           setHit(null);
+          setPlotHit(null);
         }}
         onClick={(e) => {
           const [x, y] = at(e);
           if (hitAt(sidecar, x, y)) return; // handled as a row selection
+          const ph = plotHitAt(sidecar, x, y);
+          const cell = ph?.fields?.cell || ph?.fields?.cell_id;
+          if (cell) {
+            const patient = ph.fields.patient || ph.region.patient || sel?.patient || null;
+            const keep = e.shiftKey && sel && sel.patient === patient ? [...sel.ids] : [];
+            setSel({ rowset: null, regionId: null, ids: new Set([...keep, `${cell}`]), patient, label: ph.region.panel });
+            return;
+          }
+          if (ph?.fields?.patient) {
+            const q = new URLSearchParams(window.location.search);
+            ["scview", "figmode", "figpanel", "figpatient"].forEach((key) => q.delete(key));
+            q.set("report", ph.fields.patient);
+            window.open(`${window.location.pathname}?${q.toString()}`, "_blank", "noopener");
+            return;
+          }
           const p = panelAt(anchors, x, y);
           if (p) setOpen(p);
         }}
       >
         <img src={bestImage(fig)} alt={`${fig.label}: ${fig.title}`} draggable={false} style={{ width, height, display: "block", userSelect: "none" }} />
         {sel &&
-          highlightRects(sidecar, sel.rowset, sel.regionId, sel.ids).map((r, i) => (
-            <div key={`s${i}`} className="sc-paperpage-sel" style={{ left: r.x * k, top: r.y * k, width: r.w * k, height: Math.max(1.5, r.h * k) }} />
-          ))}
+          (() => {
+            const lm = linkedMarks(sidecar, sel.ids);
+            return [
+              ...lm.rects.map((r, i) => <div key={`s${i}`} className="sc-paperpage-sel" style={{ left: r.x * k, top: r.y * k, width: r.w * k, height: Math.max(1.5, r.h * k) }} />),
+              ...lm.rings.map(([x, y], i) => <div key={`sr${i}`} className="sc-paperpage-ring is-sel" style={{ left: x * k - 5, top: y * k - 5 }} />),
+            ];
+          })()}
+        {plotHit?.page && <div className="sc-paperpage-ring" style={{ left: plotHit.page[0] * k - 6, top: plotHit.page[1] * k - 6, width: 12, height: 12 }} />}
+        {plotHit?.rect && <div className="sc-paperpage-hover" style={{ left: plotHit.rect.x * k, top: plotHit.rect.y * k, width: Math.max(2, plotHit.rect.w * k), height: Math.max(2, plotHit.rect.h * k), background: "transparent", outline: "2px solid #fa8c16" }} />}
+        {plotHit?.fields?.cell &&
+          (() => {
+            const lm = linkedMarks(sidecar, new Set([`${plotHit.fields.cell}`]));
+            return lm.rects.map((r, i) => <div key={`l${i}`} className="sc-paperpage-hover" style={{ left: r.x * k, top: r.y * k, width: r.w * k, height: Math.max(2, r.h * k) }} />);
+          })()}
+        {plotHit && tip && !hit && (
+          <div className="sc-tooltip" style={{ position: "absolute", left: Math.min(tip.px + 14, width - 280), top: tip.py + 14, maxWidth: 280, pointerEvents: "none", zIndex: 5 }}>
+            <div style={{ fontWeight: 600 }}>{plotHit.fields ? plotHit.fields.cell || plotHit.fields.patient || plotHit.fields.gene || plotHit.fields.label || `${fig.label}${plotHit.region.panel || ""}` : `${fig.label}${plotHit.region.panel || ""}`}</div>
+            {plotHit.fields &&
+              Object.entries(plotHit.fields)
+                .filter(([key]) => key !== "cell")
+                .map(([key, v]) => <div key={key}>{`${key}: ${fmtVal(v)}`}</div>)}
+            {plotHit.axis && <div>{`x: ${plotHit.axis.x == null ? "–" : fmtVal(plotHit.axis.x)} · y: ${plotHit.axis.y == null ? "–" : fmtVal(plotHit.axis.y)}`}</div>}
+            <div style={{ opacity: 0.8 }}>{plotHit.fields?.cell ? "click to select (shift adds)" : plotHit.fields?.patient ? "click to open the patient" : "click: open the panel"}</div>
+          </div>
+        )}
         {hit &&
           highlightRects(sidecar, hit.region.rowset, hit.region.id, new Set([hit.id])).map((r, i) => (
             <div key={`h${i}`} className="sc-paperpage-hover" style={{ left: r.x * k, top: r.y * k, width: r.w * k, height: Math.max(2, r.h * k) }} />
           ))}
         {brushBox && <div className="sc-paperpage-brush" style={{ left: brushBox.x * k, top: brushBox.y0 * k, width: brushBox.w * k, height: (brushBox.y1 - brushBox.y0) * k }} />}
-        {region && !hit && (
+        {region && !hit && !plotHit?.fields && (
           <div
             className="sc-paperpage-region"
             style={{ left: region.x0 * k, top: region.y0 * k, width: (region.x1 - region.x0) * k, height: (region.y1 - region.y0) * k }}
@@ -201,7 +251,7 @@ export default function PaperFigurePage({ label }) {
             <div style={{ opacity: 0.8 }}>click to select · drag to select rows (shift adds)</div>
           </div>
         )}
-        {hover && tip && !hit && (
+        {hover && tip && !hit && !plotHit && (
           <div className="sc-tooltip" style={{ position: "absolute", left: Math.min(tip.px + 14, width - 280), top: tip.py + 14, maxWidth: 280, pointerEvents: "none", zIndex: 5 }}>
             <div style={{ fontWeight: 600 }}>{`${fig.label}${hover.letter}`}</div>
             <div>{hover.status}</div>
