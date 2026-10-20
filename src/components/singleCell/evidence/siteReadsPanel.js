@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { Alert, Col, Row, Segmented, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
-import igv from "../../../../node_modules/igv/dist/igv.esm.min.js";
+import igv from "../../../helpers/singleCell/igvLazy";
 import { casePath } from "../../../redux/singleCell/loaders";
 import { readPasses } from "../../../helpers/singleCell/siteEvidence";
 import { altFirstSort } from "../../../helpers/singleCell/igvTracks";
