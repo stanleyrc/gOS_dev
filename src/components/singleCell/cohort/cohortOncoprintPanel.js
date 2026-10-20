@@ -50,7 +50,7 @@ import { BiallelicSwitch, TwoHitCell, TwoHitLegend } from "./twoHitGlyph";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", snv: "#1B9E77", complex: "#E66101" };
-const CLASS_NAMES = { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "Fusion", complex: "Complex (DM / TIC / BFB)" };
+const CLASS_NAMES = { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "Fusion", complex: "Complex (ecDNA / TIC / BFB)" };
 const PRESET_NAMES = { recommended: "Recommended", gbm: "GBM genes", oncokb: "OncoKB / CGC", all: "All" };
 const CELL_H = 24;
 const GENE_W = 170;
@@ -439,7 +439,7 @@ export default function CohortOncoprintPanel({ summaries, files, tsg = null }) {
           </svg>
           {tsg && tsg.hasLoss && <TwoHitLegend style={{ marginTop: 6, marginRight: 12 }} />}
           <Swatches style={{ marginTop: 6 }} items={ONCOPRINT_CLASSES.map((c) => ({ key: c, color: CLASS_COLORS[c], label: `${CLASS_NAMES[c]} (${GLYPH[c]})` }))} />
-          <HintLine text="Click a gene name for its card (OncoKB role and drugs, cohort evidence, cBioPortal); × hides a row. OG / TSG = OncoKB oncogene / tumour suppressor; rows are grouped by role (switch with Rows). Structural rows: DM = double minute / ecDNA, TIC = templated insertion chain, rDup / rDel = reciprocal duplication / deletion pair, BFB = breakage-fusion-bridge; bracketed numbers are chromosomes." />
+          <HintLine text="Click a gene name for its card (OncoKB role and drugs, cohort evidence, cBioPortal); × hides a row. OG / TSG = OncoKB oncogene / tumour suppressor; rows are grouped by role (switch with Rows). Structural rows: ecDNA = gGnome DM (double minute), TIC = templated insertion chain, rDup / rDel = reciprocal duplication / deletion pair, BFB = breakage-fusion-bridge; bracketed numbers are chromosomes." />
           <HintLine text="Fill intensity is the fraction of tumour cells that carry the event; the number is that fraction. Solid outline = clonal (more than 95% of cells), dashed = subclonal. Several event classes of one gene stack as stripes. Bars on top count rows altered per patient; the right column counts patients per row. Click a cell to open that patient's Single-Cell tab on the Drivers layer at the event; click a gene name to hide the row." />
         </div>
       )}

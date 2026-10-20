@@ -33,7 +33,7 @@ describe("notable SVs", () => {
     expect(f2.members).toBe("rDelDup (1,7) in 4 cells, TIC (1,7) in 4 cells");
     expect(f2.chromosomes).toEqual(["chr1", "chr7"]);
     expect(f2.genes).toEqual(["EGFR", "ZZZ1"]);
-    expect(f2.ecdna).toMatchObject({ label: "DM (7)", overlap: 4, carriers: 4 });
+    expect(f2.ecdna).toMatchObject({ label: "ecDNA (7)", overlap: 4, carriers: 4 });
   });
   test("no gene annotation: genes null (not available), not empty", () => {
     expect(notableSvs(buildDriverEntries(events))[0].genes).toBeNull();
