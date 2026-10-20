@@ -444,7 +444,8 @@
         "tab14": "Single-Cell ecDNA",
         "tab15": "Single-Cell Evidence",
         "tab16": "Single-Cell Story",
-        "tab18": "Compare Trees"
+        "tab18": "Compare Trees",
+        "tab19": "Single-Cell Purity/Ploidy"
       }
     },
     "detail-error-view": {
