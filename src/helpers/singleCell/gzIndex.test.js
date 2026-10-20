@@ -1,4 +1,6 @@
-import { dataRootOf, hasGzSibling, parseGzIndex, relativeToRoot } from "./gzIndex";
+import { dataRootOf, gzEntry, parseGzIndex, relativeToRoot, sourceIsFresh } from "./gzIndex";
+
+const entry = { source: "MGH303/snv_matrix.json", size: 100, mtime: 1760000000000 };
 
 describe("gzIndex", () => {
   it("finds the data root of absolute and relative paths", () => {
@@ -11,15 +13,24 @@ describe("gzIndex", () => {
     expect(relativeToRoot("https://x.org/a/data/_cohort/rna/cells.json?v=2")).toBe("_cohort/rna/cells.json");
     expect(relativeToRoot("nope.json")).toBeNull();
   });
-  it("parses the index defensively", () => {
-    expect(parseGzIndex({ files: ["a/b.json", 3, ""] })).toEqual(new Set(["a/b.json"]));
+  it("parses only schema 2 entries", () => {
+    const idx = parseGzIndex({ schemaVersion: 2, files: { "a/b.json": entry, "bad.json": { source: 3 } } });
+    expect([...idx.keys()]).toEqual(["a/b.json"]);
+    expect(parseGzIndex({ schemaVersion: 1, files: ["a.json"] }).size).toBe(0);
     expect(parseGzIndex(null).size).toBe(0);
-    expect(parseGzIndex({ files: "x" }).size).toBe(0);
   });
-  it("matches only listed files", () => {
-    const idx = parseGzIndex({ files: ["MGH303/snv_matrix.json"] });
-    expect(hasGzSibling(idx, "https://x.org/gOS/data/MGH303/snv_matrix.json")).toBe(true);
-    expect(hasGzSibling(idx, "https://x.org/gOS/data/MGH303/tree.nwk")).toBe(false);
-    expect(hasGzSibling(null, "data/a.json")).toBe(false);
+  it("finds entries by path", () => {
+    const idx = parseGzIndex({ schemaVersion: 2, files: { "MGH303/snv_matrix.json": entry } });
+    expect(gzEntry(idx, "https://x.org/gOS/data/MGH303/snv_matrix.json")).toMatchObject({ size: 100 });
+    expect(gzEntry(idx, "https://x.org/gOS/data/MGH303/tree.nwk")).toBeNull();
+    expect(gzEntry(null, "data/a.json")).toBeNull();
+  });
+  it("accepts the .gz only while the source still has the recorded size and mtime", () => {
+    const ok = { "content-length": "100", "last-modified": new Date(1760000000500).toUTCString() };
+    expect(sourceIsFresh(entry, ok)).toBe(true);
+    expect(sourceIsFresh(entry, { ...ok, "content-length": "101" })).toBe(false);
+    expect(sourceIsFresh(entry, { ...ok, "last-modified": new Date(1760000100000).toUTCString() })).toBe(false);
+    expect(sourceIsFresh(entry, {})).toBe(false);
+    expect(sourceIsFresh(null, ok)).toBe(false);
   });
 });
