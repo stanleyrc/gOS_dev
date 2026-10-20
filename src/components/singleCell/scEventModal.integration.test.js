@@ -19,6 +19,8 @@ jest.mock("../tracksModal", () => () => <div data-testid="tracks" />);
 jest.mock("./eventCellTracks", () => ({ __esModule: true, default: () => <div data-testid="event-tracks" />, EventReads: () => <div data-testid="event-reads" /> }));
 jest.mock("../alterationCard", () => () => <div data-testid="alteration" />);
 
+jest.setTimeout(60000); // the lazy modal chunk transforms its whole module graph on first import
+
 describe("ScEventModal with the real reducers and modal", () => {
   it("shows the popup after selectFilteredEvent on a single-cell tab", async () => {
     const reducers = require("../../redux/reducers").default;
