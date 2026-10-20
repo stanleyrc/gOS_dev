@@ -74,6 +74,7 @@ const CohortCladesPanel = React.lazy(() => import("./cohort/cohortCladesPanel"))
 const CohortQcPanel = React.lazy(() => import("./cohort/cohortQcPanel"));
 const WelcomeView = React.lazy(() => import("./guide/welcomeView"));
 const MethodsView = React.lazy(() => import("./guide/methodsView"));
+const ConceptsView = React.lazy(() => import("./guide/conceptsView"));
 const CohortTreeShapePanel = React.lazy(() => import("./cohort/cohortTreeShapePanel"));
 const CohortAlignedTreesPanel = React.lazy(() => import("./cohort/cohortAlignedTreesPanel"));
 const CohortMutJunctionsPanel = React.lazy(() => import("./cohort/cohortMutJunctionsPanel"));
@@ -781,6 +782,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "methods" && (
           <Col span={24}>
             <MethodsView />
+          </Col>
+        )}
+        {view === "concepts" && (
+          <Col span={24}>
+            <ConceptsView dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} onView={setView} />
           </Col>
         )}
         {view === "qc" && (
