@@ -2,9 +2,13 @@
 // labels and one-line purposes live in translations
 // (cohort.view-<key>, cohort.purpose-<key>, cohort.group-<group>). Pure data + helpers.
 
-export const COHORT_VIEW_GROUPS = ["findings", "genome", "evolution", "rna", "explore", "guide"];
+export const COHORT_VIEW_GROUPS = ["paper", "findings", "genome", "evolution", "rna", "explore", "guide"];
+
+// one tab per manuscript figure, in the paper's order (paperFigureId maps a key to the manifest's figure label)
+export const PAPER_FIGURE_TABS = ["1", "3", "4", "5", "6", "S1", "S6", "V1", "V2", "V3", "V4", "V5", "V6"];
 
 export const COHORT_VIEWS = [
+  ...PAPER_FIGURE_TABS.map((n) => ({ key: `paperfig${n}`, group: "paper" })),
   { key: "overview", group: "findings" },
   { key: "portrait", group: "findings" },
   { key: "reports", group: "findings" },
@@ -53,3 +57,9 @@ export function startsGroup(key) {
 
 /** Views of one group, in tab order. */
 export const viewsInGroup = (group) => COHORT_VIEWS.filter((v) => v.group === group);
+
+/** Figure label ("Fig 4") of a paper-figure tab key ("paperfig4"), else null. */
+export function paperFigureLabel(key) {
+  const m = /^paperfig([A-Z]?\d+)$/.exec(`${key ?? ""}`);
+  return m ? `Fig ${m[1]}` : null;
+}

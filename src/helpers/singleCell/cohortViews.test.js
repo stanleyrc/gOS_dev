@@ -1,4 +1,4 @@
-import { COHORT_VIEWS, COHORT_VIEW_GROUPS, cohortView, resolveCohortView, startsGroup } from "./cohortViews";
+import { COHORT_VIEWS, COHORT_VIEW_GROUPS, cohortView, paperFigureLabel, resolveCohortView, startsGroup } from "./cohortViews";
 import en from "../../translations/en/common.json";
 
 describe("cohort views", () => {
@@ -9,8 +9,12 @@ describe("cohort views", () => {
     const order = COHORT_VIEWS.map((v) => v.group).filter((g, i, a) => i === 0 || a[i - 1] !== g);
     expect(order).toEqual(COHORT_VIEW_GROUPS);
   });
-  it("leads with the overview and the findings views", () => {
-    expect(COHORT_VIEWS.slice(0, 3).map((v) => v.key)).toEqual(["overview", "portrait", "reports"]);
+  it("leads with the paper's figure tabs, then the overview and the findings views", () => {
+    expect(COHORT_VIEWS.slice(0, 3).map((v) => v.key)).toEqual(["paperfig1", "paperfig3", "paperfig4"]);
+    const k = COHORT_VIEWS.findIndex((v) => v.group !== "paper");
+    expect(COHORT_VIEWS.slice(k, k + 3).map((v) => v.key)).toEqual(["overview", "portrait", "reports"]);
+    expect(paperFigureLabel("paperfigS1")).toBe("Fig S1");
+    expect(paperFigureLabel("overview")).toBeNull();
   });
   it("resolves unknown keys to the overview", () => {
     expect(resolveCohortView("qc")).toBe("qc");
@@ -19,7 +23,7 @@ describe("cohort views", () => {
     expect(cohortView("nope").key).toBe("overview");
   });
   it("marks the first view of each group after the first", () => {
-    expect(COHORT_VIEWS.filter((v) => startsGroup(v.key)).map((v) => v.key)).toEqual(["drivers", "treeshape", "rna", "events", "welcome"]);
+    expect(COHORT_VIEWS.filter((v) => startsGroup(v.key)).map((v) => v.key)).toEqual(["overview", "drivers", "treeshape", "rna", "events", "welcome"]);
   });
   it("every view and group has a label and a purpose", () => {
     const c = en.components["single-cell"].cohort;
