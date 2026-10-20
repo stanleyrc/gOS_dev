@@ -3,7 +3,7 @@
 // flows and artifact diagnostics. d3-free helpers for the Signatures tab.
 
 export const DEFAULT_VERSION = "v2_current";
-export const DEFAULT_VERSION_B = "v4_tree_cells";
+export const DEFAULT_VERSION_B = "v7_ge3cells"; // v2 -> v7 avoids the SBS5/SBS40c name swap that v2 -> v4 shows as "100% change"
 export const NOT_IN_VERSION = "(not in version)";
 export const OTHER_NODE = "other";
 export const SPLITS = [
