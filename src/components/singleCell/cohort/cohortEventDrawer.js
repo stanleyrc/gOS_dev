@@ -74,8 +74,12 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
     if (!event) return;
     setPicked(pickInfo.cells);
     setShowIgv(Boolean(snvSite));
-    if (eventDomains) dispatch(settingsActions.updateDomains(eventDomains));
-  }, [event, pickInfo, snvSite, eventDomains, dispatch]);
+  }, [event, pickInfo, snvSite]);
+  // zoom only when the event's own window changes (not on every render: a gene search moves the shared domains away from it)
+  const eventDomainsKey = eventDomains ? JSON.stringify(eventDomains) : "";
+  useEffect(() => {
+    if (eventDomainsKey) dispatch(settingsActions.updateDomains(JSON.parse(eventDomainsKey)));
+  }, [eventDomainsKey, dispatch]);
 
   useEffect(() => {
     if (!dataset) return undefined;

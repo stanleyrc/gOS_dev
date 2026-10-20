@@ -83,9 +83,10 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
 
   const location = complexLocation || record?.actualLocation || record?.location;
   const eventDomains = useMemo(() => paddedEventDomains(chromoBins, location, pad, genomeLength), [chromoBins, location, pad, genomeLength]);
+  const eventDomainsKey = eventDomains ? JSON.stringify(eventDomains) : "";
   useEffect(() => {
-    if (eventDomains) dispatch(settingsActions.updateDomains(eventDomains));
-  }, [dispatch, eventDomains]);
+    if (eventDomainsKey) dispatch(settingsActions.updateDomains(JSON.parse(eventDomainsKey)));
+  }, [dispatch, eventDomainsKey]);
 
   // complex SVs: IGV is centred on the first event junction's breakpoint in the first shown cell
   const dataset = useSelector((state) => state.Settings.dataset);
