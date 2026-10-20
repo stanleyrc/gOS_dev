@@ -254,7 +254,14 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const datasetOf = (summary) =>
     datasets.find((d) => `${d.id}` === `${summary.record.datasetId}`) || null;
 
+  // per-cell CN of every patient (cohort heatmaps): not needed on the paper-figure tabs, loaded on the first other view
+  const needsRows = !paperFigureLabel(view);
+  const [rowsWanted, setRowsWanted] = useState(needsRows);
   useEffect(() => {
+    if (needsRows) setRowsWanted(true);
+  }, [needsRows]);
+  useEffect(() => {
+    if (!rowsWanted) return undefined;
     let active = true;
     const source = axios.CancelToken.source();
     setRows({});
@@ -285,7 +292,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
       active = false;
       source.cancel("cohort view closed");
     };
-  }, [summaries, datasets, datafiles, chromoBins, genomeLength]);
+  }, [summaries, datasets, datafiles, chromoBins, genomeLength, rowsWanted]);
 
   const cloneColors = useMemo(
     () => cloneColorMap(summaries.flatMap((s) => Object.keys(s.cloneCounts).map((clone_id) => ({ clone_id })))),
