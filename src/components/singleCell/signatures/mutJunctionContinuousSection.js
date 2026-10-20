@@ -60,6 +60,7 @@ export default function MutJunctionContinuousSection({ data, patientId = null, o
   const [excludeNoisy, setExcludeNoisy] = useState(false);
   const [win, setWin] = useState(5000);
   const [sigSide, setSigSide] = useState("cis");
+  const [showExpected, setShowExpected] = useState(false);
 
   const block = data?.[territory];
   const cd = useMemo(() => continuousData(block, patientId), [block, patientId]);
@@ -105,6 +106,10 @@ export default function MutJunctionContinuousSection({ data, patientId = null, o
       <Space size={8} wrap>
         <Segmented size="small" value={territory} onChange={setTerritory} options={[{ value: "focal", label: "All callable (CN-normalised)" }, { value: "focal_diploid", label: "Diploid territory only" }]} />
         <Segmented size="small" value={cn ? "cn" : "raw"} onChange={(v) => setCn(v === "cn")} options={[{ value: "cn", label: "CN-adjusted rate" }, { value: "raw", label: "Raw rate" }]} />
+        <Space size={4}>
+          <Switch size="small" checked={showExpected} onChange={setShowExpected} />
+          <Text style={{ fontSize: 12 }}>Expected (CN-matched)</Text>
+        </Space>
         <Select size="small" style={{ width: 140 }} value={f} onChange={setFilter} options={filters.length ? filters : [{ value: "all", label: "All tree sites" }]} />
         <Segmented size="small" value={subset} onChange={setSubset} options={FOCAL_SUBSETS} />
         <Space size={4}><Switch size="small" checked={excludeNear} onChange={setExcludeNear} /><Text style={{ fontSize: TYPE.body }}>exclude &lt; 500 bp</Text></Space>
@@ -124,7 +129,7 @@ export default function MutJunctionContinuousSection({ data, patientId = null, o
         <Select size="small" style={{ width: 110 }} value={zoom} onChange={setZoom} options={ZOOMS.map((z) => ({ value: z, label: `+/- ${fmtDist(z)}` }))} />
       </Space>
       <Paragraph style={{ marginBottom: 0 }}>{summ(w5)}</Paragraph>
-      <MutJunctionDistancePlot points={points} patients={patients} shapeOrder={Object.keys(cd.patients)} smooth={smooth} bins={bins} background={bg} zoom={zoom} axis={axis} cn={cn} onPoint={onPaint ? (p) => onPaint({ id: p.snv, junction: p.junction }) : null} />
+      <MutJunctionDistancePlot points={points} patients={patients} shapeOrder={Object.keys(cd.patients)} smooth={smooth} bins={bins} background={bg} zoom={zoom} axis={axis} cn={cn} showExpected={showExpected} onPoint={onPaint ? (p) => onPaint({ id: p.snv, junction: p.junction }) : null} />
       <HintLine
         text={`${patients.length} patient(s): ${patients.join(", ")}. Callable = depth >= 4 in >= 2 of 20 sampled tumour cells (cell CRAMs; ${Object.values(cd.patients)[0]?.bg?.all?.definition || ""}). CN-adjusted = per diploid-equivalent kb (callable x carrier CN / 2), since a side with more copies has more chances to mutate and to be detected. Dashed: expected from the background windows matched by CN class; band: genome background with 95% CI. Kernel: Gaussian, SD = bandwidth, not crossing the breakpoint.`}
       />
