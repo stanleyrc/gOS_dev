@@ -14,7 +14,11 @@ import SnvLensLayer, { loadSnvLookup } from "./snvLensLayer";
 import { highlightRects, hitAt, markPositions, panelTables, parseSidecar, plotHitAt, rowBand, rowsBetween, selectionTable, sidecarExtras, tableTsv, toPage } from "../../../helpers/singleCell/paperSidecar";
 import { applyPaperTokens, paperTokensVersion } from "../../../helpers/singleCell/paperPalette";
 import { encodeGroups } from "../../../helpers/singleCell/savedGroups";
-import { cellFromLabel, lensContains, lensOn, lensPan, lensToPage, lensView, lensZoom, marksInBox, nearestJunction, regionWindow } from "../../../helpers/singleCell/paperZoom";
+import { cellFromLabel, lensContains, lensIsHome, lensOn, lensPan, lensToPage, lensView, lensZoom, marksInBox, nearestJunction, pinchFactor, regionWindow } from "../../../helpers/singleCell/paperZoom";
+import { controlKey, figureControls, liveCellsOnPlot, livePatients, zoomTarget } from "../../../helpers/singleCell/paperAxes";
+import { STATE_SCORES_FILE, parseStateScores } from "../../../helpers/singleCell/paperPanels";
+import { isPatientRecord, patientKeyOf } from "../../../helpers/singleCell/cellFiles";
+import PanelControls, { controlOverlays } from "./panelControls";
 import { selectCells, selectedIds, selectionGroups, selectionText } from "../../../helpers/singleCell/paperSelection";
 import { colIndexAt, graphInWindow, regionWindows, snvAt } from "../../../helpers/singleCell/paperZoom";
 
@@ -154,7 +158,8 @@ export default function PaperFigurePage({ label }) {
   const [patientOpen, setPatientOpen] = useState(null);
   const [sel, setSel] = useState(null); // paperSelection: { byPatient, label }
   const [cellsOpen, setCellsOpen] = useState(null); // patient whose cells drawer is open
-  const drag = useRef(null); // { kind: "rows" | "box" | "pan", ... }
+  const drag = useRef(null); // { kind: "rows" | "box" | "pan" | "pinch", ... }
+  const pointers = useRef(new Map()); // active pointers (display px), for two-finger pinch zoom
   const [brushBox, setBrushBox] = useState(null);
   const [cnZoom, setCnZoom] = useState({});
   const [lens, setLens] = useState(null); // panel zoom: paperZoom lens + letter
@@ -188,6 +193,35 @@ export default function PaperFigurePage({ label }) {
     };
   }, [walkPatient, dataset]);
   const tracks = useMemo(() => genomeTracks(sidecar), [sidecar]);
+  // in-figure controls (patient / gene / clade choices), state by control key
+  const controls = useMemo(() => figureControls(sidecar, fig?.id), [sidecar, fig?.id]);
+  const [ctrlVals, setCtrlVals] = useState({});
+  useEffect(() => setCtrlVals({}), [label]);
+  const wantState = controls.some((c) => c.source === "state_scores");
+  const stateEx = useCohortExport(wantState && dataset?.dataPath ? dataset : null, STATE_SCORES_FILE);
+  const statePoints = useMemo(() => parseStateScores(stateEx.data) || [], [stateEx.data]);
+  const patientChoices = useMemo(() => {
+    const fromData = (datafiles || []).filter(isPatientRecord).map((r) => `${patientKeyOf(r)}`);
+    const fromSidecar = (sidecar?.regions || []).map((r) => r.patient).filter(Boolean);
+    return [...new Set([...fromData, ...fromSidecar])].sort();
+  }, [datafiles, sidecar]);
+  const optionsOf = (c) => {
+    if (c.source === "state_scores") return livePatients(statePoints).map((p) => ({ value: p.patient, label: `${p.patient} (${p.count} cells)` }));
+    if (c.type === "patient-view") return (c.options || patientChoices).map((o) => ({ value: o, label: o }));
+    return (c.options || []).map((o) => ({ value: o, label: o }));
+  };
+  // the live state-score control: the chosen patient's cells matched to the static plot's points
+  const stateCtl = controls.find((c) => c.source === "state_scores");
+  const stateVal = stateCtl ? ctrlVals[controlKey(stateCtl)] : null;
+  const live = useMemo(() => {
+    if (!stateCtl) return null;
+    const region = (sidecar?.regions || []).find((r) => r.kind === "plot" && `${r.panel}`.toLowerCase() === stateCtl.panel.toLowerCase() && r.marks.some((m) => m.type === "points"));
+    if (!region || !stateVal) return { status: stateEx.status, region, cells: [] };
+    if (stateEx.status !== "ok") return { status: stateEx.status, region, cells: [] };
+    const m = liveCellsOnPlot(region, statePoints, stateVal);
+    return { status: "ok", region, cells: m.cells, matched: m.matched, total: m.total };
+  }, [stateCtl, stateVal, stateEx.status, statePoints, sidecar]);
+  const panelBox = useMemo(() => new Map(regions.map((b) => [`${b.letter}`.toLowerCase(), b])), [regions]);
   const sheetRef = useRef(null);
   const kRef = useRef(1);
   const lensRef = useRef(null);
@@ -226,14 +260,16 @@ export default function PaperFigurePage({ label }) {
       if (cur && lensContains(cur, k, px, py)) {
         e.preventDefault();
         const next = lensZoom(cur, k, f, px, py);
-        setLens(next.s <= 1.001 ? null : { ...next, letter: cur.letter });
+        setLens(lensIsHome(next) ? null : { ...next, letter: cur.letter });
         return;
       }
       if (f <= 1) return; // zooming out outside a lens: let the page scroll
       const pr = panelRectAt(x, y);
       if (!pr) return;
+      const zt = zoomTarget(sidecar, x, y, pr.rect); // the zoom axis of the region under the pointer (matrices / genome: columns only)
+      if (!zt) return;
       e.preventDefault();
-      setLens({ ...lensZoom(lensOn(pr.rect), k, f, px, py), letter: pr.letter });
+      setLens({ ...lensZoom(lensOn(zt.rect, zt.mode), k, f, px, py), letter: pr.letter });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -268,27 +304,28 @@ export default function PaperFigurePage({ label }) {
   const trackInfo = (t, x) => {
     const pos = regionWindow(t.region, x, x);
     const g = graphs.current.get(t.cell);
-    const tolBp = (Math.abs(Number(t.region.axis.to) - Number(t.region.axis.from)) / (t.region.w * k * (lens ? lens.s : 1))) * 6;
+    const tolBp = (Math.abs(Number(t.region.axis.to) - Number(t.region.axis.from)) / (t.region.w * k * (lens ? lens.sx : 1))) * 6;
     const j = g ? nearestJunction(graphInWindow(g, { chr: pos.chr, from: pos.from - tolBp, to: pos.from + tolBp }).juncs, pos.chr, pos.from, tolBp) : null;
     return { track: t, pos, junction: j };
   };
-  // overlays drawn at a scale kk (k on the page, k * s inside the lens)
-  const overlays = (kk, keyp) => {
+  // overlays drawn at scales kx, ky (k on the page; k * sx, k * sy inside the lens)
+  const overlays = (kx, ky, keyp) => {
     const out = [];
     if (sel) {
       const lm = linkedMarks(sidecar, ids);
-      lm.rects.forEach((r, i) => out.push(<div key={`${keyp}s${i}`} className="sc-paperpage-sel" style={{ left: r.x * kk, top: r.y * kk, width: r.w * kk, height: Math.max(1.5, r.h * kk) }} />));
-      lm.rings.forEach(([x, y], i) => out.push(<div key={`${keyp}sr${i}`} className="sc-paperpage-ring is-sel" style={{ left: x * kk - 5, top: y * kk - 5 }} />));
-      tracks.filter((t) => ids.has(t.cell)).forEach((t) => out.push(<div key={`${keyp}st${t.id}`} className="sc-paperpage-sel" style={{ left: t.rect.x * kk, top: t.rect.y * kk, width: t.rect.w * kk, height: t.rect.h * kk, background: "transparent" }} />));
+      lm.rects.forEach((r, i) => out.push(<div key={`${keyp}s${i}`} className="sc-paperpage-sel" style={{ left: r.x * kx, top: r.y * ky, width: r.w * kx, height: Math.max(1.5, r.h * ky) }} />));
+      lm.rings.forEach(([x, y], i) => out.push(<div key={`${keyp}sr${i}`} className="sc-paperpage-ring is-sel" style={{ left: x * kx - 5, top: y * ky - 5 }} />));
+      tracks.filter((t) => ids.has(t.cell)).forEach((t) => out.push(<div key={`${keyp}st${t.id}`} className="sc-paperpage-sel" style={{ left: t.rect.x * kx, top: t.rect.y * ky, width: t.rect.w * kx, height: t.rect.h * ky, background: "transparent" }} />));
     }
-    if (hit) linkedMarks(sidecar, new Set([hit.id])).rects.forEach((r, i) => out.push(<div key={`${keyp}h${i}`} className="sc-paperpage-hover" style={{ left: r.x * kk, top: r.y * kk, width: r.w * kk, height: Math.max(2, r.h * kk) }} />));
-    if (plotHit?.page) out.push(<div key={`${keyp}pr`} className="sc-paperpage-ring" style={{ left: plotHit.page[0] * kk - 6, top: plotHit.page[1] * kk - 6, width: 12, height: 12 }} />);
-    if (plotHit?.rect) out.push(<div key={`${keyp}pt`} className="sc-paperpage-hover" style={{ left: plotHit.rect.x * kk, top: plotHit.rect.y * kk, width: Math.max(2, plotHit.rect.w * kk), height: Math.max(2, plotHit.rect.h * kk), background: "transparent", outline: "2px solid #fa8c16" }} />);
+    if (hit) linkedMarks(sidecar, new Set([hit.id])).rects.forEach((r, i) => out.push(<div key={`${keyp}h${i}`} className="sc-paperpage-hover" style={{ left: r.x * kx, top: r.y * ky, width: r.w * kx, height: Math.max(2, r.h * ky) }} />));
+    if (plotHit?.page) out.push(<div key={`${keyp}pr`} className="sc-paperpage-ring" style={{ left: plotHit.page[0] * kx - 6, top: plotHit.page[1] * ky - 6, width: 12, height: 12 }} />);
+    if (plotHit?.rect) out.push(<div key={`${keyp}pt`} className="sc-paperpage-hover" style={{ left: plotHit.rect.x * kx, top: plotHit.rect.y * ky, width: Math.max(2, plotHit.rect.w * kx), height: Math.max(2, plotHit.rect.h * ky), background: "transparent", outline: "2px solid #fa8c16" }} />);
     if (trackHit) {
       const t = trackHit.track;
-      out.push(<div key={`${keyp}tr`} className="sc-paperpage-hover" style={{ left: t.rect.x * kk, top: t.rect.y * kk, width: t.rect.w * kk, height: t.rect.h * kk, background: "transparent", outline: "1.5px solid #fa8c16" }} />);
+      out.push(<div key={`${keyp}tr`} className="sc-paperpage-hover" style={{ left: t.rect.x * kx, top: t.rect.y * ky, width: t.rect.w * kx, height: t.rect.h * ky, background: "transparent", outline: "1.5px solid #fa8c16" }} />);
     }
-    if (brushBox) out.push(<div key={`${keyp}bb`} className="sc-paperpage-brush" style={{ left: brushBox.x * kk, top: brushBox.y0 * kk, width: brushBox.w * kk, height: (brushBox.y1 - brushBox.y0) * kk }} />);
+    controlOverlays({ controls, values: ctrlVals, sidecar, live, kx, ky, keyp }).forEach((el) => out.push(el));
+    if (brushBox) out.push(<div key={`${keyp}bb`} className="sc-paperpage-brush" style={{ left: brushBox.x * kx, top: brushBox.y0 * ky, width: brushBox.w * kx, height: (brushBox.y1 - brushBox.y0) * ky }} />);
     if (sidecar)
       Object.keys(cnZoom).forEach((id) => {
         const reg = sidecar.regions.find((r) => r.id === id);
@@ -297,7 +334,7 @@ export default function PaperFigurePage({ label }) {
           <CnZoomLayer
             key={`${keyp}z${id}`}
             region={reg}
-            k={kk}
+            k={kx}
             win={zoomWin(id)}
             onWindow={(w) => setCnZoom((z) => ({ ...z, [id]: w }))}
             onClose={() =>
@@ -321,13 +358,14 @@ export default function PaperFigurePage({ label }) {
       .flatMap((t) => {
         const y0 = Math.max(t.rect.y, v.y0);
         const y1 = Math.min(t.rect.y + t.rect.h, v.y1);
-        const s = k * lens.s;
+        const sx = k * lens.sx;
+        const sy = k * lens.sy;
         // one live track per visible axis window (broken axes: chr2 | chr12 ...)
         return regionWindows(t.region, Math.max(t.rect.x, v.x0), Math.min(t.rect.x + t.rect.w, v.x1)).map((w, wi) => (
           <GenomeTrackLayer
             key={`gt${t.id}:${wi}`}
             cell={t.cell}
-            box={{ left: (w.x0 - lens.ox) * s, top: (y0 - lens.oy) * s, width: (w.x1 - w.x0) * s, height: (y1 - y0) * s }}
+            box={{ left: (w.x0 - lens.ox) * sx, top: (y0 - lens.oy) * sy, width: (w.x1 - w.x0) * sx, height: (y1 - y0) * sy }}
             win={{ chr: w.chr, from: w.from, to: w.to }}
             onGraph={(c, g) => {
               if (!graphs.current.has(c)) {
@@ -354,12 +392,13 @@ export default function PaperFigurePage({ label }) {
         const c1 = Math.min(nC, Math.ceil(((Math.min(r.x + r.w, v.x1) - r.x) / r.w) * nC));
         const q0 = Math.max(0, Math.floor(((Math.max(r.y, v.y0) - r.y) / r.h) * nR));
         const q1 = Math.min(nR, Math.ceil(((Math.min(r.y + r.h, v.y1) - r.y) / r.h) * nR));
-        const s = k * lens.s;
+        const sx = k * lens.sx;
+        const sy = k * lens.sy;
         const x0 = r.x + (c0 / nC) * r.w;
         const x1 = r.x + (c1 / nC) * r.w;
         const y0 = r.y + (q0 / nR) * r.h;
         const y1 = r.y + (q1 / nR) * r.h;
-        return <SnvLensLayer key={`sv${r.id}`} region={r} lookup={L} r0={q0} r1={q1} c0={c0} c1={c1} box={{ left: (x0 - lens.ox) * s, top: (y0 - lens.oy) * s, width: (x1 - x0) * s, height: (y1 - y0) * s }} />;
+        return <SnvLensLayer key={`sv${r.id}`} region={r} lookup={L} r0={q0} r1={q1} c0={c0} c1={c1} box={{ left: (x0 - lens.ox) * sx, top: (y0 - lens.oy) * sy, width: (x1 - x0) * sx, height: (y1 - y0) * sy }} />;
       });
   };
   const lensBox = lens ? { left: lens.rect.x * k, top: lens.rect.y * k, width: lens.rect.w * k, height: lens.rect.h * k } : null;
@@ -452,6 +491,12 @@ export default function PaperFigurePage({ label }) {
         style={{ position: "relative", width, height, cursor: drag.current?.kind === "pan" ? "grabbing" : hit || trackHit ? "crosshair" : hover || plotHit?.fields ? "pointer" : lens ? "grab" : "default", touchAction: "none", userSelect: "none" }}
         onPointerDown={(e) => {
           const [x, y, px, py] = at(e);
+          pointers.current.set(e.pointerId, [px, py]);
+          if (pointers.current.size === 2) {
+            const [a, b] = [...pointers.current.values()];
+            drag.current = { kind: "pinch", d: Math.hypot(a[0] - b[0], a[1] - b[1]), moved: true };
+            return;
+          }
           const h = trackAt(x, y) ? null : hitAt(sidecar, x, y);
           if (h) {
             drag.current = { kind: "rows", h, y0: y, moved: false };
@@ -468,6 +513,27 @@ export default function PaperFigurePage({ label }) {
         onPointerMove={(e) => {
           const [x, y, px, py] = at(e);
           const d = drag.current;
+          if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, [px, py]);
+          if (d?.kind === "pinch") {
+            // two fingers: zoom about their midpoint along the zoom axis of the region under it
+            if (pointers.current.size < 2) return;
+            const [a, b] = [...pointers.current.values()];
+            const dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+            const f = pinchFactor(d.d, dist);
+            d.d = dist;
+            const [mx, my] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+            const [qx, qy] = toPt(mx, my);
+            setLens((cur) => {
+              if (cur && lensContains(cur, k, mx, my)) {
+                const n = lensZoom(cur, k, f, mx, my);
+                return lensIsHome(n) ? null : { ...n, letter: cur.letter };
+              }
+              const pr = f > 1 ? panelRectAt(qx, qy) : null;
+              const zt = pr ? zoomTarget(sidecar, qx, qy, pr.rect) : null;
+              return zt ? { ...lensZoom(lensOn(zt.rect, zt.mode), k, f, mx, my), letter: pr.letter } : cur;
+            });
+            return;
+          }
           if (d) {
             if (d.kind === "pan") {
               if (Math.hypot(px - d.px, py - d.py) > 2) d.moved = true;
@@ -504,8 +570,18 @@ export default function PaperFigurePage({ label }) {
           setHover(p);
           setTip(h || t || ph || p ? { px, py } : null);
         }}
+        onPointerCancel={(e) => {
+          pointers.current.delete(e.pointerId);
+          if (drag.current?.kind === "pinch") drag.current = null;
+        }}
         onPointerUp={(e) => {
+          pointers.current.delete(e.pointerId);
           const d = drag.current;
+          if (d?.kind === "pinch") {
+            if (pointers.current.size < 2) drag.current = null;
+            sheetRef.current.dataset.dragged = "1";
+            return;
+          }
           drag.current = null;
           setBrushBox(null);
           if (!d) return;
@@ -564,16 +640,30 @@ export default function PaperFigurePage({ label }) {
         }}
       >
         <img src={bestImage(fig)} alt={`${fig.label}: ${fig.title}`} draggable={false} onLoad={() => setImgReady(true)} style={{ width, height, display: "block", userSelect: "none" }} />
-        {overlays(k, "p")}
+        {overlays(k, k, "p")}
+        {controls.length > 0 && (
+          <PanelControls
+            controls={controls}
+            values={ctrlVals}
+            panelBox={panelBox}
+            k={k}
+            live={live}
+            optionsOf={optionsOf}
+            onChange={(c, v) => (c.type === "patient-view" ? v && setPatientView(v) : setCtrlVals((m) => ({ ...m, [controlKey(c)]: v })))}
+            onClear={(c) => setCtrlVals((m) => ({ ...m, [controlKey(c)]: null }))}
+            onSelectCells={(cells, patient, lbl) => setSel(selectCells(null, cells.map((c) => c.cell), patient, { label: lbl }))}
+          />
+        )}
         {region && !hit && !plotHit?.fields && !trackHit && !lens && (
           <div className="sc-paperpage-region" style={{ left: region.x0 * k, top: region.y0 * k, width: (region.x1 - region.x0) * k, height: (region.y1 - region.y0) * k }} />
         )}
         {lens && (
           <>
             <div className="sc-paperlens" style={{ ...lensBox, position: "absolute", overflow: "hidden", zIndex: 5 }}>
-              <div style={{ position: "absolute", left: -lens.ox * k * lens.s, top: -lens.oy * k * lens.s, width: width * lens.s, height: height * lens.s, pointerEvents: "none" }}>
-                <img src={bestImage(fig)} alt="" draggable={false} style={{ width: width * lens.s, height: height * lens.s, display: "block", maxWidth: "none" }} />
-                {overlays(k * lens.s, "l")}
+              <div style={{ position: "absolute", left: -lens.ox * k * lens.sx, top: -lens.oy * k * lens.sy, width: width * lens.sx, height: height * lens.sy, pointerEvents: "none" }}>
+                {/* a transform (not a resized img) so one-axis zooms stretch the SVG along that axis only */}
+                <img src={bestImage(fig)} alt="" draggable={false} style={{ width, height, display: "block", maxWidth: "none", transformOrigin: "0 0", transform: `scale(${lens.sx}, ${lens.sy})` }} />
+                {overlays(k * lens.sx, k * lens.sy, "l")}
               </div>
               <div style={{ position: "absolute", left: 0, top: 0, pointerEvents: "none" }}>
                 {lensSnv()}
@@ -585,14 +675,14 @@ export default function PaperFigurePage({ label }) {
                 <Button size="small" icon={<ZoomInOutlined />} onClick={(e) => { e.stopPropagation(); setLens((l) => ({ ...lensZoom(l, k, 1.6, lensBox.left + lensBox.width / 2, lensBox.top + lensBox.height / 2), letter: l.letter })); }} />
               </Tooltip>
               <Tooltip title="Zoom out">
-                <Button size="small" icon={<ZoomOutOutlined />} onClick={(e) => { e.stopPropagation(); setLens((l) => { const n = lensZoom(l, k, 1 / 1.6, lensBox.left + lensBox.width / 2, lensBox.top + lensBox.height / 2); return n.s <= 1.001 ? null : { ...n, letter: l.letter }; }); }} />
+                <Button size="small" icon={<ZoomOutOutlined />} onClick={(e) => { e.stopPropagation(); setLens((l) => { const n = lensZoom(l, k, 1 / 1.6, lensBox.left + lensBox.width / 2, lensBox.top + lensBox.height / 2); return lensIsHome(n) ? null : { ...n, letter: l.letter }; }); }} />
               </Tooltip>
               <Tooltip title="Reset (double-click)">
                 <Button size="small" icon={<CompressOutlined />} onClick={(e) => { e.stopPropagation(); setLens(null); }} />
               </Tooltip>
             </Space.Compact>
             <div className="sc-paperzoom-badge" style={{ left: lensBox.left, top: lensBox.top + lensBox.height + 2 }}>
-              <Text style={{ fontSize: 11 }}>{`${fig.label}${lens.letter} × ${lens.s.toFixed(1)} · wheel zoom · drag to pan · shift-drag to select · double-click resets`}</Text>
+              <Text style={{ fontSize: 11 }}>{`${fig.label}${lens.letter} × ${lens.mode === "x" ? `${lens.sx.toFixed(1)} horizontal (rows fixed)` : lens.mode === "y" ? `${lens.sy.toFixed(1)} vertical` : lens.s.toFixed(1)} · wheel / pinch zoom · drag to pan · shift-drag to select · double-click resets`}</Text>
             </div>
           </>
         )}
