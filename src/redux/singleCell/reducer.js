@@ -111,6 +111,7 @@ const initState = {
   signatures: emptySource, // the fit the tabs read: signatures.json (legacy) or signatures_joint.json, per layout.sigFit
   signaturesLegacy: emptySource, // signatures.json: { cosmic_version, genome, sets: [{ name, n, activities }] }
   signaturesJoint: emptySource, // signatures_joint.json: patient signature set, bootstrap CIs, contrasts
+  signatureVersions: emptySource, // signature_versions.json: the fit under several SNV-set definitions, flows, diagnostics
   rnaFusions: emptySource, // rna/fusions.json, normalised: { patient, nCellsRna, fusions }
   rnaSplicing: emptySource, // rna/splicing.json, normalised: { variants, clusters, cellMap }
   walks: emptySource, // walks.json: { cells, walks: [{ id, label, circular, nodes, junctions, cells: { id: cn } }] }
@@ -207,6 +208,7 @@ export default function appReducer(state = initState, action) {
         ),
         signaturesLegacy: action.signatures || emptySource,
         signaturesJoint: action.signaturesJoint || emptySource,
+        signatureVersions: action.signatureVersions || emptySource,
         walks: action.walks || emptySource,
         rnaFusions: action.rnaFusions || emptySource,
         rnaSplicing: action.rnaSplicing || emptySource,
