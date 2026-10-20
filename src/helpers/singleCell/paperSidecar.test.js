@@ -1,4 +1,4 @@
-import { axisReadout, markPositions, plotHitAt, toData, toPage, axisPosition, highlightRects, hitAt, parseSidecar, rowBand, rowIndexAt, rowsBetween } from "./paperSidecar";
+import { sidecarExtras, axisReadout, markPositions, plotHitAt, toData, toPage, axisPosition, highlightRects, hitAt, parseSidecar, rowBand, rowIndexAt, rowsBetween } from "./paperSidecar";
 
 const side = parseSidecar({
   format: "gos-paper-sidecar/1",
@@ -77,5 +77,16 @@ describe("ggplot plot regions", () => {
     expect(m).toHaveLength(1);
     expect(m[0][0]).toBeCloseTo(175);
     expect(m[0][1]).toBeCloseTo(20);
+  });
+});
+
+describe("sidecar figure extras", () => {
+  it("reads walk display names and the figure's ecDNA SNV set for a patient", () => {
+    const sc = parseSidecar({ regions: [], data: { walk_names: { patient: "P1", names: { w1: "Long 1" }, colors: { w1: "#000000" } }, ecdna_snvs: { patient: "P1", chromosome: "7", sites: ["100_A_T", "200_G_C"], pos: [100, 200], class: ["a", "b"], cell: ["c1", "c2"], site: ["100_A_T", "200_G_C"], frac: [0.5, 1] } } });
+    const x = sidecarExtras(sc, "P1");
+    expect(x.walkNames).toEqual({ w1: "Long 1" });
+    expect(x.ecdnaSnvs.map((v) => v.id)).toEqual(["7_100_A_T", "7_200_G_C"]);
+    expect(x.ecdnaSnvs[1].frac.get("c2")).toBe(1);
+    expect(sidecarExtras(sc, "P2").walkNames).toBeNull();
   });
 });

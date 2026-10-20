@@ -61,7 +61,7 @@ export function parsePaperManifest(json, base = "") {
         nIncomplete: panels.filter((p) => p.status !== "ready").length,
       };
     });
-  return { synced: json.synced || null, srctools: json.srctools || null, figures };
+  return { synced: json.synced || null, srctools: json.srctools || null, styleTokens: url(json.style_tokens), figures };
 }
 
 /** The image to show for a figure / panel: SVG when present, else PNG. */

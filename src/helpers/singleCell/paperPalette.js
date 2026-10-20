@@ -32,6 +32,11 @@ export const PAPER_CLADE_LABELS = {
 };
 
 const NORMAL_RE = /^(normal|diploid)/i;
+// style tokens of the paper (srctools paper_figures style_tokens.R -> _cohort/paper_figures/style_tokens.json), applied at run time
+let TOKEN_CLADES = {};
+let TOKEN_CLADE_OTHER = {};
+let tokensVersion = 0;
+export const paperTokensVersion = () => tokensVersion;
 
 /** Clone id -> clade number (Clone1 / Clone 2 / clade_3 -> 1 / 2 / 3), else null. */
 export function cloneNumber(clone) {
@@ -42,7 +47,7 @@ export function cloneNumber(clone) {
 /** The paper's label for a clone of a patient ("Clone 1" -> "Clade 1", MGH303 "Clone 4" -> "CI"). */
 export function paperCladeLabel(patient, clone) {
   const s = `${clone ?? ""}`;
-  const named = PAPER_CLADE_LABELS[patient]?.[s];
+  const named = TOKEN_CLADES[patient]?.name?.[s] || PAPER_CLADE_LABELS[patient]?.[s];
   if (named) return named;
   if (!s || NORMAL_RE.test(s)) return "Normal";
   const k = cloneNumber(s);
@@ -57,10 +62,13 @@ export function paperCloneColors(patient, clones) {
   const out = {};
   const numbered = [...new Set(clones.map((c) => `${c}`))].filter((c) => !NORMAL_RE.test(c) && !PAPER_CLADE_NAMED[paperCladeLabel(patient, c)]);
   numbered.sort((a, b) => (cloneNumber(a) ?? 1e9) - (cloneNumber(b) ?? 1e9) || a.localeCompare(b));
+  const reg = TOKEN_CLADES[patient]?.color || null;
   clones.forEach((c) => {
     const s = `${c}`;
     const lab = paperCladeLabel(patient, s);
-    if (PAPER_CLADE_NAMED[lab]) out[s] = PAPER_CLADE_NAMED[lab];
+    if (reg?.[lab]) out[s] = reg[lab];
+    else if (NORMAL_RE.test(s) && TOKEN_CLADE_OTHER.Normal) out[s] = TOKEN_CLADE_OTHER.Normal;
+    else if (PAPER_CLADE_NAMED[lab]) out[s] = PAPER_CLADE_NAMED[lab];
     else if (NORMAL_RE.test(s)) out[s] = PAPER_CLADE_NAMED.Normal;
     else out[s] = PAPER_CLADE_SEQ[numbered.indexOf(s) % PAPER_CLADE_SEQ.length];
   });
@@ -125,15 +133,22 @@ export const PAPER_CN5_COLORS = ["#3C4CA8", "#726AB9", "#9F7FC7", "#9F7FC7", "#F
 export const PAPER_AMPCN_STOPS = [0, 2, 5, 13, 24, 34, 45, 66, 100];
 export const PAPER_AMPCN_COLORS = ["#FFFFFF", "#FDE1B1", "#FBBA51", "#F78D10", "#F46A16", "#F1481C", "#EE2822", "#D51E25", "#88171C"];
 
-export const paperCnRgb = ramp(PAPER_CN_STOPS, PAPER_CN_COLORS);
+let cnRamp = ramp(PAPER_CN_STOPS, PAPER_CN_COLORS);
+/** CN -> [r, g, b] on the figures' CN scale (the style tokens' when applied). */
+export const paperCnRgb = (v) => cnRamp(v);
 export const paperAmpCnRgb = ramp(PAPER_AMPCN_STOPS, PAPER_AMPCN_COLORS);
 /** VAF 0-1: white -> black. */
 export const paperVafRgb = ramp([0, 1], ["#FFFFFF", "#000000"]);
 
 const CN_PACKED = new Uint32Array(257);
 let cnPackedReady = false;
+let cnPackedVersion = 0;
 /** Packed RGBA of the paper CN ramp (0.5-CN steps to 128, cached), white for NaN. */
 export function paperCnPacked(cn) {
+  if (cnPackedVersion !== tokensVersion) {
+    cnPackedReady = false;
+    cnPackedVersion = tokensVersion;
+  }
   if (!cnPackedReady) {
     for (let k = 0; k < 256; k += 1) CN_PACKED[k] = rgbPacked(paperCnRgb(k * 0.5));
     CN_PACKED[256] = rgbPacked([255, 255, 255]);
@@ -149,3 +164,66 @@ export const paperCnCss = (cn) => rgbHex(paperCnRgb(cn));
 export const PAPER_PATIENT = { BWH69: "#8C1D1D", BWH70: "#B07A2B", BWH75: "#2E7D4F", MGH285: "#1B8F7A", MGH301: "#1F6F9F", MGH302: "#5A55A8", MGH303: "#B03A9A", MGH304: "#C0508E", MGH305: "#7A7A7A" };
 // subclonal-per-cell panel: truncal-SNV strip
 export const PAPER_TRUNCAL_COLORS = ["#3B2F8F", "#8E3B9F", "#D7307A", "#F0201A"];
+
+// ---- style tokens
+
+function hexToLab(hex) {
+  const [r, g, b] = hexRgb(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const x = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047;
+  const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+  const f = (t) => (t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116);
+  const [fx, fy, fz] = [f(x), f(y), f(z)];
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
+function labToRgb([L, A, B]) {
+  const fy = (L + 16) / 116;
+  const fx = fy + A / 500;
+  const fz = fy - B / 200;
+  const inv = (t) => (t ** 3 > 216 / 24389 ? t ** 3 : (116 * t - 16) / (24389 / 27));
+  const x = inv(fx) * 0.95047;
+  const y = inv(fy);
+  const z = inv(fz) * 1.08883;
+  const lin = [3.2406 * x - 1.5372 * y - 0.4986 * z, -0.9689 * x + 1.8758 * y + 0.0415 * z, 0.0557 * x - 0.204 * y + 1.057 * z];
+  return lin.map((c) => {
+    const v = c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
+    return Math.max(0, Math.min(255, Math.round(v * 255)));
+  });
+}
+
+/**
+ * A token ramp (R pal_ramp): the value is placed linearly between its stops, the stops sit at equal steps along
+ * the colour ramp, and colours are interpolated in CIE Lab. Returns v -> [r, g, b].
+ */
+export function tokenRamp(stops, colors) {
+  const lab = colors.map(hexToLab);
+  const n = stops.length;
+  return (v) => {
+    const x = Math.min(stops[n - 1], Math.max(stops[0], Number(v)));
+    if (!Number.isFinite(x)) return labToRgb(lab[0]);
+    let k = 0;
+    while (k < n - 2 && x > stops[k + 1]) k += 1;
+    const t = stops[k + 1] === stops[k] ? 0 : (x - stops[k]) / (stops[k + 1] - stops[k]);
+    const u = (k + t) / (n - 1); // position along the colour ramp
+    const pos = u * (colors.length - 1);
+    const i = Math.min(colors.length - 2, Math.floor(pos));
+    const w = pos - i;
+    return labToRgb(lab[i].map((c, j) => c + w * (lab[i + 1][j] - c)));
+  };
+}
+
+/** Apply the paper's style tokens (CN scale, cell states, clade names and colours). Returns true when applied. */
+export function applyPaperTokens(tok) {
+  if (!tok || typeof tok !== "object") return false;
+  const cn = tok.cn;
+  if (cn && Array.isArray(cn.stops) && Array.isArray(cn.colors) && cn.stops.length === cn.colors.length && cn.stops.length > 1) cnRamp = tokenRamp(cn.stops.map(Number), cn.colors);
+  if (tok.cell_state && typeof tok.cell_state === "object") Object.entries(tok.cell_state).forEach(([k, v]) => k !== "NA" && (PAPER_STATE[k] = v));
+  if (tok.clades && typeof tok.clades === "object") TOKEN_CLADES = tok.clades;
+  if (tok.clade_other && typeof tok.clade_other === "object") TOKEN_CLADE_OTHER = tok.clade_other;
+  tokensVersion += 1;
+  return true;
+}
