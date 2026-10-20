@@ -95,6 +95,7 @@ export default function NavRail() {
     ctx === "patient" && { id: "to-cohort", label: "Cohort", icon: "TeamOutlined", desc: "Back to the cohort pages.", go: () => goCohort(view || "overview") },
     { id: "welcome", label: "Welcome", icon: "HomeOutlined", desc: "How to use gOS and where to find things.", go: () => goCohort("welcome") },
     { id: "methods", label: "Methods", icon: "ReadOutlined", desc: "How each result is produced.", go: () => goCohort("methods") },
+    { id: "concepts", label: "Concepts", icon: "ExperimentOutlined", desc: "Interactive explainers of the methods (toy examples).", go: () => goCohort("concepts") },
     { id: "help", label: "Help", icon: "QuestionCircleOutlined", desc: "Search definitions and find analyses.", go: () => { openHelpCenter(); setOpen(false); } },
   ].filter(Boolean);
 
@@ -113,7 +114,7 @@ export default function NavRail() {
       ))}
       <div className="sc-rail-group">
         {extras.map((it) => (
-          <button key={it.id} type="button" className="sc-rail-item" data-current={it.id === "welcome" ? view === "welcome" : it.id === "methods" ? view === "methods" : false} onClick={it.go}>
+          <button key={it.id} type="button" className="sc-rail-item" data-current={it.id === "welcome" ? view === "welcome" : it.id === "methods" ? view === "methods" : it.id === "concepts" ? view === "concepts" : false} onClick={it.go}>
             <span className="sc-rail-item-label"><Icon name={it.icon} /> {it.label}</span>
             <span className="sc-rail-item-desc">{it.desc}</span>
           </button>
@@ -141,7 +142,7 @@ export default function NavRail() {
         <div className="sc-rail-sep" />
         {extras.map((it) => (
           <Tooltip key={it.id} title={it.label} placement="right" open={open ? false : undefined}>
-            <button type="button" className="sc-rail-icon" aria-label={it.label} data-current={(it.id === "welcome" && view === "welcome") || (it.id === "methods" && view === "methods")} onClick={it.go}><Icon name={it.icon} /></button>
+            <button type="button" className="sc-rail-icon" aria-label={it.label} data-current={(it.id === "welcome" && view === "welcome") || (it.id === "methods" && view === "methods") || (it.id === "concepts" && view === "concepts")} onClick={it.go}><Icon name={it.icon} /></button>
           </Tooltip>
         ))}
       </div>

@@ -21,6 +21,7 @@ export const WELCOME_FINDERS = [
   { label: "Cell quality control", scope: "cohort", view: "qc", desc: "Per-cell QC metrics and outliers." },
   { label: "One patient's tree and cells", scope: "patient", tab: 7, desc: "Open any patient, then the Single-Cell tab." },
   { label: "Reads behind a variant", scope: "patient", tab: 15, desc: "Evidence tab: read browser and per-site evidence." },
+  { label: "Concepts (interactive explainers)", scope: "cohort", view: "concepts", desc: "Junction balance, joint balance across cells and PATH heritability, explained on toy examples." },
   { label: "Methods", scope: "cohort", view: "methods", desc: "How each result is produced (sequencing, calling, trees, signatures, statistics)." },
 ];
 
