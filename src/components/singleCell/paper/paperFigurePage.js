@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Button, Empty, Modal, Space, Tag, Typography } from "antd";
 import { DownloadOutlined, ExpandOutlined, LinkOutlined } from "@ant-design/icons";
@@ -7,6 +7,20 @@ import useCohortExport from "../cohort/useCohortExport";
 import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, formatBuilt, panelAt, panelRegions, panelTarget, parsePaperManifest, targetSearch } from "../../../helpers/singleCell/paperManifest";
 import { announceCohortView, requestHelpTarget } from "../../../helpers/singleCell/helpNav";
 import { PanelModal, STATUS_TAG_COLOR, ZoomPanImage, targetLabel } from "./paperFiguresViewer";
+import { tryGet } from "../../../redux/singleCell/loaders";
+import { highlightRects, hitAt, parseSidecar, rowsBetween } from "../../../helpers/singleCell/paperSidecar";
+import { encodeGroups } from "../../../helpers/singleCell/savedGroups";
+
+/** gOS link that opens a patient's Single-Cell tab with these cells selected (saved group carried in the URL). */
+function cellsUrl(patient, cells, name) {
+  const p = new URLSearchParams(window.location.search);
+  ["scview", "figmode", "figpanel", "figpatient", "scsel", "scgroups"].forEach((k) => p.delete(k));
+  p.set("report", patient);
+  p.set("tab", "7");
+  p.set("scgroups", encodeGroups({ [patient]: [{ name, cells }] }));
+  p.set("scsel", name);
+  return `${window.location.pathname}?${p.toString()}`;
+}
 
 const { Text } = Typography;
 const PT_PX = 96 / 72;
@@ -51,6 +65,22 @@ export default function PaperFigurePage({ label }) {
   const anchors = useMemo(() => anchoredPanels(fig), [fig]);
   const regions = useMemo(() => (fig?.widthPt ? panelRegions(anchors, fig.widthPt, fig.heightPt) : []), [anchors, fig]);
   const pageRef = useRef(null);
+  // interactive-paper layer: plot areas from the figure script's sidecar (hover a row, click or drag to select, brushed across the panel)
+  const [sidecar, setSidecar] = useState(null);
+  useEffect(() => {
+    setSidecar(null);
+    if (!fig?.interactive) return undefined;
+    let live = true;
+    tryGet(fig.interactive).then((r) => live && setSidecar(r.status === "ok" ? parseSidecar(r.data) : null));
+    return () => {
+      live = false;
+    };
+  }, [fig?.interactive]);
+  const [hit, setHit] = useState(null);
+  const [sel, setSel] = useState(null); // { rowset, regionId, ids: Set, patient, label }
+  const brush = useRef(null);
+  const [brushBox, setBrushBox] = useState(null);
+  useEffect(() => setSel(null), [label]);
   if (status === "loading") return <Text type="secondary">Loading the paper figures…</Text>;
   if (!manifest) return <Empty description="not available (paper figures not synced: srctools inst/paper_figures/sync_gos.sh)" />;
   if (!fig) return <Empty description={`not available (${label} is not in the synced figures)`} />;
@@ -83,34 +113,95 @@ export default function PaperFigurePage({ label }) {
           )}
         </Space>
       </div>
+      {sel && (
+        <div className="sc-paperpage-selbar">
+          <b>{`${sel.ids.size} cell${sel.ids.size === 1 ? "" : "s"} selected`}</b>
+          <Text type="secondary">{` in ${fig.label}${sel.patient ? ` · ${sel.patient}` : ""}`}</Text>
+          {sel.patient && (
+            <Button size="small" type="primary" href={cellsUrl(sel.patient, [...sel.ids], `${fig.label} selection`)} target="_blank" rel="noopener noreferrer">
+              {`Open in ${sel.patient}`}
+            </Button>
+          )}
+          <Button size="small" onClick={() => setSel(null)}>
+            Clear
+          </Button>
+        </div>
+      )}
       <div
         ref={pageRef}
         className="sc-paperpage-sheet"
-        style={{ position: "relative", width, height, cursor: hover ? "pointer" : "default" }}
-        onMouseMove={(e) => {
+        style={{ position: "relative", width, height, cursor: hit ? "crosshair" : hover ? "pointer" : "default", touchAction: "none", userSelect: "none" }}
+        onPointerDown={(e) => {
+          const [x, y] = at(e);
+          const h = hitAt(sidecar, x, y);
+          if (h) brush.current = { h, y0: y, moved: false };
+        }}
+        onPointerMove={(e) => {
           const [x, y, px, py] = at(e);
-          const p = panelAt(anchors, x, y);
+          const b = brush.current;
+          if (b) {
+            if (Math.abs(y - b.y0) > 2) b.moved = true;
+            if (b.moved) setBrushBox({ x: b.h.region.x, w: b.h.region.w, y0: Math.min(b.y0, y), y1: Math.max(b.y0, y) });
+            return;
+          }
+          const h = hitAt(sidecar, x, y);
+          setHit(h);
+          const p = h ? null : panelAt(anchors, x, y);
           setHover(p);
-          setTip(p ? { px, py } : null);
+          setTip(h || p ? { px, py } : null);
+        }}
+        onPointerUp={(e) => {
+          const b = brush.current;
+          brush.current = null;
+          setBrushBox(null);
+          if (!b) return;
+          const [, y] = at(e);
+          const r = b.h.region;
+          const ids = b.moved ? rowsBetween(r, b.y0, y) : [b.h.id];
+          if (!ids.length) return;
+          const add = e.shiftKey && sel && sel.rowset === r.rowset ? [...sel.ids] : [];
+          setSel({ rowset: r.rowset, regionId: r.id, ids: new Set([...add, ...ids]), patient: r.patient, label: r.label });
         }}
         onMouseLeave={() => {
           setHover(null);
           setTip(null);
+          setHit(null);
         }}
         onClick={(e) => {
           const [x, y] = at(e);
+          if (hitAt(sidecar, x, y)) return; // handled as a row selection
           const p = panelAt(anchors, x, y);
           if (p) setOpen(p);
         }}
       >
         <img src={bestImage(fig)} alt={`${fig.label}: ${fig.title}`} draggable={false} style={{ width, height, display: "block", userSelect: "none" }} />
-        {region && (
+        {sel &&
+          highlightRects(sidecar, sel.rowset, sel.regionId, sel.ids).map((r, i) => (
+            <div key={`s${i}`} className="sc-paperpage-sel" style={{ left: r.x * k, top: r.y * k, width: r.w * k, height: Math.max(1.5, r.h * k) }} />
+          ))}
+        {hit &&
+          highlightRects(sidecar, hit.region.rowset, hit.region.id, new Set([hit.id])).map((r, i) => (
+            <div key={`h${i}`} className="sc-paperpage-hover" style={{ left: r.x * k, top: r.y * k, width: r.w * k, height: Math.max(2, r.h * k) }} />
+          ))}
+        {brushBox && <div className="sc-paperpage-brush" style={{ left: brushBox.x * k, top: brushBox.y0 * k, width: brushBox.w * k, height: (brushBox.y1 - brushBox.y0) * k }} />}
+        {region && !hit && (
           <div
             className="sc-paperpage-region"
             style={{ left: region.x0 * k, top: region.y0 * k, width: (region.x1 - region.x0) * k, height: (region.y1 - region.y0) * k }}
           />
         )}
-        {hover && tip && (
+        {hit && tip && (
+          <div className="sc-tooltip" style={{ position: "absolute", left: Math.min(tip.px + 14, width - 280), top: tip.py + 14, maxWidth: 280, pointerEvents: "none", zIndex: 5 }}>
+            <div style={{ fontWeight: 600 }}>{hit.id}</div>
+            <div>{`${fig.label}${hit.region.panel || ""} · ${hit.region.label}${hit.region.patient ? ` · ${hit.region.patient}` : ""}`}</div>
+            {hit.extras.map((x) => (
+              <div key={x.label}>{`${x.label}: ${typeof x.value === "number" ? Math.round(x.value * 10) / 10 : x.value}`}</div>
+            ))}
+            {hit.position && <div>{`chr${hit.position.chr}:${hit.position.pos.toLocaleString()}`}</div>}
+            <div style={{ opacity: 0.8 }}>click to select · drag to select rows (shift adds)</div>
+          </div>
+        )}
+        {hover && tip && !hit && (
           <div className="sc-tooltip" style={{ position: "absolute", left: Math.min(tip.px + 14, width - 280), top: tip.py + 14, maxWidth: 280, pointerEvents: "none", zIndex: 5 }}>
             <div style={{ fontWeight: 600 }}>{`${fig.label}${hover.letter}`}</div>
             <div>{hover.status}</div>
