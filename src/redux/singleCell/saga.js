@@ -12,7 +12,7 @@ import actions, {
   SC_PALETTE_STORAGE_KEY,
 } from "./actions";
 import { effectiveTracks, hetBlocksToGraph } from "../../helpers/singleCell/hetTracks";
-import { arrowScatter, casePath, loadCellHeatmapFiles, tryGet } from "./loaders";
+import { arrowScatter, casePath, loadCellHeatmapFiles, signatureVersionsPath, tryGet } from "./loaders";
 import { PRECOMPUTE_FILES, mergePrecomputeIntoCells } from "../../helpers/singleCell/precompute";
 import { getCancelToken } from "../../helpers/cancelToken";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
@@ -120,7 +120,7 @@ function* fetchSingleCellData(action = {}) {
     // Per-cell complex.json + mutations.json, a few cells at a time.
     // Patient-level files: tree, optional SNV matrix (reads at every site,
     // pgv sparse format) and the static RNA summary from export_seurat.R.
-    const [treeFile, snvTableFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile, siteQcFile, signaturesJointFile] = yield all([
+    const [treeFile, snvTableFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile, siteQcFile, signaturesJointFile, signatureVersionsFile] = yield all([
       call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
       // SNV matrix: the columnar site table first (snv_matrix.sites.json; its .cells.bin is decoded in a Web Worker while the
       // cell files load), else snv_matrix.json (skilift gos_sc_snv_columnar.py writes both from the same content)
@@ -140,6 +140,9 @@ function* fetchSingleCellData(action = {}) {
       call(tryGet, casePath(dataset, id, "snv_qc.json"), { cancelToken }),
       // joint (patient signature set) refit with bootstrap CIs and subclonal-vs-truncal tests (skilift sc_refit_signatures_joint); optional
       call(tryGet, casePath(dataset, id, "signatures_joint.json"), { cancelToken }),
+      // the same SBS96 fit under several SNV-set definitions, assignment flows and artifact diagnostics (skilift gos_sc_signature_versions.py); optional
+      // preview hook: ?sigdata=<url prefix> reads <prefix><patient>/signature_versions.json instead (staged files not in the live data dir)
+      call(tryGet, signatureVersionsPath(dataset, id), { cancelToken }),
     ]);
     // Precomputed outputs (srctools precompute pipeline); each may be missing ("not yet computed").
     const precomputeKeys = Object.keys(PRECOMPUTE_FILES);
@@ -250,6 +253,7 @@ function* fetchSingleCellData(action = {}) {
       rna,
       signatures: signaturesFile.status === "ok" ? signaturesFile : missing(),
       signaturesJoint: signaturesJointFile.status === "ok" ? signaturesJointFile : missing(),
+      signatureVersions: signatureVersionsFile.status === "ok" ? signatureVersionsFile : missing(),
       walks: walksFile.status === "ok" ? walksFile : missing(),
       rnaFusions: rnaFusionsFile.status === "ok" ? attempt(() => normalizeFusions(rnaFusionsFile.data)) : missing(),
       rnaSplicing: rnaSplicingFile.status === "ok" ? attempt(() => normalizeSplicing(rnaSplicingFile.data)) : missing(),

@@ -16,6 +16,17 @@ import { GZ_INDEX_FILE, dataRootOf, gunzipText, gzEntry, parseGzIndex, sourceIsF
 export const casePath = (dataset, caseReportId, filename) =>
   `${dataset.dataPath}${caseReportId}/${filename}`;
 
+/** signature_versions.json of a patient; the URL parameter sigdata=<prefix> redirects it to <prefix><patient>/ (preview of staged files). */
+export function signatureVersionsPath(dataset, caseReportId) {
+  let prefix = null;
+  try {
+    prefix = new URLSearchParams(window.location.search).get("sigdata");
+  } catch (e) {
+    prefix = null;
+  }
+  return prefix ? `${prefix}${caseReportId}/signature_versions.json` : casePath(dataset, caseReportId, "signature_versions.json");
+}
+
 // gz_index.json of each data root, fetched once (empty set when absent): which files have a .gz sibling
 const gzIndexCache = new Map();
 function gzIndexFor(path) {
