@@ -13,6 +13,8 @@ import CohortSignatureMatrix from "./cohortSignatureMatrix";
 import signatureMetadata from "../../../translations/en/signatures.json";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
+import { BurdenSegmented } from "../signatures/burdenToggle";
+import { BURDEN_COUNT, burdenLabel, fmtBurden } from "../../../helpers/singleCell/signatureBurden";
 
 const { Text } = Typography;
 const SETS = ["truncal", "subclonal", "private"];
@@ -41,14 +43,14 @@ function StackBar({ acts, x, y, width, height, mode, highlight, onHover, label }
           const el = (
             <g key={sig} onMouseEnter={() => onHover && onHover(sig)} onMouseLeave={() => onHover && onHover(null)}>
               <rect x={cx} y={y} width={Math.max(0, w - 0.6)} height={height} fill={signatureColorOf(sig)} opacity={highlight && highlight !== sig ? 0.25 : 1} rx={1} />
-              {w > 36 && <text x={cx + w / 2} y={y + height / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff" pointerEvents="none">{sig}</text>}
-              <title>{`${label} · ${sig}: ${Math.round(v)} mutations (${pct(v / total)})${aetiology(sig) ? `\n${aetiology(sig)}` : ""}`}</title>
+              {w > 36 && <text x={cx + w / 2} y={y + height / 2} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff" pointerEvents="none">{w > 120 ? `${sig} ${burdenLabel(v, v / total, mode)}` : sig}</text>}
+              <title>{`${label} · ${sig}: ${fmtBurden(v, v / total)} mutations${aetiology(sig) ? `\n${aetiology(sig)}` : ""}`}</title>
             </g>
           );
           cx += w;
           return el;
         })}
-      {mode === "count" && <text x={x + width + 4} y={y + height / 2} dy="0.35em" fontSize={11} fill={INK.muted}>{`n=${Math.round(total)}`}</text>}
+      {<text x={x + width + 4} y={y + height / 2} dy="0.35em" fontSize={11} fill={INK.muted}>{`n=${Math.round(total)}`}</text>}
     </g>
   );
 }
@@ -74,7 +76,7 @@ function EvolutionView({ summaries, files, width, mode, highlight, setHighlight,
               <g key={name}>
                 <text x={LEFT - 6} y={y + rowH / 2} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.textSecondary}>{t(`components.single-cell.cohort.sig-set-${name}`)}</text>
                 {Object.keys(acts).length ? (
-                  <StackBar acts={mode === "count" ? acts : shares(acts)} x={LEFT} y={y} width={mode === "count" ? (barW * d3.sum(Object.values(acts))) / Math.max(1, ...SETS.map((n) => d3.sum(Object.values(setActivities(files[s.caseReportId], n))))) : barW} height={rowH} mode={mode} highlight={highlight} onHover={setHighlight} label={`${s.caseReportId} ${name}`} />
+                  <StackBar acts={acts} x={LEFT} y={y} width={mode === BURDEN_COUNT ? (barW * d3.sum(Object.values(acts))) / Math.max(1, ...SETS.map((n) => d3.sum(Object.values(setActivities(files[s.caseReportId], n))))) : barW} height={rowH} mode={mode} highlight={highlight} onHover={setHighlight} label={`${s.caseReportId} ${name}`} />
                 ) : (
                   <text x={LEFT} y={y + rowH / 2} dy="0.35em" fontSize={11} fill={INK.faint}>–</text>
                 )}
@@ -93,12 +95,13 @@ function SlopeView({ summaries, files, width, highlight, setHighlight, t }) {
     const sigs = new Set();
     const per = summaries.map((s, k) => {
       const f = files[s.caseReportId];
-      const truncal = shares(setActivities(f, "truncal"));
+      const truncalActs = setActivities(f, "truncal");
+      const truncal = shares(truncalActs);
       const laterActs = setActivities(f, "subclonal");
       Object.entries(setActivities(f, "private")).forEach(([sig, v]) => (laterActs[sig] = (laterActs[sig] || 0) + v));
       const later = shares(laterActs);
       [...Object.keys(truncal), ...Object.keys(later)].forEach((x) => sigs.add(x));
-      return { patient: s.caseReportId, k, truncal, later, has: Object.keys(truncal).length && Object.keys(later).length };
+      return { patient: s.caseReportId, k, truncal, later, truncalActs, laterActs, has: Object.keys(truncal).length && Object.keys(later).length };
     });
     return { per: per.filter((p) => p.has), sigs: [...sigs].sort(sortSigs) };
   }, [summaries, files]);
@@ -129,7 +132,7 @@ function SlopeView({ summaries, files, width, highlight, setHighlight, t }) {
                 <line x1={40} x2={cellW - 40} y1={y(v.a)} y2={y(v.b)} stroke={patientColor(v.k)} strokeWidth={1.6} />
                 <circle cx={40} cy={y(v.a)} r={2.5} fill={patientColor(v.k)} />
                 <circle cx={cellW - 40} cy={y(v.b)} r={2.5} fill={patientColor(v.k)} />
-                <title>{`${v.patient} · ${sig}: ${pct(v.a)} truncal → ${pct(v.b)} later`}</title>
+                <title>{`${v.patient} · ${sig}: ${fmtBurden(v.truncalActs[sig] || 0, v.a)} truncal → ${fmtBurden(v.laterActs[sig] || 0, v.b)} later (mutations, share)`}</title>
               </g>
             ))}
             <line x1={40} x2={cellW - 40} y1={y(meanA)} y2={y(meanB)} stroke={INK.text} strokeWidth={2.4} strokeDasharray="4 3" />
@@ -237,10 +240,11 @@ function ClonesView({ summaries, files, width, mode, highlight, setHighlight, t 
           <text x={10} y={6} dy="0.35em" fontSize={TYPE.label} fontWeight={600} fill={INK.text}>{g.s.caseReportId}</text>
           {g.sets.map((set, i) => {
             const acts = Object.fromEntries((set.activities || []).map((a) => [a.signature, Number(a.activity) || 0]));
+            const maxN = Math.max(1, ...g.sets.map((x) => d3.sum((x.activities || []).map((a) => Number(a.activity) || 0))));
             return (
               <g key={set.name}>
                 <text x={LEFT - 6} y={16 + i * 18 + 7} dy="0.35em" textAnchor="end" fontSize={11} fill={INK.textSecondary}>{`${set.name.replace(/^clone: /, "")} (n=${set.n ?? Math.round(d3.sum(Object.values(acts)))})`}</text>
-                <StackBar acts={mode === "count" ? acts : shares(acts)} x={LEFT} y={16 + i * 18} width={barW} height={14} mode="fraction" highlight={highlight} onHover={setHighlight} label={`${g.s.caseReportId} ${set.name}`} />
+                <StackBar acts={acts} x={LEFT} y={16 + i * 18} width={mode === BURDEN_COUNT ? (barW * d3.sum(Object.values(acts))) / maxN : barW} height={14} mode={mode} highlight={highlight} onHover={setHighlight} label={`${g.s.caseReportId} ${set.name}`} />
               </g>
             );
           })}
@@ -308,7 +312,7 @@ export default function CohortSignaturesPanel({ summaries, files }) {
   const theme = useSelector((state) => state.SingleCell.layout.theme);
   setSignatureTheme(theme);
   const [view, setView] = useState("evolution");
-  const [mode, setMode] = useState("fraction");
+  const [mode, setMode] = useState(BURDEN_COUNT); // "Burden (count)" default, "Percent"
   const [highlight, setHighlight] = useState(null);
   const any = summaries.some((s) => files[s.caseReportId]?.signatures?.sets?.length);
   const legendRows = useMemo(
@@ -327,7 +331,7 @@ export default function CohortSignaturesPanel({ summaries, files }) {
         <Space wrap>
           <Segmented size="small" value={view} onChange={setView} options={["evolution", "slope", "matrix", "spectra", "clones", "table"].map((v) => ({ value: v, label: t(`components.single-cell.cohort.sig-view-${v}`) }))} />
           {(view === "evolution" || view === "clones") && (
-            <Segmented size="small" value={mode} onChange={setMode} options={[{ value: "fraction", label: t("components.segmented-filter.fraction") }, { value: "count", label: t("components.segmented-filter.count") }]} />
+            <BurdenSegmented value={mode} onChange={setMode} />
           )}
           <SvgExportButton containerRef={ref} name={`cohort-signatures-${view}`} />
         </Space>

@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Button, Card, Col, Empty, Progress, Row, Segmented, Space, Typography } from "antd";
+import { Button, Card, Col, Empty, Progress, Row, Space, Typography } from "antd";
 import { SwapOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
+import BurdenToggle, { useBurdenMode } from "./burdenToggle";
 import { ActivityBars, AetiologyLegend, loadCosmic } from "../signaturePanel";
 import { fitSignatures, nnls } from "../../../helpers/singleCell/signatures";
 import { profileSimilarity, setProfile, signatureSiteSets } from "../../../helpers/singleCell/signatureSets";
@@ -33,7 +34,7 @@ export default function SignatureComparisonCard() {
   const sets = useMemo(() => restrictSets(signatureSiteSets(snvData, { cells, selectedCellIds, layout }), allowed), [snvData, cells, selectedCellIds, layout, allowed]);
   const profiles = useMemo(() => (snvData ? sets.map((s) => ({ key: s.key, name: s.name, ...setProfile(snvData, s.columns) })) : []), [snvData, sets]);
   const backend = useMemo(() => (signatures.status === "ok" ? signatures.data.sets || [] : []), [signatures]);
-  const [mode, setMode] = useState("fraction");
+  const mode = useBurdenMode();
   const [fits, setFits] = useState({});
   const [progress, setProgress] = useState(null);
   const setsKey = sets.map((s) => `${s.key}:${s.columns.length}`).join("|");
@@ -71,11 +72,10 @@ export default function SignatureComparisonCard() {
           const b = backend.find((s) => s.name === p.name);
           const activities = b?.activities?.length ? b.activities.map((a) => ({ signature: a.signature, activity: Number(a.activity) || 0 })) : fits[p.key];
           if (!activities?.length) return null;
-          const total = activities.reduce((s, a) => s + a.activity, 0) || 1;
-          return { name: `${p.name}${b ? (active ? " †" : "") : " *"}`, n: p.used, activities: mode === "fraction" ? activities.map((a) => ({ ...a, activity: (100 * a.activity) / total })) : activities };
+          return { name: `${p.name}${b ? (active ? " †" : "") : " *"}`, n: p.used, activities };
         })
         .filter(Boolean),
-    [profiles, backend, fits, mode]
+    [profiles, backend, fits]
   );
   const sim = useMemo(() => profileSimilarity(profiles.filter((p) => p.used >= 10)), [profiles]);
   if (!snvData || !sets.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.signatures.no-contexts")} />;
@@ -93,15 +93,7 @@ export default function SignatureComparisonCard() {
               {t("components.single-cell.signatures.fit-missing", { count: missing })}
             </Button>
           )}
-          <Segmented
-            size="small"
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: "fraction", label: t("components.segmented-filter.fraction") },
-              { value: "count", label: t("components.segmented-filter.count") },
-            ]}
-          />
+          <BurdenToggle />
         </Space>
       }
     >

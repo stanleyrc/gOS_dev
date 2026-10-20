@@ -121,7 +121,7 @@ export function contrastRows(contrast) {
 /**
  * Cohort table: signatures whose exposure differs between a non-truncal set and
  * truncal in at least one patient. cohort = _cohort/signatures_joint.json.
- * @returns [{ signature, contrast, patients: [{ patient, diff, lo, hi, p, q }], direction }]
+ * @returns [{ signature, contrast, patients: [{ patient, diff, lo, hi, p, q, frac_a, frac_b, count_a, count_b }], direction }]
  */
 export function cohortDifferences(cohort, { onlySignificant = true } = {}) {
   const groups = new Map();
@@ -129,7 +129,24 @@ export function cohortDifferences(cohort, { onlySignificant = true } = {}) {
     if (onlySignificant && !isSignificant(r)) return;
     const key = `${r.contrast}|${r.signature}`;
     if (!groups.has(key)) groups.set(key, { signature: r.signature, contrast: r.contrast, patients: [] });
-    groups.get(key).patients.push({ patient: r.patient, diff: Number(r.diff), lo: Number(r.lo), hi: Number(r.hi), p: r.p, q: r.q });
+    const num = (v) => (v == null || v === "NA" || !Number.isFinite(Number(v)) ? null : Number(v));
+    const fa = num(r.frac_a);
+    const fb = num(r.frac_b);
+    const na = num(r.n_a);
+    const nb = num(r.n_b);
+    groups.get(key).patients.push({
+      patient: r.patient,
+      diff: Number(r.diff),
+      lo: Number(r.lo),
+      hi: Number(r.hi),
+      p: r.p,
+      q: r.q,
+      frac_a: fa,
+      frac_b: fb,
+      // burden: mutations attributed = fraction x SNVs of the set (null when a total is missing)
+      count_a: fa != null && na != null ? fa * na : null,
+      count_b: fb != null && nb != null ? fb * nb : null,
+    });
   });
   return [...groups.values()]
     .map((g) => {

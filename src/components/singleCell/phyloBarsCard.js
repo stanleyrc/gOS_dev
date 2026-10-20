@@ -18,6 +18,8 @@ import { geneValues, searchGeneNames } from "../../helpers/singleCell/staticRna"
 import { rowMap } from "../../helpers/singleCell/matrix";
 import { sitesSeenInRows } from "../../helpers/singleCell/snvSites";
 import useSignatureModel from "./signatures/useSignatureModel";
+import BurdenToggle, { useBurdenMode } from "./signatures/burdenToggle";
+import { BURDEN_COUNT, fmtCount } from "../../helpers/singleCell/signatureBurden";
 import { signatureBurden } from "../../helpers/singleCell/signatureAssign";
 import { cutTree, labelRuns } from "../../helpers/singleCell/treeGroups";
 import { CELL_QC_METRICS } from "./cohort/cohortQcPanel";
@@ -56,6 +58,7 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
   const [mode, setMode] = useState(defaultMode);
   const [k, setK] = useState(4);
   const model = useSignatureModel();
+  const sigScale = useBurdenMode();
   const [sigProgress] = useState(null);
   const [hoverRange, setHoverRange] = useState(null);
 
@@ -193,14 +196,17 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
     );
   };
 
+  // burden mode: bar length = assigned mutations (relative to the largest group); percent: full width
+  const sigMaxN = Math.max(1, ...Object.values(sigFits).map((f) => f.n || 0));
   const renderSignatures = (x0) => (
     <g key="signatures" transform={`translate(${x0},0)`}>
       <text x={0} y={12} fontSize={TYPE.label} fontWeight="600" fill={INK.text}>{t("components.single-cell.bars.signatures")}</text>
-      <text x={0} y={HEADER - 6} fontSize={11} fill={INK.muted}>{t("components.single-cell.bars.signatures-axis2")}</text>
+      <text x={0} y={HEADER - 6} fontSize={11} fill={INK.muted}>{sigScale === BURDEN_COUNT ? `mutations (max ${fmtCount(sigMaxN)})` : t("components.single-cell.bars.signatures-axis2")}</text>
       {groups.map((grp) => {
         const fit = sigFits[grp.key];
         if (!fit || !fit.activities.length) return null;
         const total = fit.activities.reduce((s, a) => s + a.activity, 0) || 1;
+        const len = sigScale === BURDEN_COUNT ? ((TRACK_W - 4) * total) / sigMaxN : TRACK_W - 4;
         let x = 0;
         return (
           <g key={grp.key} style={{ cursor: "pointer" }} onClick={(e) => selectGroup(grp, e)} onMouseEnter={() => mode === "cells" && share(grp.key)}>
@@ -208,12 +214,12 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
               .slice()
               .sort((a, b) => b.activity - a.activity)
               .map((a) => {
-                const w = ((TRACK_W - 4) * a.activity) / total;
+                const w = (len * a.activity) / total;
                 const rect = <rect key={a.signature} x={x} y={HEADER + yOf(grp)} width={Math.max(0, w - 0.3)} height={hOf(grp)} fill={signatureColorOf(a.signature)} />;
                 x += w;
                 return rect;
               })}
-            <title>{`${grp.label} (${fit.n} assigned mutations)\n${fit.activities.slice().sort((a, b) => b.activity - a.activity).map((a) => `${a.signature}: ${a.activity} (${d3.format(".0%")(a.activity / total)})`).join("\n")}`}</title>
+            <title>{`${grp.label} (${fit.n} assigned mutations)\n${fit.activities.slice().sort((a, b) => b.activity - a.activity).map((a) => `${a.signature}: ${fmtCount(a.activity)} mutations (${d3.format(".0%")(a.activity / total)})`).join("\n")}`}</title>
           </g>
         );
       })}
@@ -240,6 +246,7 @@ export default function PhyloBarsCard({ defaultTracks = ["snv_count"], defaultGe
             onChange={setTracks}
             options={trackOptions}
           />
+          {shown.includes("signatures") && <BurdenToggle />}
           <AutoComplete
             size="small"
             style={{ width: 120 }}

@@ -111,7 +111,7 @@ export default function ClonalHistoryCard() {
       if (b.assigned >= 15) {
         const pTot = parentB.assigned || 1;
         shift = Object.entries(b.counts)
-          .map(([s, k]) => ({ signature: s, delta: k / b.assigned - (parentB.counts[s] || 0) / pTot, share: k / b.assigned }))
+          .map(([s, k]) => ({ signature: s, delta: k / b.assigned - (parentB.counts[s] || 0) / pTot, share: k / b.assigned, count: k, of: b.assigned }))
           .sort((a, k) => k.delta - a.delta)[0];
         if (shift.delta < 0.1) shift = null;
       }
@@ -258,7 +258,7 @@ export default function ClonalHistoryCard() {
                     <g transform={`translate(${b.num ? b.num.length * 6 + 4 : 0},0)`}>
                       <rect width={chipWidth(`${b.sig.signature} ↑`, 10)} height={13} rx={3} fill={signatureColorOf(b.sig.signature)} fillOpacity={0.9} />
                       <text x={6} y={6.5} dy="0.35em" fontSize={TYPE.micro} fill="#fff">{`${b.sig.signature} ↑`}</text>
-                      <title>{t("components.single-cell.history.shift", { signature: b.sig.signature, share: d3.format(".0%")(b.sig.share), delta: d3.format("+.0%")(b.sig.delta) })}</title>
+                      <title>{t("components.single-cell.history.shift", { signature: b.sig.signature, share: `${b.sig.count} of ${b.sig.of} (${d3.format(".0%")(b.sig.share)})`, delta: d3.format("+.0%")(b.sig.delta) })}</title>
                     </g>
                   )}
                 </g>

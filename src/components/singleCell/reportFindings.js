@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { attributedCount, fmtBurden } from "../../helpers/singleCell/signatureBurden";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
@@ -108,7 +109,8 @@ export default function ReportFindings({ report, cloneColors }) {
       if (subset.length < 2) return;
       const cols = subset.map(([, j]) => reference.columns[j]);
       const rows = rowMap(order, snv.data.cells);
-      const truncal = sbs96Counts(snv.data.variants.filter((v) => v.category === "truncal").map((v) => v.context).filter(Boolean)).counts;
+      const truncalProfile = sbs96Counts(snv.data.variants.filter((v) => v.category === "truncal").map((v) => v.context).filter(Boolean));
+      const truncal = truncalProfile.counts;
       const fit = (counts) => {
         const x = nnls(cols, counts);
         const total = x.reduce((a, b) => a + b, 0) || 1;
@@ -125,7 +127,7 @@ export default function ReportFindings({ report, cloneColors }) {
         const f = fit(counts);
         return { clone, n: used, top: f[0], second: f[1], cos: cosine(counts, truncal), gained: f.filter((s) => s.share >= 0.1 && (truncalFit.find((x) => x.signature === s.signature)?.share || 0) < 0.03) };
       });
-      if (active) setCladeSigs({ truncal: truncalFit.slice(0, 3), clones: out });
+      if (active) setCladeSigs({ truncal: truncalFit.slice(0, 3), nTruncal: truncalProfile.used, clones: out });
     })().catch(() => {});
     return () => {
       active = false;
@@ -152,14 +154,14 @@ export default function ReportFindings({ report, cloneColors }) {
         {cladeSigs && (
           <Col xs={24} xl={8}>
             <Title level={5} className="sc-section-title">{t("components.single-cell.report.findings-sigs")}</Title>
-            <Text type="secondary">{t("components.single-cell.report.findings-sigs-trunk", { list: cladeSigs.truncal.map((s) => `${s.signature} ${pct(s.share)}`).join(", ") })}</Text>
+            <Text type="secondary">{t("components.single-cell.report.findings-sigs-trunk", { list: cladeSigs.truncal.map((s) => `${s.signature} ${fmtBurden(attributedCount(s.share, cladeSigs.nTruncal), s.share)}`).join(", ") })}</Text>
             {cladeSigs.clones.map((c) => (
               <div key={c.clone} style={{ marginTop: 6 }}>
                 <ColorTag color={cloneColors[c.clone]}>{c.clone}</ColorTag>
                 {c.top ? (
                   <Text>
-                    {t("components.single-cell.report.findings-sigs-clone", { n: c.n, top: c.top.signature, share: pct(c.top.share), cos: pct(c.cos) })}
-                    {c.gained.length > 0 && <Text type="danger">{` ${t("components.single-cell.report.findings-sigs-gained", { list: c.gained.map((s) => `${s.signature} ${pct(s.share)}`).join(", ") })}`}</Text>}
+                    {t("components.single-cell.report.findings-sigs-clone", { n: c.n, top: c.top.signature, share: fmtBurden(attributedCount(c.top.share, c.n), c.top.share), cos: pct(c.cos) })}
+                    {c.gained.length > 0 && <Text type="danger">{` ${t("components.single-cell.report.findings-sigs-gained", { list: c.gained.map((s) => `${s.signature} ${fmtBurden(attributedCount(s.share, c.n), s.share)}`).join(", ") })}`}</Text>}
                   </Text>
                 ) : (
                   <Text type="secondary">{t("components.single-cell.report.findings-sigs-few", { n: c.n })}</Text>

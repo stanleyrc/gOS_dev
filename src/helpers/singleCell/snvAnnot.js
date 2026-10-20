@@ -329,10 +329,12 @@ export function binDetail(annot, columnOrder, a, b, trackKeys) {
     if (!def || !s) return;
     if (def.kind === "cat") {
       const legend = catLegend(annot, key);
+      // count of sites with the share of the bin's annotated sites (signature track: burden and percentage)
+      const tot = Object.values(s.counts).reduce((acc, k) => acc + k, 0);
       const parts = Object.entries(s.counts)
         .sort((p, q) => q[1] - p[1])
         .slice(0, 4)
-        .map(([value, k]) => `${legend.find((e) => e.value === value)?.label || value}: ${k}`);
+        .map(([value, k]) => `${legend.find((e) => e.value === value)?.label || value}: ${k}${tot > 0 ? ` (${Math.round((100 * k) / tot)}%)` : ""}`);
       rows.push([def.label, parts.join(" · ") || "n/a"]);
     } else rows.push([def.label, s.valued ? `mean ${fmtNum(s.mean)} (${fmtNum(s.min)} to ${fmtNum(s.max)})` : "n/a"]);
   });

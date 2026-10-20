@@ -5,6 +5,8 @@ import * as d3 from "d3";
 import { Alert, Button, Card, Col, Empty, Row, Segmented, Select, Space, Table, Typography } from "antd";
 import { BarChartOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
+import BurdenToggle from "./burdenToggle";
+import { attributedCount, fmtCount } from "../../../helpers/singleCell/signatureBurden";
 import { ActivityBars, AetiologyLegend, Profile, loadCosmic } from "../signaturePanel";
 import { FitEvaluation } from "./signatureFitCard";
 import { evaluateFit } from "../../../helpers/singleCell/signatureFit";
@@ -76,6 +78,7 @@ export default function SignatureSetsCard() {
       title={<Space><BarChartOutlined />{t("components.single-cell.signatures.sets-title")}<Provenance id="signatureSets" /></Space>}
       extra={
         <Space wrap>
+          <BurdenToggle />
           <Text type="secondary">{t("components.single-cell.signatures.set")}</Text>
           <Select
             size="small"
@@ -143,7 +146,8 @@ export default function SignatureSetsCard() {
                       render: (_, a) => {
                         const b = backend?.activities?.find((x) => x.signature === a.signature);
                         const bt = backend?.activities?.reduce((s, x) => s + (Number(x.activity) || 0), 0) || 1;
-                        return b ? pct((Number(b.activity) || 0) / bt) : "–";
+                        const f = (Number(b?.activity) || 0) / bt;
+                        return b ? `${fmtCount(attributedCount(f, backend?.n))} (${pct(f)})` : "–";
                       },
                     },
                   ]}
