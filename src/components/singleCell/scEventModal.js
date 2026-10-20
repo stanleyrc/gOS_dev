@@ -1,8 +1,10 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
-import FilteredEventDetailsModal from "../filteredEventDetailsModal";
 import filteredEventsActions from "../../redux/filteredEvents/actions";
+
+// the event modal pulls in the bulk tracks / igv.js code: its own chunk, fetched when an event opens
+const FilteredEventDetailsModal = React.lazy(() => import("../filteredEventDetailsModal"));
 
 /**
  * The alteration popup (same as a row of the Filtered Events table) rendered
@@ -32,7 +34,9 @@ export default function ScEventModal() {
   // The modal renders in place (getContainer={false}); portal it to <body> so
   // no ancestor (tab pane, card, transformed wrapper) can hide or clip it.
   return createPortal(
-    <FilteredEventDetailsModal open record={record} initialTab={viewMode || "plots"} onClose={() => dispatch(filteredEventsActions.selectFilteredEvent(null))} {...props} />,
+    <React.Suspense fallback={null}>
+      <FilteredEventDetailsModal open record={record} initialTab={viewMode || "plots"} onClose={() => dispatch(filteredEventsActions.selectFilteredEvent(null))} {...props} />
+    </React.Suspense>,
     document.body
   );
 }
