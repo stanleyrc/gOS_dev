@@ -28,7 +28,7 @@ function Symbol({ shape, x, y, r, fill, stroke }) {
  * colour by assigned signature) over a rate panel (SNVs per callable kb, raw or CN-adjusted): a kernel-smoothed line per
  * side or bars at the chosen bin size, the CN-matched expected rate as a dashed line and the genome-wide background as a band.
  */
-export default function MutJunctionDistancePlot({ points, patients, shapeOrder = null, smooth = null, bins = null, background = null, zoom = 5000, axis = "linear", cn = false, onPoint = null }) {
+export default function MutJunctionDistancePlot({ points, patients, shapeOrder = null, smooth = null, bins = null, background = null, zoom = 5000, axis = "linear", cn = false, showExpected = false, onPoint = null }) {
   const theme = usePlotTheme();
   const [ref, width] = useContainerWidth(700);
   const W = Math.max(360, width);
@@ -43,8 +43,8 @@ export default function MutJunctionDistancePlot({ points, patients, shapeOrder =
   const H = y0 + RATE_H + 44;
   const vis = (d) => d <= zoom;
   const rateVals = [];
-  if (smooth) smooth.x.forEach((d, i) => vis(d) && rateVals.push(smooth.cis[i], smooth.trans[i], smooth.bgCis[i], smooth.bgTrans[i]));
-  if (bins) bins.forEach((b) => b.lo < zoom && rateVals.push(cn ? b.cis.cn.rate : b.cis.rate, cn ? b.trans.cn.rate : b.trans.rate, cn ? b.bgCn : b.bg));
+  if (smooth) smooth.x.forEach((d, i) => vis(d) && rateVals.push(smooth.cis[i], smooth.trans[i], ...(showExpected ? [smooth.bgCis[i], smooth.bgTrans[i]] : [])));
+  if (bins) bins.forEach((b) => b.lo < zoom && rateVals.push(cn ? b.cis.cn.rate : b.cis.rate, cn ? b.trans.cn.rate : b.trans.rate, ...(showExpected ? [cn ? b.bgCn : b.bg] : [])));
   const bgRow = background ? (cn ? background.cn : background.raw) : null;
   if (bgRow?.hi != null) rateVals.push(bgRow.hi);
   const top = Math.max(1e-3, ...rateVals.filter((v) => Number.isFinite(v))) * 1.15;
@@ -102,8 +102,8 @@ export default function MutJunctionDistancePlot({ points, patients, shapeOrder =
         )}
         {smooth && (
           <g>
-            <polyline points={line(smooth.x, smooth.bgCis, 1)} fill="none" stroke={theme.warn} strokeDasharray="4 3" strokeWidth={1.3} />
-            <polyline points={line(smooth.x, smooth.bgTrans, -1)} fill="none" stroke={theme.warn} strokeDasharray="4 3" strokeWidth={1.3} />
+            {showExpected && <polyline points={line(smooth.x, smooth.bgCis, 1)} fill="none" stroke={theme.warn} strokeDasharray="4 3" strokeWidth={1.3} />}
+            {showExpected && <polyline points={line(smooth.x, smooth.bgTrans, -1)} fill="none" stroke={theme.warn} strokeDasharray="4 3" strokeWidth={1.3} />}
             <polyline points={line(smooth.x, smooth.cis, 1)} fill="none" stroke={theme.accent} strokeWidth={2} />
             <polyline points={line(smooth.x, smooth.trans, -1)} fill="none" stroke={theme.magenta} strokeWidth={2} />
           </g>
@@ -133,7 +133,7 @@ export default function MutJunctionDistancePlot({ points, patients, shapeOrder =
                 <g key={b.lo}>
                   {draw("cis", 1)}
                   {draw("trans", -1)}
-                  {bgv != null && (
+                  {showExpected && bgv != null && (
                     <>
                       <line x1={px(b.lo)} x2={px(Math.min(b.hi, zoom))} y1={sy(bgv)} y2={sy(bgv)} stroke={theme.warn} strokeDasharray="4 3" />
                       <line x1={px(-b.lo)} x2={px(-Math.min(b.hi, zoom))} y1={sy(bgv)} y2={sy(bgv)} stroke={theme.warn} strokeDasharray="4 3" />
@@ -153,7 +153,11 @@ export default function MutJunctionDistancePlot({ points, patients, shapeOrder =
       <div style={{ fontSize: TYPE.tick, color: theme.muted }}>
         <span style={{ display: "inline-block", width: 16, borderTop: `2px solid ${theme.accent}`, margin: "0 4px 3px 0" }} />cis
         <span style={{ display: "inline-block", width: 16, borderTop: `2px solid ${theme.magenta}`, margin: "0 4px 3px 12px" }} />trans
-        <span style={{ display: "inline-block", width: 16, borderTop: `2px dashed ${theme.warn}`, margin: "0 4px 3px 12px" }} />expected from the CN-matched background
+        {showExpected && (
+          <>
+            <span style={{ display: "inline-block", width: 16, borderTop: `2px dashed ${theme.warn}`, margin: "0 4px 3px 12px" }} />expected from the CN-matched background
+          </>
+        )}
         <span style={{ display: "inline-block", width: 14, height: 8, background: theme.warn, opacity: 0.25, margin: "0 4px 0 12px" }} />genome background rate (95% CI)
         <span style={{ marginLeft: 12 }}>points: one per SNV x breakend, coloured by assigned signature, shape by patient</span>
       </div>
