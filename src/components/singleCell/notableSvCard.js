@@ -8,6 +8,8 @@ import { buildDriverEntries } from "../../helpers/singleCell/driverLayer";
 import { notableSvs } from "../../helpers/singleCell/notableSvs";
 import { GENE_SPANS_MISSING } from "../../helpers/singleCell/geneSpans";
 import useGeneSpans from "./cohort/useGeneSpans";
+import { EcdnaStatusChip, useEcdnaStatus } from "./ecdnaStatusChip";
+import { statusForEvent } from "../../helpers/singleCell/ecdnaStatus";
 
 const { Text } = Typography;
 const COLORS = { truncal: "#237804", subclonal: "#1d39c4", private: "#8c8c8c" };
@@ -31,6 +33,7 @@ export default function NotableSvCard() {
   const genesList = useSelector((s) => s.Genes?.list || []);
   const { spans: geneSpans } = useGeneSpans();
   const { treeLayout, order: rowOrder } = useTreeView();
+  const ecStatus = useEcdnaStatus();
   const tumorIds = useMemo(() => {
     const normal = new Set((cells || []).filter((c) => isNormal(c.clone_id)).map((c) => `${c.cell_id}`));
     return (rowOrder || []).filter((id) => !normal.has(`${id}`));
@@ -47,6 +50,11 @@ export default function NotableSvCard() {
   };
   const columns = [
     { title: "Family", dataIndex: "label", render: (l, r) => <a onClick={() => open(r)}>{l}</a> },
+    {
+      title: <Tooltip title="Segregation call from per-cell CN dispersion within tree clades (ecdna_status.json), shown for gGnome ecDNA (DM / Cpxdm) families">ecDNA status</Tooltip>,
+      width: 200,
+      render: (_, r) => (r.isEcdna ? <EcdnaStatusChip status={ecStatus.status === "ok" ? statusForEvent(ecStatus.data, r.entry) : null} missing={ecStatus.status === "missing"} /> : null),
+    },
     { title: "Member classifications", dataIndex: "members", render: (m) => <Text style={{ fontSize: 12 }}>{m}</Text> },
     { title: "Cells", width: 110, render: (_, r) => `${r.n}${r.fraction ? ` (${Math.round(100 * r.fraction)}%)` : ""}` },
     { title: "Clade", width: 170, render: (_, r) => (r.f1 != null ? <Tag color={COLORS[r.placement]}>{`${r.placement}, ${r.cladeSize} cells, F1 ${r.f1.toFixed(2)}`}</Tag> : <Text type="secondary">not available (no tree)</Text>) },

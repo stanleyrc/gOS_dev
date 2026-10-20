@@ -5,6 +5,7 @@ import singleCellActions from "../../../redux/singleCell/actions";
 import { classificationText, familyLinkLines } from "../../../helpers/singleCell/complexFamilies";
 import { genesInside, genesInsideText, GENE_SPANS_MISSING } from "../../../helpers/singleCell/geneSpans";
 import useGeneSpans from "../cohort/useGeneSpans";
+import { EntryEcdnaChip } from "../ecdnaStatusChip";
 
 const { Text } = Typography;
 const MAX_JUNCTIONS = 12;
@@ -30,6 +31,7 @@ export default function FamilyBlock({ entry, files }) {
     <div style={{ marginBottom: 10 }} data-driver-family>
       <Space wrap size={6}>
         <Tag color="purple">{`member of ${fam.id}${dm ? " (ecDNA family)" : ""}`}</Tag>
+        {dm && <EntryEcdnaChip entry={entry} />}
         <Text strong>{`${entry.n} cells, ${fam.members.length} per-cell classifications`}</Text>
         <Text type="secondary">{rule}</Text>
       </Space>

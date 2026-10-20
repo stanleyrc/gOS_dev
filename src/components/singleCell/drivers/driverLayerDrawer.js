@@ -18,6 +18,7 @@ import ClinicalTip from "./clinicalTip";
 import MutationEvidencePanel from "../evidence/mutationEvidencePanel";
 import ComplexCellZoom from "./complexCellZoom";
 import FamilyBlock from "./familyBlock";
+import { EcdnaStatusBlock } from "../ecdnaStatusChip";
 import useEventFamilyFiles from "./useEventFamilyFiles";
 import JunctionEvidenceTrack from "./junctionEvidenceTrack";
 import { dmOverlap, dmOverlapText } from "../../../helpers/singleCell/complexLabels";
@@ -160,6 +161,7 @@ export default function DriverLayerDrawer({ entry, driverLayer, onClose, sigText
         </div>
       )}
       <FamilyBlock entry={entry} files={familyFiles} />
+      <EcdnaStatusBlock entry={entry} />
       {entry.twin && (
         <div style={{ marginBottom: 8 }} data-driver-twin>
           <Text type="secondary">{`${entry.twinTip}; shown once (same carrier cells).`}</Text>
