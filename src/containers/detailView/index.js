@@ -4,25 +4,8 @@ import { connect } from "react-redux";
 import { withRouter } from "react-router-dom";
 import { Skeleton, Affix, Tabs } from "antd";
 import HeaderPanel from "../../components/headerPanel";
-import SummaryTab from "../../tabs/summaryTab";
-import FilteredEventsTab from "../../tabs/filteredEventsTab";
-import TracksTab from "../../tabs/tracksTab";
 import Wrapper from "./index.style";
-import PopulationTab from "../../tabs/populationTab";
-import SageQcTab from "../../tabs/sageQcTab";
-import BinQCTab from "../../tabs/binQCTab";
-import SignaturesTab from "../../tabs/signaturesTab";
-import SingleCellTab from "../../tabs/singleCellTab";
-import SingleCellRnaTab from "../../tabs/singleCellRnaTab";
-import SingleCellSignaturesTab from "../../tabs/singleCellSignaturesTab";
-import SingleCellRnaCnTab from "../../tabs/singleCellRnaCnTab";
-import SingleCellQcTab from "../../tabs/singleCellQcTab";
-import SingleCellReportTab from "../../tabs/singleCellReportTab";
-import SingleCellEcdnaTab from "../../tabs/singleCellEcdnaTab";
-import SingleCellCircosTab from "../../tabs/singleCellCircosTab";
-import SingleCellEvidenceTab from "../../tabs/singleCellEvidenceTab";
 import VignetteActionRunner from "../../components/singleCell/vignette/vignetteActionRunner";
-import SingleCellCompareTreesTab from "../../tabs/singleCellCompareTreesTab";
 import SiteUrlSync from "../../components/singleCell/siteUrlSync";
 import CellContextBanner from "../../components/singleCell/cellContextBanner";
 import { singleCellStillLoading } from "../../helpers/singleCell/deepLink";
@@ -34,6 +17,25 @@ import {
   getDetailTabAvailability,
 } from "../../helpers/detailTabAvailability";
 
+
+// tabs load on demand (own webpack chunks)
+const SummaryTab = React.lazy(() => import("../../tabs/summaryTab"));
+const FilteredEventsTab = React.lazy(() => import("../../tabs/filteredEventsTab"));
+const TracksTab = React.lazy(() => import("../../tabs/tracksTab"));
+const PopulationTab = React.lazy(() => import("../../tabs/populationTab"));
+const SageQcTab = React.lazy(() => import("../../tabs/sageQcTab"));
+const BinQCTab = React.lazy(() => import("../../tabs/binQCTab"));
+const SignaturesTab = React.lazy(() => import("../../tabs/signaturesTab"));
+const SingleCellTab = React.lazy(() => import("../../tabs/singleCellTab"));
+const SingleCellRnaTab = React.lazy(() => import("../../tabs/singleCellRnaTab"));
+const SingleCellSignaturesTab = React.lazy(() => import("../../tabs/singleCellSignaturesTab"));
+const SingleCellRnaCnTab = React.lazy(() => import("../../tabs/singleCellRnaCnTab"));
+const SingleCellQcTab = React.lazy(() => import("../../tabs/singleCellQcTab"));
+const SingleCellReportTab = React.lazy(() => import("../../tabs/singleCellReportTab"));
+const SingleCellEcdnaTab = React.lazy(() => import("../../tabs/singleCellEcdnaTab"));
+const SingleCellCircosTab = React.lazy(() => import("../../tabs/singleCellCircosTab"));
+const SingleCellEvidenceTab = React.lazy(() => import("../../tabs/singleCellEvidenceTab"));
+const SingleCellCompareTreesTab = React.lazy(() => import("../../tabs/singleCellCompareTreesTab"));
 const { updateTab, updateDomains, updateCaseReport } = settingsActions;
 
 export class DetailView extends Component {
@@ -171,7 +173,7 @@ export class DetailView extends Component {
               items={tabsOrder.map((key) => ({
                 key: key.toString(),
                 label: t(`containers.detail-view.tabs.tab${key}`),
-                children: tabs[key],
+                children: <React.Suspense fallback={<Skeleton active />}>{tabs[key]}</React.Suspense>,
                 disabled: tabAvailability[key] === false,
               }))}
             />

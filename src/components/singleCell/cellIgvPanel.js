@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { Alert, Button, Card, Space, Switch, Typography } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
-import igv from "../../../node_modules/igv/dist/igv.esm.min.js";
+import igv from "../../helpers/singleCell/igvLazy";
 import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../redux/singleCell/actions";
 import settingsActions from "../../redux/settings/actions";
 import { casePath } from "../../redux/singleCell/loaders";
