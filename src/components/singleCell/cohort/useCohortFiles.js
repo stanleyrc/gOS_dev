@@ -30,7 +30,7 @@ async function loadPatient(dataset, summary, cancelToken) {
   const key = `${dataset.id}/${summary.caseReportId}`;
   if (cache.has(key)) return cache.get(key);
   const get = (file) => tryGet(casePath(dataset, summary.caseReportId, file), { cancelToken });
-  const [slim, signatures, events, tree, walks, rnaFusions] = await Promise.all([
+  const [slim, signatures, events, tree, walks, rnaFusions, ecdnaStatus] = await Promise.all([
     get("snv_variants.json"),
     get("signatures.json"),
     get("filtered.events.json"),
@@ -39,6 +39,8 @@ async function loadPatient(dataset, summary, cancelToken) {
     get("walks.json"),
     // RNA fusion calls (optional): DNA / RNA support of fusion events
     get("rna/fusions.json"),
+    // ecDNA status from CN dispersion within clades (skilift gos_sc_ecdna_status.py), optional
+    get("ecdna_status.json"),
   ]);
   // no slim file: the full matrix gives the sites and the packed reads together
   const snv = slim.status === "ok" ? slim : await get("snv_matrix.json");
@@ -59,6 +61,7 @@ async function loadPatient(dataset, summary, cancelToken) {
     events: events.status === "ok" ? (Array.isArray(events.data) ? events.data : []) : null,
     tree: treeLayout,
     walks: walks.status === "ok" ? walks.data : null,
+    ecdnaStatus: ecdnaStatus.status === "ok" ? ecdnaStatus.data : null,
     rnaFusions: (() => {
       if (rnaFusions.status !== "ok") return null;
       try {
