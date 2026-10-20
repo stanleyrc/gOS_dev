@@ -1,4 +1,4 @@
-import { colIndexAt, snvAt, snvLookup, cellFromLabel, graphInWindow, lensContains, lensOn, lensPan, lensToDisplay, lensToPage, lensView, lensZoom, marksInBox, nearestJunction, regionWindow } from "./paperZoom";
+import { axisWindows, regionWindows, colIndexAt, snvAt, snvLookup, cellFromLabel, graphInWindow, lensContains, lensOn, lensPan, lensToDisplay, lensToPage, lensView, lensZoom, marksInBox, nearestJunction, regionWindow } from "./paperZoom";
 import { parseSidecar, toPage } from "./paperSidecar";
 
 describe("panel lens", () => {
@@ -73,5 +73,15 @@ describe("SNV heatmap data", () => {
     expect(snvAt(L, "c1", "x")).toBeNull();
     expect(colIndexAt({ x: 10, w: 100, cols: { ids: ["a", "b", "c", "d"] } }, 60)).toBe(2);
     expect(colIndexAt({ x: 10, w: 100 }, 60)).toBe(-1);
+  });
+});
+
+describe("broken genome axes", () => {
+  it("maps page x to the right window of a multi-window axis", () => {
+    const r = { x: 0, w: 100, axis: { type: "genome", windows: [{ chr: "2", from: 14e6, to: 16e6, f0: 0, f1: 0.6 }, { chr: "12", from: 57e6, to: 58e6, f0: 0.7, f1: 1 }] } };
+    expect(axisWindows(r).length).toBe(2);
+    const ws = regionWindows(r, 30, 85);
+    expect(ws.map((w) => [w.chr, w.from, w.to])).toEqual([["2", 15e6, 16e6], ["12", 57e6, 57.5e6]]);
+    expect(axisWindows({ x: 0, w: 10, axis: { chr: "7", from: 1, to: 2 } })).toEqual([{ chr: "7", from: 1, to: 2, f0: 0, f1: 1 }]);
   });
 });

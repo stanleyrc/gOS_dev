@@ -16,7 +16,7 @@ import { applyPaperTokens, paperTokensVersion } from "../../../helpers/singleCel
 import { encodeGroups } from "../../../helpers/singleCell/savedGroups";
 import { cellFromLabel, lensContains, lensOn, lensPan, lensToPage, lensView, lensZoom, marksInBox, nearestJunction, regionWindow } from "../../../helpers/singleCell/paperZoom";
 import { selectCells, selectedIds, selectionGroups, selectionText } from "../../../helpers/singleCell/paperSelection";
-import { colIndexAt, graphInWindow, snvAt } from "../../../helpers/singleCell/paperZoom";
+import { colIndexAt, graphInWindow, regionWindows, snvAt } from "../../../helpers/singleCell/paperZoom";
 
 const InteractiveSlot = React.lazy(() => import("./interactiveSlot"));
 const SelectionDrawer = React.lazy(() => import("./selectionDrawer"));
@@ -318,19 +318,17 @@ export default function PaperFigurePage({ label }) {
     const v = lensView(lens);
     return tracks
       .filter((t) => t.rect.x < v.x1 && t.rect.x + t.rect.w > v.x0 && t.rect.y < v.y1 && t.rect.y + t.rect.h > v.y0)
-      .map((t) => {
-        const x0 = Math.max(t.rect.x, v.x0);
-        const x1 = Math.min(t.rect.x + t.rect.w, v.x1);
+      .flatMap((t) => {
         const y0 = Math.max(t.rect.y, v.y0);
         const y1 = Math.min(t.rect.y + t.rect.h, v.y1);
         const s = k * lens.s;
-        const box = { left: (x0 - lens.ox) * s, top: (y0 - lens.oy) * s, width: (x1 - x0) * s, height: (y1 - y0) * s };
-        return (
+        // one live track per visible axis window (broken axes: chr2 | chr12 ...)
+        return regionWindows(t.region, Math.max(t.rect.x, v.x0), Math.min(t.rect.x + t.rect.w, v.x1)).map((w, wi) => (
           <GenomeTrackLayer
-            key={`gt${t.id}`}
+            key={`gt${t.id}:${wi}`}
             cell={t.cell}
-            box={box}
-            win={regionWindow(t.region, x0, x1)}
+            box={{ left: (w.x0 - lens.ox) * s, top: (y0 - lens.oy) * s, width: (w.x1 - w.x0) * s, height: (y1 - y0) * s }}
+            win={{ chr: w.chr, from: w.from, to: w.to }}
             onGraph={(c, g) => {
               if (!graphs.current.has(c)) {
                 graphs.current.set(c, g);
@@ -338,7 +336,7 @@ export default function PaperFigurePage({ label }) {
               }
             }}
           />
-        );
+        ));
       });
   };
   const lensSnv = () => {
