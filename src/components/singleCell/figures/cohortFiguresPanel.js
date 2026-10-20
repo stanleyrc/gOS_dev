@@ -154,7 +154,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   }, [clear, popupOpen]);
   const styleName = useFigureStyleName();
   const paper = isPaperStyle(figureStyle(styleName));
-  // precomputed exports read by the paper panels: Fig 1e state scores, Fig 3E phylogenetic signal
+  // precomputed exports read by the paper panels: Fig 1d state scores, Fig 3E phylogenetic signal
   const dataset = useSelector((s) => s.Settings?.dataset);
   const stateExport = useCohortExport(dataset?.dataPath ? dataset : null, STATE_SCORES_FILE);
   const statePoints = useMemo(() => parseStateScores(stateExport.data) || [], [stateExport.data]);
@@ -199,7 +199,7 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
   const withAmps = per.filter((p) => p.groups.length);
   // Fig 3A/B as in the paper: amplicon classes (per-cell gene clusters) and graph-level structures, when exported
   const ampExport = useCohortExport(dataset?.dataPath ? dataset : null, AMPLICON_STRUCTURES_FILE);
-  // Fig 1d/f/g: _cohort/tmb.json (per-cell corrected TMB, truncal site counts) with the cells' states and SNV matrices
+  // Fig 1b/f/g: _cohort/tmb.json (per-cell corrected TMB, truncal site counts) with the cells' states and SNV matrices
   const tmbExport = useCohortExport(dataset?.dataPath ? dataset : null, "tmb.json");
   const idMaps = useMemo(() => Object.fromEntries(per.map((p) => [p.patient, new Map(p.cells.map((c) => [`${c.cell_id}`.toUpperCase(), c]))])), [per]);
   const burdenRows = useMemo(() => {
@@ -412,12 +412,12 @@ function FiguresBody({ summaries, files, datafiles, cnRows = {}, chromoBins, clo
           <Card id="sc-fig-states" size="small" title={<Space><BranchesOutlined />Figure 1 · Cell states</Space>}>
             <Row gutter={[24, 8]}>
               <Col xs={24} xl={12}>
-                <ExportPanel name="1e" letter="E" title="Cell-state quadrant" fig="Fig 1e" hint="hover a cell · lasso to select (linked to the patient pages) · click a DNA-profiled cell">
+                <ExportPanel name="1e" letter="D" title="Cell-state quadrant" fig="Fig 1d" hint="hover a cell · lasso to select (linked to the patient pages) · click a DNA-profiled cell">
                   {stateExport.status === "loading" ? <Text type="secondary">Loading state scores…</Text> : <StateQuadrant points={statePoints} dnaIds={dnaIds} selected={selection} onSelect={(p, ids, opts) => focus(p, { marked: { cells: new Set(ids), label: opts.label }, mode: opts.mode, scroll: false })} />}
                 </ExportPanel>
               </Col>
               <Col xs={24} xl={12}>
-                <ExportPanel name="1d" letter="D" title="Subclonal mutations per cell" fig="Fig 1d" hint="click a patient to open it below">
+                <ExportPanel name="1d" letter="B" title="Subclonal mutations per cell" fig="Fig 1b" hint="click a patient to open it below">
                   {tmbExport.status === "loading" ? <Text type="secondary">Loading tmb.json…</Text> : subclonal.rows.length ? <SubclonalPerPatient rows={subclonal.rows} missing={subclonal.missing} onSelectPatient={(p) => focus(p, {})} /> : <Text type="secondary">not available (no tmb.json or per-cell SNV matrices)</Text>}
                 </ExportPanel>
               </Col>
