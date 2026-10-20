@@ -5,7 +5,7 @@
 export const COHORT_VIEW_GROUPS = ["paper", "findings", "genome", "evolution", "rna", "explore", "guide"];
 
 // one tab per manuscript figure, in the paper's order (paperFigureId maps a key to the manifest's figure label)
-export const PAPER_FIGURE_TABS = ["1", "3", "4", "5", "6", "S1", "S6", "S7", "V1", "V2", "V3", "V4", "V5", "V6"];
+export const PAPER_FIGURE_TABS = ["1", "3", "4", "5", "6", "S1", "S3", "S6", "S7", "V1", "V2", "V3", "V4", "V5", "V6"];
 
 export const COHORT_VIEWS = [
   ...PAPER_FIGURE_TABS.map((n) => ({ key: `paperfig${n}`, group: "paper" })),
