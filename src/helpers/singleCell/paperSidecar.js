@@ -46,6 +46,7 @@ export function parseSidecar(json) {
       yscale: scaleOf(r.yscale),
       marks: arr(r.marks).map(markOf).filter(Boolean),
       table: r.table && typeof r.table === "object" ? r.table : null,
+      cols: r.cols && typeof r.cols === "object" ? { ...r.cols, ids: r.cols.ids == null ? null : arr(r.cols.ids).map(String) } : null,
     }))
     .filter((r) => [r.x, r.y, r.w, r.h].every(Number.isFinite) && r.w > 0 && r.h > 0);
   return { page: { w: Number(json.page?.w) || null, h: Number(json.page?.h) || null }, regions, data: json.data && typeof json.data === "object" ? json.data : {} };
