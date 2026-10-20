@@ -226,7 +226,7 @@ export default function PaperFigurePage({ label }) {
             return;
           }
           if (ph?.fields?.patient) {
-            setPatientOpen(`${ph.fields.patient}`);
+            setPatientOpen({ patient: `${ph.fields.patient}`, fields: ph.fields, panel: `${fig.label}${ph.region.panel || ""}` });
             return;
           }
           const p = panelAt(anchors, x, y);
@@ -388,7 +388,7 @@ export default function PaperFigurePage({ label }) {
       </div>
       {patientOpen && (
         <React.Suspense fallback={null}>
-          <PatientDrawer patient={patientOpen} onClose={() => setPatientOpen(null)} />
+          <PatientDrawer patient={patientOpen.patient} focus={patientOpen} onClose={() => setPatientOpen(null)} />
         </React.Suspense>
       )}
       <PanelModal fig={fig} panel={open?.panel || open} initialTab={open?.tab || "panel"} tables={open ? panelTables(sidecar, (open.panel || open).letter) : []} onClose={() => setOpen(null)} onOpenTarget={openPaperTarget} />
