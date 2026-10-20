@@ -18,6 +18,7 @@ import { junctionFocusFromSearch } from "../../helpers/singleCell/junctionFocus"
 import { hideLowQcFromSearch, thresholdsFromSearch } from "../../helpers/singleCell/cellQc";
 import { effectiveSignatures, sigFitMode } from "../../helpers/singleCell/signatureJoint";
 import { annotationFromSearch } from "../../helpers/singleCell/cellSignatures";
+import { readLayout, readPref } from "../../helpers/singleCell/viewSettingsStore";
 
 // Saved cell groups shared through the URL join the stored ones.
 const withUrlGroups = (layout) => {
@@ -44,8 +45,8 @@ const withUrlGroups = (layout) => {
 
 const storedLayout = () => {
   try {
-    const raw = window.localStorage.getItem(SC_LAYOUT_STORAGE_KEY);
-    return withUrlGroups({ ...SC_DEFAULT_LAYOUT, ...(raw ? JSON.parse(raw) : {}) });
+    // opt-in: null (the shipped defaults) unless the signed-in user turned saving on
+    return withUrlGroups({ ...SC_DEFAULT_LAYOUT, ...(readLayout(SC_LAYOUT_STORAGE_KEY) || {}) });
   } catch (error) {
     return withUrlGroups({ ...SC_DEFAULT_LAYOUT });
   }
@@ -60,7 +61,7 @@ const storedPalette = () => {
     // no window: fall through to the stored palette
   }
   try {
-    const raw = window.localStorage.getItem(SC_PALETTE_STORAGE_KEY);
+    const raw = readPref(SC_PALETTE_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
     const preset = parsed?.preset || DEFAULT_CN_PALETTE;
     return { preset, ...normalizePalette(parsed, preset) };

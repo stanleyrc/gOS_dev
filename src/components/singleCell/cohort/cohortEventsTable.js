@@ -12,6 +12,7 @@ import { eventQuality } from "../../../helpers/singleCell/eventQuality";
 import GeneQuickLook from "./geneQuickLook";
 import useMultiSort from "./multiSort";
 import { activeCount, decodeFilters, distinctValues, emptyFilters, encodeFilters, filterRows, setColumnFilter } from "../../../helpers/singleCell/eventFilters";
+import { readPref as readViewPref, writePref as writeViewPref } from "../../../helpers/singleCell/viewSettingsStore";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#E7298A", complex: "#E66101", other: "#8c8c8c" };
@@ -35,7 +36,7 @@ const QUALITY_CAT = ["clonality", "driverClass", "support", "upstream"];
 const EVIDENCE_COLORS = { likely: "volcano", possible: "gold", unlikely: "default" };
 const loadCols = () => {
   try {
-    const v = JSON.parse(window.localStorage.getItem(CHOOSER_KEY));
+    const v = JSON.parse(readViewPref(CHOOSER_KEY));
     return Array.isArray(v) ? v : null;
   } catch (e) {
     return null;
@@ -100,7 +101,7 @@ export default function CohortEventsTable({ summaries, files, onEvent, focusGene
   const setColumns = (keys) => {
     setChosen(keys);
     try {
-      window.localStorage.setItem(CHOOSER_KEY, JSON.stringify(keys));
+      writeViewPref(CHOOSER_KEY, JSON.stringify(keys));
     } catch (e) {
       /* storage unavailable: the choice lasts for this page only */
     }
