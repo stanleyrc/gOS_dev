@@ -24,6 +24,9 @@ export const LEGACY_STORY_TAB_KEY = "16";
 // Tab 18 compares the current phylogeny with alternative trees (needs trees/index.json).
 export const SINGLE_CELL_COMPARE_TREES_TAB_KEY = "18";
 
+// Tab 19 is the single-cell purity / ploidy fit (bulk Purity-Ploidy Fit layout on a cell, clade or selection).
+export const SINGLE_CELL_PPFIT_TAB_KEY = "19";
+
 const singleCellHasSignatures = (singleCell) =>
   Boolean(
     singleCell &&
@@ -115,6 +118,8 @@ export const getDetailTabAvailability = (state = {}) => {
     // Tab 15: precomputed evidence (read slices, targeted genotypes, S-phase, telomeres, pipeline status);
     // shown for every single-cell patient so "not yet computed" and the status table are reachable
     15: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true),
+    // Tab 19: purity / ploidy fit of cells (needs cells; coverage is checked in the tab)
+    19: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0),
     // Tab 18: compare phylogenies; only for patients with an exported trees/index.json listing another tree
     18: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0 && usableTrees(state.SingleCell?.altTrees?.data).length > 1),
   };

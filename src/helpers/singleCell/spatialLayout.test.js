@@ -1,5 +1,5 @@
 import {
-  MAP_MAX, MAP_MIN, SPATIAL_SECTIONS, clampMapWidth, effectiveMode, hiddenSections, isCompact,
+  DEFAULT_HIDDEN_BESIDE, MAP_MAX, MAP_MIN, SPATIAL_SECTIONS, clampMapWidth, effectiveMode, hiddenSections, isCompact,
   presetOf, readSpatialLink, toggleSection, withSpatialLink,
 } from "./spatialLayout";
 
@@ -16,8 +16,12 @@ describe("spatialLayout", () => {
     expect(effectiveMode("below", 1700)).toBe("below");
     expect(effectiveMode(undefined, 1700)).toBe("beside");
   });
-  it("is compact by default only when beside", () => {
-    expect(isCompact(hiddenSections(null, "beside"))).toBe(true);
+  it("beside, opens like the gbm-sc page: navigation, tracks and legend shown, analysis cards collapsed", () => {
+    const hidden = hiddenSections(null, "beside");
+    expect(isCompact(hidden)).toBe(false);
+    ["nav", "igv", "umap", "treebars", "tracks", "legend"].forEach((k) => expect(hidden).not.toContain(k));
+    expect(hidden).toEqual(DEFAULT_HIDDEN_BESIDE);
+    expect(isCompact(SPATIAL_SECTIONS)).toBe(true);
     expect(hiddenSections(null, "below")).toEqual([]);
     expect(hiddenSections(["umap", "bogus"], "beside")).toEqual(["umap"]);
   });

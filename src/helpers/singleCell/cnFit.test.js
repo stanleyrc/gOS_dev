@@ -108,3 +108,49 @@ describe("cnFit", () => {
     expect(rows[0].summary.fracHigh).toBe(1);
   });
 });
+
+describe("cnFit bulk-style plot input", () => {
+  const { normaliseAligned, binIntervals, segmentIntervals, separatorsOf, fitOptions, groupOfChoice, activeChoice } = require("./cnFit");
+  const chromoBins = { 1: { startPlace: 0, startPoint: 0, endPoint: 1000000 }, 2: { startPlace: 1000000, startPoint: 0, endPoint: 500000 } };
+
+  it("keeps positions aligned with the normalised means", () => {
+    const r = normaliseAligned([1, 2, 3, 4], [2, NaN, 4, 6]);
+    expect(r.x).toEqual([1, 3, 4]);
+    expect(r.m.reduce((a, b) => a + b, 0) / 3).toBeCloseTo(1);
+  });
+
+  it("builds chromosome-aware interval blocks with median means", () => {
+    const x = [0, 10000, 20000, 990000, 1000000, 1010000];
+    const m = [1, 3, 2, 1, 5, 5];
+    const out = binIntervals(x, m, chromoBins, { k: 2, binSize: 10000 });
+    expect(out.map((o) => o.chromosome)).toEqual(["1", "1", "2"]);
+    expect(out[0].metadata.mean).toBe(3);
+    expect(out[2].startPoint).toBe(0);
+    expect(out[2].metadata.mean).toBe(5);
+    expect(out.every((o) => o.metadata.width > 0)).toBe(true);
+  });
+
+  it("limits the interval count", () => {
+    const x = Array.from({ length: 1000 }, (_, i) => i * 1000);
+    expect(binIntervals(x, x.map(() => 1), chromoBins, { k: 1, maxIntervals: 100 }).length).toBeLessThanOrEqual(100);
+  });
+
+  it("turns JaBbA segments into means under the solution and the solution into separators", () => {
+    const sol = solutionOf(4, 1);
+    const segs = segmentIntervals([{ iid: 1, chromosome: "1", startPoint: 1, endPoint: 100, y: 4 }, { chromosome: "1", startPoint: 5, endPoint: 5, y: 2 }, { chromosome: "1", startPoint: 1, endPoint: 9, y: NaN }], sol);
+    expect(segs).toHaveLength(1);
+    expect(segs[0].metadata.mean).toBeCloseTo(1);
+    expect(separatorsOf(sol)).toEqual({ beta: 0.25, purity: 1, meanSegmentValue: 1 });
+  });
+
+  it("lists choices and resolves them", () => {
+    const rows = [{ id: "c_A", cells: ["a", "b"], summary: { median: 3.1 } }];
+    const cells = [{ cell_id: "a", ploidy: 2 }, { cell_id: "z", ploidy: 5 }];
+    const opts = fitOptions({ selectedCellIds: ["a"], rows, cells });
+    expect(opts.map((o) => o.value)).toEqual(["sel", "clade:c_A", "cell:z", "cell:a"]);
+    expect(groupOfChoice("clade:c_A", { rows })).toEqual({ ids: ["a", "b"], label: "A" });
+    expect(groupOfChoice("sel", { selectedCellIds: ["a"] }).ids).toEqual(["a"]);
+    expect(activeChoice("nope", opts)).toBe("sel");
+    expect(activeChoice("cell:z", opts)).toBe("cell:z");
+  });
+});
