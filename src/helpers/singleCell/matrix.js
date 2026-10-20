@@ -789,6 +789,57 @@ export function columnBins(count, width, range = [0, count]) {
 }
 
 /**
+ * Like columnBins, but when zoomed out (more sites than pixels) pixel bins
+ * never straddle two groups (e.g. branches, with columns in tree order): each
+ * run of equal keys in columns[start..end) gets pixels in proportion to its
+ * size and at least one, so small branches stay visible beside big ones.
+ * keys: one group key per column position. Falls back to columnBins when the
+ * view is not binned or has more groups than pixels.
+ */
+export function groupedColumnBins(keys, width, range = [0, keys.length]) {
+  const count = keys.length;
+  const w = Math.max(0, Math.floor(width));
+  const start = Math.max(0, Math.min(count, Math.floor(range[0])));
+  const end = Math.max(start, Math.min(count, Math.ceil(range[1])));
+  const span = end - start;
+  if (!w || span <= w) return columnBins(count, width, range);
+  const runs = [];
+  for (let k = start; k < end; k += 1) {
+    if (!runs.length || keys[k] !== keys[k - 1]) runs.push({ start: k, len: 0 });
+    runs[runs.length - 1].len += 1;
+  }
+  if (runs.length > w || runs.length < 2) return columnBins(count, width, range);
+  const px = runs.map((r) => Math.max(1, Math.floor((r.len * w) / span)));
+  let total = px.reduce((a, b) => a + b, 0);
+  while (total > w) {
+    let big = 0;
+    for (let i = 1; i < px.length; i += 1) if (px[i] > px[big]) big = i;
+    px[big] -= 1;
+    total -= 1;
+  }
+  if (total < w) {
+    const rem = runs.map((r, i) => ({ i, f: (r.len * w) / span - px[i] })).sort((a, b) => b.f - a.f || a.i - b.i);
+    for (let j = 0; total < w; j = (j + 1) % rem.length) {
+      px[rem[j].i] += 1;
+      total += 1;
+    }
+  }
+  const binStart = new Int32Array(w).fill(-1);
+  const binEnd = new Int32Array(w).fill(-1);
+  let x = 0;
+  runs.forEach((r, i) => {
+    const p = px[i];
+    for (let j = 0; j < p; j += 1, x += 1) {
+      const a = r.start + Math.floor((j * r.len) / p);
+      const b = r.start + Math.floor(((j + 1) * r.len) / p);
+      binStart[x] = a;
+      binEnd[x] = Math.max(a + 1, b);
+    }
+  });
+  return { binStart, binEnd, binned: true, grouped: true };
+}
+
+/**
  * Per variant, 1 when any of the first nLeaves display rows has a PL genotype
  * call for it (snv.gt: 1 alt, 0 ref, -1 no call); null when the matrix has no calls.
  */
@@ -821,67 +872,88 @@ export function treeColumnOrder(snv, layout, rows) {
   const nVar = snv.variants.length;
   if (!layout || !nVar) return snv.variants.map((v) => v.index);
   const nLeaves = layout.leaves.length;
-  const carriers = Array.from({ length: nVar }, () => []);
-  const covered = Array.from({ length: nVar }, () => []);
   const called = calledVariants(snv, rows, nLeaves);
-  for (let r = 0; r < nLeaves; r += 1) {
-    const p = rows[r];
-    if (p < 0) continue;
-    const status = snv.status[p];
-    const gt = called ? snv.gt[p] : null;
-    for (let c = 0; c < nVar; c += 1) {
-      const s = called && called[c] ? gt[c] : status[c];
-      if (s >= 0) covered[c].push(r);
-      if (s === 1) carriers[c].push(r);
-    }
-  }
-  const countIn = (sorted, lo, hi) => {
-    const lower = (v) => {
-      let a = 0;
-      let b = sorted.length;
-      while (a < b) {
-        const m = (a + b) >> 1;
-        if (sorted[m] < v) a = m + 1;
-        else b = m;
-      }
-      return a;
-    };
-    return lower(hi + 1) - lower(lo);
-  };
   // Depth-first rank of each clade: parents before children, top to bottom.
   const nodes = layout.nodes.filter((n) => n.lastLeaf > n.firstLeaf || n.isLeaf);
   const rank = new Map();
   [...nodes]
     .sort((a, b) => a.firstLeaf - b.firstLeaf || b.lastLeaf - a.lastLeaf)
     .forEach((n, k) => rank.set(n, k));
+  // Per site, carrier and covered counts of every clade by one pass over the leaves and one bottom-up sum over the nodes
+  // (nodes are created parent-first), then the best-F1 clade with the same tie-break (lower rank) as testing every node.
+  const nNodes = layout.nodes.length;
+  const nodeIndex = new Map(layout.nodes.map((n, k) => [n, k]));
+  const parentOf = Int32Array.from(layout.nodes, (n) => (n.parent == null ? -1 : n.parent));
+  const evalIdx = Int32Array.from(nodes, (n) => nodeIndex.get(n));
+  const evalRank = Int32Array.from(nodes, (n) => rank.get(n));
+  const leafOfRow = new Int32Array(nLeaves).fill(-1);
+  layout.nodes.forEach((n, k) => {
+    if (n.isLeaf && n.firstLeaf < nLeaves) leafOfRow[n.firstLeaf] = k;
+  });
+  const inside = new Int32Array(nNodes);
+  const cov = new Int32Array(nNodes);
+  const rowArrays = new Array(nLeaves);
+  const gtArrays = new Array(nLeaves);
+  for (let r = 0; r < nLeaves; r += 1) {
+    const p = rows[r];
+    rowArrays[r] = p >= 0 ? snv.status[p] : null;
+    gtArrays[r] = p >= 0 && called ? snv.gt[p] : null;
+  }
   const placement = new Int32Array(nVar);
   const prevalence = new Float64Array(nVar);
   for (let c = 0; c < nVar; c += 1) {
-    const nCarry = carriers[c].length;
-    prevalence[c] = covered[c].length ? nCarry / covered[c].length : 0;
+    const useGt = called && called[c];
+    inside.fill(0);
+    cov.fill(0);
+    let nCarry = 0;
+    let nCov = 0;
+    for (let r = 0; r < nLeaves; r += 1) {
+      const st = useGt ? gtArrays[r] : rowArrays[r];
+      if (!st) continue;
+      const s = st[c];
+      if (s < 0) continue;
+      const k = leafOfRow[r];
+      nCov += 1;
+      if (k >= 0) cov[k] += 1;
+      if (s === 1) {
+        nCarry += 1;
+        if (k >= 0) inside[k] += 1;
+      }
+    }
+    prevalence[c] = nCov ? nCarry / nCov : 0;
     if (!nCarry) {
       placement[c] = Number.MAX_SAFE_INTEGER;
       continue;
     }
-    let best = null;
-    let bestScore = -1;
-    nodes.forEach((n) => {
-      const inside = countIn(carriers[c], n.firstLeaf, n.lastLeaf);
-      if (!inside) return;
-      const coveredInside = countIn(covered[c], n.firstLeaf, n.lastLeaf);
-      const precision = inside / nCarry;
-      const recall = coveredInside ? inside / coveredInside : 0;
-      const f1 = (2 * precision * recall) / (precision + recall || 1);
-      if (f1 > bestScore + 1e-12 || (Math.abs(f1 - bestScore) <= 1e-12 && rank.get(n) < rank.get(best))) {
-        bestScore = f1;
-        best = n;
+    for (let k = nNodes - 1; k > 0; k -= 1) {
+      const p = parentOf[k];
+      if (p >= 0) {
+        inside[p] += inside[k];
+        cov[p] += cov[k];
       }
-    });
-    placement[c] = best ? rank.get(best) : Number.MAX_SAFE_INTEGER;
+    }
+    let bestRank = -1;
+    let bestScore = -1;
+    for (let j = 0; j < evalIdx.length; j += 1) {
+      const k = evalIdx[j];
+      const ins = inside[k];
+      if (!ins) continue;
+      const precision = ins / nCarry;
+      const recall = cov[k] ? ins / cov[k] : 0;
+      const f1 = (2 * precision * recall) / (precision + recall || 1);
+      if (f1 > bestScore + 1e-12 || (Math.abs(f1 - bestScore) <= 1e-12 && bestRank >= 0 && evalRank[j] < bestRank)) {
+        bestScore = f1;
+        bestRank = evalRank[j];
+      }
+    }
+    placement[c] = bestRank >= 0 ? bestRank : Number.MAX_SAFE_INTEGER;
   }
-  return snv.variants
+  const order = snv.variants
     .map((v) => v.index)
     .sort((a, b) => placement[a] - placement[b] || prevalence[b] - prevalence[a] || a - b);
+  // the clade rank each site was placed on (per variant index), for branch-aligned column bins
+  Object.defineProperty(order, "placement", { value: placement, enumerable: false, configurable: true });
+  return order;
 }
 
 /**

@@ -1196,6 +1196,8 @@
         "all-sites": "All sites",
         "cellphy-only": "CellPhy input only",
         "drivers-only": "OncoKB drivers only ({{count}})",
+        "cn-mapped": "+ CN-mapped sites {{count}}",
+        "category-cn_mapped": "CN-mapped (copy-number-altered region)",
         "category": "On the tree",
         "category-truncal": "Truncal (tumor MRCA)",
         "category-subclonal": "Subclonal (shared)",

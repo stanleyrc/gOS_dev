@@ -72,6 +72,7 @@ export default function BranchSnvDrawer({ open, onClose, snv, variantIdx, cellId
         <Space size={4}>
           <Text>{v.protein || v.consequence || "–"}</Text>
           {v.driver && <Tag color="red">{v.oncokbLevel || v.oncogenic || "driver"}</Tag>}
+          {v.cnMapped && v.lostIn && <Tag title={`mutant allele lost in ${v.lostIn} (${v.lostCells ?? "?"} cells with LOH)`}>lost in {v.lostIn}</Tag>}
         </Space>
       ),
       sorter: (a, b) => Number(b.driver) - Number(a.driver),
