@@ -100,13 +100,23 @@ describe("FilteredEventsListPanel saved browser layout", () => {
   let listeners;
   let panels;
 
+  const signInWithSaving = (on = true) => {
+    storage.setItem("gOS_user", JSON.stringify({ userId: "u1", displayName: "t" }));
+    if (on) storage.setItem("gos.u.u1.viewSettings.on", "1");
+    else storage.removeItem("gos.u.u1.viewSettings.on");
+    storage.setItem.mockClear();
+  };
+
   beforeEach(() => {
     previousWindow = global.window;
     const items = new Map();
     storage = {
       getItem: jest.fn((key) => items.get(key) ?? null),
       setItem: jest.fn((key, value) => items.set(key, value)),
+      removeItem: jest.fn((key) => items.delete(key)),
     };
+    // opt-in design: the column layout persists only for a signed-in user with "Remember my view settings" on
+    signInWithSaving();
     listeners = new Map();
     panels = [];
     global.window = {
@@ -145,7 +155,19 @@ describe("FilteredEventsListPanel saved browser layout", () => {
     panel.handleColumnDrop(to, keys);
   }
 
-  it("saves while signed out on resize completion/drop and restores across cases, reloads and datasets", () => {
+  it("does not persist the column layout when signed out or with the switch off", () => {
+    storage.removeItem("gOS_user");
+    let panel = makePanel();
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 340 } });
+    expect(storage.setItem).not.toHaveBeenCalled();
+    signInWithSaving(false);
+    panel = makePanel();
+    panel.handleColumnResizeStop("gene")(null, { size: { width: 340 } });
+    expect(storage.setItem).not.toHaveBeenCalled();
+    expect(readColumnLayout().columnWidths).toEqual({});
+  });
+
+  it("saves (signed in, switch on) on resize completion/drop and restores across cases, reloads and datasets", () => {
     const panel = makePanel();
     panel.handleColumnResize("gene")(null, { size: { width: 310 } });
     expect(storage.setItem).not.toHaveBeenCalled();
@@ -153,7 +175,7 @@ describe("FilteredEventsListPanel saved browser layout", () => {
     reorder(panel);
     const restored = makePanel("case-2", { id: "other-dataset", defaultVisibleFilteredEventsColumns: ["gene"] });
     expect(restored.state).toMatchObject({ columnWidths: { gene: 340 }, columnOrderKeys: ["tier", "gene"], selectedColumnKeys: ["gene", "caller"], pageSize: 50 });
-    expect(Object.keys(JSON.parse(storage.getItem(COLUMN_LAYOUT_STORAGE_KEY)))).toEqual(["columnWidths", "columnOrderKeys", "pinnedColumnKeys"]);
+    expect(Object.keys(JSON.parse(storage.getItem(`gos.u.u1.${COLUMN_LAYOUT_STORAGE_KEY.replace(/^gos\./, "")}`)))).toEqual(["columnWidths", "columnOrderKeys", "pinnedColumnKeys"]);
     expect(getCurrentUserId).not.toHaveBeenCalled();
     const previousProps = restored.props;
     restored.props = { ...restored.props, dataset: { defaultVisibleFilteredEventsColumns: ["tier"] } };
