@@ -16,7 +16,7 @@ describe("navRail", () => {
     expect(patientGroupOfTab(16)).toBe("report");
     expect(patientGroupOfTab(17)).toBe("tree");
     expect(patientGroupOfTab(99)).toBeNull();
-    expect(PATIENT_RAIL.flatMap((g) => g.tabs.map((t) => t.tab)).sort((a, b) => a - b)).toEqual([7, 8, 9, 10, 11, 12, 13, 14, 15, 18]);
+    expect(PATIENT_RAIL.flatMap((g) => g.tabs.map((t) => t.tab)).sort((a, b) => a - b)).toEqual([7, 8, 9, 10, 11, 12, 13, 14, 15, 18, 19]);
   });
   it("builds cohort groups with labels", () => {
     const views = [{ key: "a", group: "g1" }, { key: "b", group: "g2" }];
