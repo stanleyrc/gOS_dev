@@ -40,7 +40,7 @@ function yAxis(ctx, c, { x, y0, y1, ticks, sy, title, fmt = formatTick }) {
 }
 
 /**
- * Fig 1d: subclonal SNVs per cell (median, IQR) per patient, ordered by the
+ * Fig 1b: subclonal SNVs per cell (median, IQR) per patient, ordered by the
  * median, over a strip of each patient's truncal SNV count; patients without
  * a per-cell SNV matrix shown as n/a. Click a patient to open it below.
  * rows: [{ patient, med, lo, hi, k, truncal }]; missing: [patient].
@@ -120,7 +120,7 @@ export function SubclonalPerPatient({ rows, missing, onSelectPatient }) {
   );
   return (
     <div ref={ref}>
-      <FigureCanvas width={width} height={height} draw={draw} ariaLabel="Fig 1d subclonal SNVs per cell" tooltip={(h) => [h.r.patient, ["median (IQR)", `${Math.round(h.r.med)} (${Math.round(h.r.lo)}–${Math.round(h.r.hi)})`], ["tumour cells", h.r.k], ["truncal SNVs", h.r.truncal ?? "–"], "click to open the patient"]} onClick={(h) => onSelectPatient?.(h.r.patient)} />
+      <FigureCanvas width={width} height={height} draw={draw} ariaLabel="Fig 1b subclonal SNVs per cell" tooltip={(h) => [h.r.patient, ["median (IQR)", `${Math.round(h.r.med)} (${Math.round(h.r.lo)}–${Math.round(h.r.hi)})`], ["tumour cells", h.r.k], ["truncal SNVs", h.r.truncal ?? "–"], "click to open the patient"]} onClick={(h) => onSelectPatient?.(h.r.patient)} />
       <div className="sc-fig-caption">Median and IQR across tumour cells (subclonal sites with genotype 1).{missing.length ? ` No per-cell SNV matrix: ${missing.join(", ")}.` : ""}</div>
     </div>
   );
