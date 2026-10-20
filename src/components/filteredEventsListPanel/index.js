@@ -289,7 +289,7 @@ export class FilteredEventsListPanel extends Component {
   };
 
   handleColumnLayoutStorage = (event) => {
-    if (event.key === null || event.key === COLUMN_LAYOUT_STORAGE_KEY) {
+    if (event.key === null || event.key === COLUMN_LAYOUT_STORAGE_KEY || /^gos\.u\..*\.filteredEventsColumnLayout\.v1$/.test(event.key || "")) {
       this.restoreColumnLayout();
     }
   };
