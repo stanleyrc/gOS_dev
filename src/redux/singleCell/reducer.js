@@ -18,9 +18,9 @@ import { junctionFocusFromSearch } from "../../helpers/singleCell/junctionFocus"
 import { hideLowQcFromSearch, thresholdsFromSearch } from "../../helpers/singleCell/cellQc";
 import { effectiveSignatures, sigFitMode } from "../../helpers/singleCell/signatureJoint";
 import { annotationFromSearch } from "../../helpers/singleCell/cellSignatures";
+import { readLayout, readPref } from "../../helpers/singleCell/viewSettingsStore";
 
 // Saved cell groups shared through the URL join the stored ones.
-import { readLayout, readPref } from "../../helpers/singleCell/viewSettingsStore";
 const withUrlGroups = (layout) => {
   const incoming = groupsFromUrl();
   const withGroups = incoming ? { ...layout, savedGroups: mergeGroups(layout.savedGroups || {}, incoming) } : layout;

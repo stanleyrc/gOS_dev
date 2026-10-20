@@ -29,8 +29,8 @@ import { defaultView3d, indexUmap3d, parseColor, zoom3d } from "../../helpers/si
 import { toScreen, zoomRadius } from "../../helpers/singleCell/umapZoom";
 import { loadUmap3d } from "../../redux/singleCell/loaders";
 import { ZERO_STYLE, themeKey, expressionModel, exprColor, exprDrawOrder, rampGradient } from "../../helpers/singleCell/exprColour";
-
 import { readPref as vsReadPref, writePref as vsWritePref } from "../../helpers/singleCell/viewSettingsStore";
+
 
 const readPref = (key, fallback) => {
   try {

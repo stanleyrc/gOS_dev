@@ -12,12 +12,12 @@ import { eventQuality } from "../../../helpers/singleCell/eventQuality";
 import GeneQuickLook from "./geneQuickLook";
 import useMultiSort from "./multiSort";
 import { activeCount, decodeFilters, distinctValues, emptyFilters, encodeFilters, filterRows, setColumnFilter } from "../../../helpers/singleCell/eventFilters";
+import { readPref as readViewPref, writePref as writeViewPref } from "../../../helpers/singleCell/viewSettingsStore";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#E7298A", complex: "#E66101", other: "#8c8c8c" };
 const pct = d3.format(".0%");
 const EVF_PARAM = "evf";
-import { readPref as readViewPref, writePref as writeViewPref } from "../../../helpers/singleCell/viewSettingsStore";
 const CHOOSER_KEY = "gos-cohort-events-columns";
 // optional quality columns: key -> label; shown by default unless listed in OFF_BY_DEFAULT
 const QUALITY_COLS = [
