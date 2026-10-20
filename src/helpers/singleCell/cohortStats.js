@@ -71,8 +71,8 @@ export function eventLabel(e = {}) {
 
 /** Plain-language meaning of complex / structural row labels in the oncoprint ("DM (7)", "TIC (6,8)", "rDup (6,7)"); null for genes. */
 const ROW_TERMS = [
-  [/^DM\b/i, "DM: double minute / ecDNA (gGnome event classifier)"],
-  [/^cpxdm/i, "complex DM: ecDNA with a complex junction structure (gGnome)"],
+  [/^DM\b/i, "ecDNA: gGnome DM (double minute), event classifier"],
+  [/^cpxdm/i, "complex ecDNA: ecDNA with a complex junction structure (gGnome)"],
   [/^TIC\b/i, "TIC: templated insertion chain, segments copied and inserted in a chain (gGnome)"],
   [/^rDup\b/i, "rDup: reciprocal duplication pair (gGnome)"],
   [/^rDel\b/i, "rDel: reciprocal deletion pair (gGnome)"],
