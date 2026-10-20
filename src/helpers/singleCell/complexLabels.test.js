@@ -62,7 +62,7 @@ describe("ecDNA footprint overlap", () => {
     expect(o.dms.map((d) => d.label)).toEqual(["ecDNA (1,7)"]);
     expect(dmOverlap(entries.find((e) => e.event === dm17), entries)).toBeNull();
     const text = dmOverlapText(o);
-    expect(text.chip).toBe("inside DM (1,7) footprint in 2 of 4 carriers");
+    expect(text.chip).toBe("inside ecDNA (1,7) footprint in 2 of 4 carriers");
     expect(text.note).toMatch(/not direct proof/);
     expect(dmOverlap(mine, [mine])).toBeNull();
     // a DM holding only one of the two intervals does not contain the footprint
