@@ -55,7 +55,6 @@ import {
   sourceDatasetHasField,
 } from "../../helpers/browseScope";
 import { userAuthRepository } from "../../helpers/userAuth";
-import SingleCellCohortPanel from "../../components/singleCell/singleCellCohortPanel";
 import PatientCaseCard from "../../components/singleCell/patientCaseCard";
 import { peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import {
@@ -63,6 +62,7 @@ import {
   isPatientRecord,
 } from "../../helpers/singleCell/cellFiles";
 
+const SingleCellCohortPanel = React.lazy(() => import("../../components/singleCell/singleCellCohortPanel"));
 const {
   applyFavoriteSearch,
   deleteFavoriteSearch,
@@ -1496,7 +1496,7 @@ export class ListView extends Component {
                             key: "singleCellCohort",
                             label: t("containers.list-view.tabs.single-cell-cohort"),
                             children: (
-                              <SingleCellCohortPanel datafiles={datafiles} />
+                              <React.Suspense fallback={null}><SingleCellCohortPanel datafiles={datafiles} /></React.Suspense>
                             ),
                           },
                         ]

@@ -11,13 +11,79 @@ import { allelicToGenome, dataToGenome, splitFloat64 } from "../../helpers/utili
 import { SC_FETCHED_TRACKS } from "./actions";
 import { hetBlocksToGraph } from "../../helpers/singleCell/hetTracks";
 import { parseRnaSummary, readMatrixBuffers } from "../../helpers/singleCell/staticRna";
+import { GZ_INDEX_FILE, dataRootOf, gunzipText, gzEntry, parseGzIndex, sourceIsFresh } from "../../helpers/singleCell/gzIndex";
 
 export const casePath = (dataset, caseReportId, filename) =>
   `${dataset.dataPath}${caseReportId}/${filename}`;
 
+// gz_index.json of each data root, fetched once (empty set when absent): which files have a .gz sibling
+const gzIndexCache = new Map();
+function gzIndexFor(path) {
+  const root = dataRootOf(path);
+  if (!root) return Promise.resolve(null);
+  if (!gzIndexCache.has(root)) {
+    gzIndexCache.set(
+      root,
+      axios
+        .get(`${root}${GZ_INDEX_FILE}`, { responseType: "json" })
+        .then((r) => (isMissingDataResponse(r) ? new Map() : parseGzIndex(r.data)))
+        .catch(() => new Map())
+    );
+  }
+  return gzIndexCache.get(root);
+}
+
+const sourceFreshCache = new Map();
+/** HEAD of the source file: still the size / mtime the .gz was built from? (once per source) */
+function sourceFresh(path, entry) {
+  const root = dataRootOf(path);
+  const url = `${root}${entry.source}`;
+  if (!sourceFreshCache.has(url)) {
+    sourceFreshCache.set(
+      url,
+      axios
+        .head(url)
+        .then((r) => sourceIsFresh(entry, r.headers))
+        .catch(() => false)
+    );
+  }
+  return sourceFreshCache.get(url);
+}
+
+/**
+ * The text of path.gz gunzipped in the browser, or null. Only used when gz_index.json lists the file AND its
+ * source file is unchanged since the .gz was built (HEAD size + mtime): a stale .gz is never read.
+ * Returns { skip: true } for a derived file (snv_variants.json) whose source changed: it must not be read at all.
+ */
+async function getGzText(path, cancelToken) {
+  const index = await gzIndexFor(path);
+  const entry = gzEntry(index, path);
+  if (!entry) return null;
+  if (!(await sourceFresh(path, entry))) return entry.derived ? { skip: true } : null;
+  try {
+    const response = await axios.get(`${path}.gz`, { cancelToken, responseType: "arraybuffer" });
+    return await gunzipText(response.data);
+  } catch (error) {
+    if (axios.isCancel(error)) throw error;
+    return entry.derived ? { skip: true } : null;
+  }
+}
+
 /** GET a file: resolves to { status: "ok", data } | { status: "missing" } | { status: "error", error }. */
 export async function tryGet(path, { cancelToken, responseType = "json" } = {}) {
   try {
+    if (responseType === "json" || responseType === "text") {
+      const text = await getGzText(path, cancelToken);
+      if (text && text.skip) return { status: "missing" }; // derived file out of date: callers fall back to the source
+      if (text !== null) {
+        if (responseType === "text") return { status: "ok", data: text };
+        try {
+          return { status: "ok", data: JSON.parse(text) };
+        } catch (parseError) {
+          // unreadable .gz: use the plain file
+        }
+      }
+    }
     const response = await axios.get(path, {
       cancelToken,
       responseType,

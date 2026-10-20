@@ -25,14 +25,14 @@ const makeStore = (tab, record) => {
 };
 
 describe("ScEventModal", () => {
-  it("renders the popup on single-cell tabs when an event is selected", () => {
+  it("renders the popup on single-cell tabs when an event is selected", async () => {
     const ScEventModal = require("./scEventModal").default;
     render(
       <Provider store={makeStore(12, { gene: "CDK4", uid: "x" })}>
         <ScEventModal />
       </Provider>
     );
-    const modal = screen.getByTestId("modal");
+    const modal = await screen.findByTestId("modal"); // the modal is a lazy chunk
     expect(modal.getAttribute("data-open")).toBe("true");
     expect(modal.getAttribute("data-gene")).toBe("CDK4");
   });

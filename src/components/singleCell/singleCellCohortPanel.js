@@ -33,47 +33,17 @@ import { layoutTree, parseNewick, pruneTree, toUnitHeight } from "../../helpers/
 import { cnDistances, upgma } from "../../helpers/singleCell/phylogeny";
 import Wrapper from "./index.style";
 import useCohortFiles from "./cohort/useCohortFiles";
-import TmbPanel from "./cohort/tmbPanel";
-import CohortTmbPanel from "./cohort/cohortTmbPanel";
-import CohortTmbAssocPanel from "./cohort/cohortTmbAssocPanel";
-import CohortCladeTmbPanel from "./cohort/cohortCladeTmbPanel";
-import CohortSignaturesPanel from "./cohort/cohortSignaturesPanel";
-import CohortJointSignatures from "./cohort/cohortJointSignatures";
-import OncoprintPanel from "./cohort/oncoprintPanel";
-import CohortOncoprintPanel from "./cohort/cohortOncoprintPanel";
-import CohortEventAssocPanel from "./cohort/cohortEventAssocPanel";
-import CohortClinicalPanel from "./cohort/cohortClinicalPanel";
 import { CladeF1Context } from "./cohort/cladeF1Chip";
-import CohortScatterPanel from "./cohort/cohortScatterPanel";
-import CohortCladesPanel from "./cohort/cohortCladesPanel";
-import CohortQcPanel from "./cohort/cohortQcPanel";
-import WelcomeView from "./guide/welcomeView";
-import MethodsView from "./guide/methodsView";
 import settingsActions from "../../redux/settings/actions";
-import CohortTreeShapePanel from "./cohort/cohortTreeShapePanel";
-import CohortAlignedTreesPanel from "./cohort/cohortAlignedTreesPanel";
-import CohortMutJunctionsPanel from "./cohort/cohortMutJunctionsPanel";
-import CohortEcdnaPlasticityPanel from "./cohort/cohortEcdnaPlasticityPanel";
-import CohortAssociationsPanel from "./cohort/cohortAssociationsPanel";
-import CohortGenePanel from "./cohort/cohortGenePanel";
-import CohortDriverTreesPanel from "./cohort/cohortDriverTreesPanel";
 import PatientSummaryTable from "./cohort/patientCards";
 import CohortHeadline from "./cohort/cohortHeadline";
 import useCohortTsg from "./cohort/useCohortTsg";
-import CohortTsgHitsPanel from "./cohort/cohortTsgHitsPanel";
 import { buildPatientReport } from "../../helpers/singleCell/patientReport";
 import { isRescued } from "../../helpers/singleCell/cohortStats";
 import useHotspotRescue from "./cohort/useHotspotRescue";
 import { ecdnaWalks } from "../../helpers/singleCell/cohortHeadline";
 import { COHORT_VIEWS, COHORT_VIEW_GROUPS, resolveCohortView, viewsInGroup } from "../../helpers/singleCell/cohortViews";
-import CohortCircosPanel from "./cohort/cohortCircosPanel";
-import CohortEventsTable from "./cohort/cohortEventsTable";
 import CohortEventDrawer from "./cohort/cohortEventDrawer";
-import CohortRnaPanel from "./cohort/cohortRnaPanel";
-import CohortConvergencePanel from "./cohort/cohortConvergencePanel";
-import CohortAmpliconPanel from "./cohort/cohortAmpliconPanel";
-import CohortFiguresPanel from "./figures/cohortFiguresPanel";
-import CohortCnExpressionPanel from "./cohort/cohortCnExpressionPanel";
 import HelpDrawer from "./helpDrawer";
 import { announceCohortView, peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
@@ -81,16 +51,48 @@ import { passesCladeFilter } from "../../helpers/singleCell/subclonalDrivers";
 import CohortSubclonalPanel, { SubclonalHeadlineCard } from "./cohort/cohortSubclonalPanel";
 import { SC_GUTTER } from "./density";
 import { useCohortRnaFindings } from "./rna/useRnaFindings";
-import CohortRnaHighlights from "./cohort/cohortRnaHighlights";
-import CohortStory from "./story/cohortStory";
-import CohortPortraitPanel from "./cohort/cohortPortraitPanel";
 import PortraitHeadlineCard from "./cohort/portraitHeadlineCard";
-import CohortVignettes from "./vignette/cohortVignettes";
 import { GeneQuickLookContext } from "./cohort/geneQuickLook";
 import { eventLabelsForGene } from "../../helpers/singleCell/geneQuickLook";
-import CohortCovariateDePanel from "./cohort/cohortCovariateDePanel";
 import { Provenance } from "./hintLine";
 import useCellLabels from "./useCellLabels";
+
+// view panels load on demand (own webpack chunks); the overview stays in the main chunk
+const TmbPanel = React.lazy(() => import("./cohort/tmbPanel"));
+const CohortTmbPanel = React.lazy(() => import("./cohort/cohortTmbPanel"));
+const CohortTmbAssocPanel = React.lazy(() => import("./cohort/cohortTmbAssocPanel"));
+const CohortCladeTmbPanel = React.lazy(() => import("./cohort/cohortCladeTmbPanel"));
+const CohortSignaturesPanel = React.lazy(() => import("./cohort/cohortSignaturesPanel"));
+const CohortJointSignatures = React.lazy(() => import("./cohort/cohortJointSignatures"));
+const OncoprintPanel = React.lazy(() => import("./cohort/oncoprintPanel"));
+const CohortOncoprintPanel = React.lazy(() => import("./cohort/cohortOncoprintPanel"));
+const CohortEventAssocPanel = React.lazy(() => import("./cohort/cohortEventAssocPanel"));
+const CohortClinicalPanel = React.lazy(() => import("./cohort/cohortClinicalPanel"));
+const CohortScatterPanel = React.lazy(() => import("./cohort/cohortScatterPanel"));
+const CohortCladesPanel = React.lazy(() => import("./cohort/cohortCladesPanel"));
+const CohortQcPanel = React.lazy(() => import("./cohort/cohortQcPanel"));
+const WelcomeView = React.lazy(() => import("./guide/welcomeView"));
+const MethodsView = React.lazy(() => import("./guide/methodsView"));
+const CohortTreeShapePanel = React.lazy(() => import("./cohort/cohortTreeShapePanel"));
+const CohortAlignedTreesPanel = React.lazy(() => import("./cohort/cohortAlignedTreesPanel"));
+const CohortMutJunctionsPanel = React.lazy(() => import("./cohort/cohortMutJunctionsPanel"));
+const CohortEcdnaPlasticityPanel = React.lazy(() => import("./cohort/cohortEcdnaPlasticityPanel"));
+const CohortAssociationsPanel = React.lazy(() => import("./cohort/cohortAssociationsPanel"));
+const CohortGenePanel = React.lazy(() => import("./cohort/cohortGenePanel"));
+const CohortDriverTreesPanel = React.lazy(() => import("./cohort/cohortDriverTreesPanel"));
+const CohortTsgHitsPanel = React.lazy(() => import("./cohort/cohortTsgHitsPanel"));
+const CohortCircosPanel = React.lazy(() => import("./cohort/cohortCircosPanel"));
+const CohortEventsTable = React.lazy(() => import("./cohort/cohortEventsTable"));
+const CohortRnaPanel = React.lazy(() => import("./cohort/cohortRnaPanel"));
+const CohortConvergencePanel = React.lazy(() => import("./cohort/cohortConvergencePanel"));
+const CohortAmpliconPanel = React.lazy(() => import("./cohort/cohortAmpliconPanel"));
+const CohortFiguresPanel = React.lazy(() => import("./figures/cohortFiguresPanel"));
+const CohortCnExpressionPanel = React.lazy(() => import("./cohort/cohortCnExpressionPanel"));
+const CohortRnaHighlights = React.lazy(() => import("./cohort/cohortRnaHighlights"));
+const CohortStory = React.lazy(() => import("./story/cohortStory"));
+const CohortPortraitPanel = React.lazy(() => import("./cohort/cohortPortraitPanel"));
+const CohortVignettes = React.lazy(() => import("./vignette/cohortVignettes"));
+const CohortCovariateDePanel = React.lazy(() => import("./cohort/cohortCovariateDePanel"));
 
 const WELCOME_SEEN_KEY = "gos-sc-welcome-seen";
 const { Text } = Typography;
@@ -157,7 +159,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const [rowMode, setRowMode] = useState("patients");
 
   const summaries = useMemo(() => cohortSummaries(datafiles), [datafiles]);
-  const cohortFiles = useCohortFiles(summaries, datasets);
+  // per-cell SNV reads are big: only the Figures view (all patients) and the open event drawer (its patient) need them
+  const [snvCellsFor, setSnvCellsFor] = useState([]);
+  const cohortFiles = useCohortFiles(summaries, datasets, snvCellsFor);
   const tsgDataset = datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null;
   const hotspotRescue = useHotspotRescue(datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null);
   // help-center target first, then ?scview=<key> (deep link, e.g. ?scview=qc), else the overview
@@ -194,6 +198,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const [deGene, setDeGene] = useState(null); // { gene, nonce }: Covariate DE tests listing this gene
   const [eventDrawer, setEventDrawer] = useState(null); // { summary, event }
   const openEvent = (summary, event) => summary && event && setEventDrawer({ summary, event });
+  useEffect(() => {
+    setSnvCellsFor(view === "figures" ? summaries.map((s) => s.caseReportId) : eventDrawer ? [eventDrawer.summary.caseReportId] : []);
+  }, [view, eventDrawer, summaries]);
   // Clade F1 filter: drop alterations whose carrier cells do not sit in one clade of the
   // patient's tree (scattered carriers are mostly noise); applies to every cohort view.
   const [cladeFilterOn, setCladeFilterOn] = useState(true);
@@ -509,6 +516,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
           <Tabs size="small" type="card" className="sc-cohort-tabs sc-cohort-view-tabs" activeKey={view} onChange={setView} items={analysisTabs} />
           <div className="sc-view-purpose">{t(`components.single-cell.cohort.purpose-${view}`)}</div>
         </Col>
+        <React.Suspense fallback={<Col span={24}><Text type="secondary">{t("components.single-cell.loading")}</Text></Col>}>
         {view === "story" && (
           <Col span={24}>
             <CohortStory
@@ -886,6 +894,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
           </Card>
         </Col>
         )}
+        </React.Suspense>
       </Row>
       <CohortEventDrawer
         open={Boolean(eventDrawer)}

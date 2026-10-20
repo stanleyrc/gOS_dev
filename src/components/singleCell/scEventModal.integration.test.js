@@ -6,7 +6,7 @@ if (typeof global.TextDecoder === "undefined") global.TextDecoder = TextDecoder;
 if (typeof global.TextEncoder === "undefined") global.TextEncoder = TextEncoder;
 import { Provider } from "react-redux";
 import { combineReducers, createStore } from "redux";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 
 // d3 is ESM-only (Jest cannot parse it) and only reached through import-time
 // helpers of unrelated reducers here: a chainable stand-in is enough.
@@ -18,6 +18,8 @@ jest.mock("d3", () => {
 jest.mock("../tracksModal", () => () => <div data-testid="tracks" />);
 jest.mock("./eventCellTracks", () => ({ __esModule: true, default: () => <div data-testid="event-tracks" />, EventReads: () => <div data-testid="event-reads" /> }));
 jest.mock("../alterationCard", () => () => <div data-testid="alteration" />);
+
+jest.setTimeout(60000); // the lazy modal chunk transforms its whole module graph on first import
 
 describe("ScEventModal with the real reducers and modal", () => {
   it("shows the popup after selectFilteredEvent on a single-cell tab", async () => {
@@ -40,7 +42,7 @@ describe("ScEventModal with the real reducers and modal", () => {
     });
     expect(store.getState().FilteredEvents.selectedFilteredEvent?.gene).toBe("MDM2");
     expect(`${store.getState().Settings.tab}`).toBe("12");
-    expect(document.querySelector(".ant-modal")).not.toBeNull();
+    await waitFor(() => expect(document.querySelector(".ant-modal")).not.toBeNull()); // the modal is a lazy chunk
     expect(screen.getAllByText(/MDM2/).length).toBeGreaterThan(0);
   });
 });
