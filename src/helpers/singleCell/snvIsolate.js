@@ -36,7 +36,7 @@ export function subsetLeafStates(snv, leaves, columns, cellIndex) {
   });
 }
 
-const CAT_LABEL = { truncal: "truncal", subclonal: "subclonal", private: "private", outside_tumor: "outside tumour", unmapped: "unmapped" };
+const CAT_LABEL = { truncal: "truncal", subclonal: "subclonal", private: "private", outside_tumor: "outside tumour", unmapped: "unmapped", cn_mapped: "CN-mapped" };
 
 /** One row per site for the table / TSV. */
 export function isolateTable(snv, annot, columns) {

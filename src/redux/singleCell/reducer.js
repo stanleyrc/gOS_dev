@@ -103,6 +103,8 @@ const initState = {
   tree: { ...emptySource, method: null },
   cn: emptySource, // { cells, rows: [{ binIndex, values } | null] }
   snv: emptySource,
+  // CN-mapped SNVs (cn_mapped_snvs.sites.json): snvFromColumnar shape + meta (method, validation), loaded on demand (layout.snvCnMapped)
+  cnMapped: emptySource,
   junctions: emptySource,
   allelic: emptySource, // { cells, rows: [{ binIndex, major, minor } | null] }, loaded on demand
   rna: emptySource, // static rna/ summary: { cells, genes, fields, hasUmap }
@@ -163,6 +165,10 @@ export default function appReducer(state = initState, action) {
         ...preferences(state),
         loading: action.type === actions.FETCH_SINGLE_CELL_DATA_REQUEST,
       };
+    case actions.SC_CN_MAPPED_REQUEST:
+      return state.cnMapped.status === "idle" ? { ...state, cnMapped: { ...emptySource, status: "loading" } } : state;
+    case actions.SC_CN_MAPPED_LOADED:
+      return action.patient === state.patient?.caseReportId ? { ...state, cnMapped: action.cnMapped } : state;
     case actions.FETCH_SINGLE_CELL_DATA_PROGRESS:
       return { ...state, loadingPercentage: action.loadingPercentage };
     case actions.FETCH_SINGLE_CELL_DATA_SUCCESS: {

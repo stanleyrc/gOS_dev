@@ -29,6 +29,8 @@ import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
+import { appendSnv } from "../../helpers/singleCell/snvColumnar";
+import { CN_MAPPED_PARAM, cnMappedSummary } from "../../helpers/singleCell/cnMapped";
 import { SnvTrackControls, useSnvAnnot, useSnvTracks, useTreeSiteFit } from "./snvAnnotTracks";
 import { snvCopyNumber } from "../../helpers/singleCell/snvCopyNumber";
 import PaletteEditor from "./paletteEditor";
@@ -102,6 +104,8 @@ import SelectionExport from "./selectionExport";
 import useCellSignatures from "./useCellSignatures";
 import { ANNOTATION_PARAMS, ANNOTATION_WIDTHS, SIGNATURE_FIELD, annotationToSearch, annotationWidth as normaliseAnnotationWidth, cellSignatureFit, dominantSignature, signatureSegments, signatureTooltip } from "../../helpers/singleCell/cellSignatures";
 import { signatureColor } from "../../helpers/singleCell/signatureColors";
+
+const CN_MAPPED_IDLE = { status: "idle", data: null, error: null };
 
 const { Text } = Typography;
 const NOT_ANNOTATIONS = new Set(["pair", "well", "entry_type", "patient_id", "clone_id", "cell_id", "tumor_type", "disease", "primary_site", "summary", "caseReportId"]);
@@ -187,7 +191,7 @@ export default function CellHeatmapPanel() {
     tree,
     cn,
     allelic,
-    snv,
+    snv: snvBase,
     junctions,
     heatmapType,
     snvOrder,
@@ -199,6 +203,37 @@ export default function CellHeatmapPanel() {
     selectedCellIds,
     layout,
   } = sc;
+  // CN-mapped sites (copy-number-altered regions placed on the current tree; not tree-building sites): appended to the tree-site
+  // matrix when the toggle is on, so the SNV matrix, branch SNVs and site drawers show them; fetched the first time (Web Worker decode)
+  const cnMappedOn = Boolean(layout.snvCnMapped);
+  const cnMapped = sc.cnMapped || CN_MAPPED_IDLE;
+  useEffect(() => {
+    if (cnMappedOn && cnMapped.status === "idle" && snvBase.status === "ok") dispatch(singleCellActions.fetchCnMapped());
+  }, [cnMappedOn, cnMapped.status, snvBase.status, dispatch]);
+  useEffect(() => {
+    if (!sc.patient) return;
+    try {
+      if (new URL(window.location.href).searchParams.get(CN_MAPPED_PARAM) === "1" && !layout.snvCnMapped) dispatch(singleCellActions.updateLayout({ snvCnMapped: true }));
+    } catch (error) {
+      // no window: toggle only
+    }
+  }, [sc.patient]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!sc.patient) return;
+    try {
+      const url = new URL(window.location.href);
+      if (cnMappedOn) url.searchParams.set(CN_MAPPED_PARAM, "1");
+      else url.searchParams.delete(CN_MAPPED_PARAM);
+      if (url.toString() !== window.location.href) window.history.replaceState(window.history.state, "", url.toString());
+    } catch (error) {
+      // no window / history
+    }
+  }, [cnMappedOn, sc.patient]);
+  const snv = useMemo(
+    () => (cnMappedOn && cnMapped.status === "ok" && snvBase.status === "ok" ? { ...snvBase, data: appendSnv(snvBase.data, cnMapped.data) } : snvBase),
+    [cnMappedOn, cnMapped, snvBase]
+  );
+  const cnMappedInfo = cnMappedSummary(cnMapped, cnMappedOn);
   const cells = useQcCells(rawCells); // + live QC / QC reason annotation fields
   const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
   const cellSignatureSource = useCellSignatures();
@@ -632,8 +667,12 @@ export default function CellHeatmapPanel() {
     if (!snvReady) return [];
     const all = snvOrder === "tree" ? treeColumnOrder(snv.data, treeLayout, snvRows) : snvColumnOrder(snv.data, snvOrder);
     const filtered = filterSnvColumns(snv.data, all, { snvCategories, snvCellphyOnly: cellphyOnly, snvDriversOnly: driversOnly, snvSiteIds, snvMinCladeScore, snvAnnotFilter, annot: snvAnnot, snvSelected, snvSelectedOnly });
-    return amplifiedOnly && snvCn ? filtered.filter((c) => snvCn[c]?.amplified) : filtered;
+    const out = amplifiedOnly && snvCn ? filtered.filter((c) => snvCn[c]?.amplified) : filtered;
+    if (all.placement) Object.defineProperty(out, "placement", { value: all.placement, enumerable: false, configurable: true });
+    return out;
   }, [snvReady, snv, snvOrder, treeLayout, snvRows, snvCategories, cellphyOnly, driversOnly, snvSiteIds, snvSelected, snvSelectedOnly, snvMinCladeScore, amplifiedOnly, snvCn, snvAnnotFilter, snvAnnot]);
+  // zoomed out, tree-ordered columns are binned per branch (helpers/singleCell/matrix.js groupedColumnBins)
+  const snvBinKeys = useMemo(() => (snvOrder === "tree" && snvColumns.placement ? snvColumns.map((c) => snvColumns.placement[c]) : null), [snvOrder, snvColumns]);
   const [snvHeader, setSnvHeader] = useState(null);
   const [besideHeader, setBesideHeader] = useState(null); // annotation strips above the SNV matrix beside the heatmap
 
@@ -1161,6 +1200,7 @@ export default function CellHeatmapPanel() {
     rows: snvRows,
     nRows,
     columnOrder: snvColumns,
+    binKeys: snvBinKeys,
     metric: snvMetric,
     max: snvMax,
     height,
@@ -1524,6 +1564,16 @@ export default function CellHeatmapPanel() {
                       {t("components.single-cell.snv.drivers-only", { count: nDrivers })}
                     </Checkbox>
                   )}
+                  <Tooltip title={cnMappedInfo.text}>
+                    <Checkbox
+                      checked={cnMappedOn}
+                      disabled={cnMappedInfo.disabled && !cnMappedOn}
+                      onChange={(e) => dispatch(singleCellActions.updateLayout({ snvCnMapped: e.target.checked }))}
+                      data-testid="snv-cn-mapped-toggle"
+                    >
+                      {t("components.single-cell.snv.cn-mapped", { count: cnMappedInfo.label ?? "" })}
+                    </Checkbox>
+                  </Tooltip>
                   <div style={{ width: "100%" }}>
                     <SnvTrackControls annot={snvAnnot} nShown={snvColumns.length} onIsolate={setIsolate} fitBusy={snvFitBusy} />
                   </div>
@@ -2181,7 +2231,7 @@ export default function CellHeatmapPanel() {
       </Card>
       {isolating && <SnvIsolatePanel snv={snv.data} columns={snvColumns} annot={snvAnnot} branchInfo={isolateBranches} carrierCount={isolateRows ? isolateRows.size : null} patient={sc.patient?.caseReportId || ""} />}
       {siteDrawer && snvReady && snv.data.variants[siteDrawer.c] && (
-        <SnvSiteDrawer open onClose={() => setSiteDrawer(null)} variant={snv.data.variants[siteDrawer.c]} order={order} rows={snvRows} clickedRow={siteDrawer.row} cnInfo={snvCn?.[siteDrawer.c] || null} />
+        <SnvSiteDrawer open onClose={() => setSiteDrawer(null)} snvData={snv.data} variant={snv.data.variants[siteDrawer.c]} order={order} rows={snvRows} clickedRow={siteDrawer.row} cnInfo={snvCn?.[siteDrawer.c] || null} />
       )}
       {branchNode != null && treeLayout?.nodes[branchNode] && (
         <BranchDiffDrawer

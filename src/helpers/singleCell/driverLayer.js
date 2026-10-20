@@ -6,7 +6,7 @@
 // - serializeSelection / parseSelection: the selection in the URL
 // - driverCellStates: per-cell state of each entry (SNV genotype, copy number, fusion support, carrier)
 // - driverBranchMarks: the tree branch where each driver arises
-import { eventClass, isCalledNotTree, isDamagingMissense, isPooledScan, isRescued, isTertPromoterSv, passesTier, rescueSourceText, TERT_SV_LABEL, tierOf } from "./cohortStats";
+import { eventClass, isCalledNotTree, isCnMappedEvent, isDamagingMissense, isPooledScan, isRescued, isTertPromoterSv, passesTier, rescueSourceText, TERT_SV_LABEL, tierOf } from "./cohortStats";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
 import { twoHitStates, twoHitStatus } from "./twoHit";
 import { driverGenes, roleOf } from "./driverSummary";
@@ -97,6 +97,7 @@ export function snvSiteIndex(snv) {
 export function classLabel(entry) {
   if (entry.clinicalOnly && (entry.cls === "amp" || entry.cls === "homdel")) return `${CN_KIND_LABEL[entry.cnKind] || entry.cls} (clinical assay)`;
   const v = `${entry.event?.vartype || ""}`;
+  if (entry.cls === "snv" && entry.rescued && isCnMappedEvent(entry.event)) return "SNV in a copy-number-altered region, CN-aware mapped onto the tree (read-level evidence)";
   if (entry.cls === "snv" && entry.rescued) return isCalledNotTree(entry.event) ? "SNV called in the joint calls, not a tree site (read-level evidence)" : "Hotspot rescued from site evidence (not in SNV calls)";
   if (entry.cls === "complex") return /^dm$/i.test(v) ? DM_HELP : /^cpxdm$/i.test(v) ? "complex DM: double minute (ecDNA) with complex structure (gGnome event classifier)" : `${v || "Complex event"} (gGnome event classifier)`;
   return { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "SV fusion" }[entry.cls] || entry.cls;

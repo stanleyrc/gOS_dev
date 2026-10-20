@@ -1,5 +1,7 @@
 import { writeLayout, writePref } from "../../helpers/singleCell/viewSettingsStore";
 import { mergeSiteQc } from "../../helpers/singleCell/siteQc";
+import { isColumnarTable, snvFromColumnar } from "../../helpers/singleCell/snvColumnar";
+import { loadColumnarMatrix } from "../../helpers/singleCell/snvColumnarLoader";
 import { all, call, put, select, takeEvery, takeLatest } from "redux-saga/effects";
 import axios from "axios";
 import actions, {
@@ -118,9 +120,11 @@ function* fetchSingleCellData(action = {}) {
     // Per-cell complex.json + mutations.json, a few cells at a time.
     // Patient-level files: tree, optional SNV matrix (reads at every site,
     // pgv sparse format) and the static RNA summary from export_seurat.R.
-    const [treeFile, snvMatrixFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile, siteQcFile, signaturesJointFile] = yield all([
+    const [treeFile, snvTableFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile, siteQcFile, signaturesJointFile] = yield all([
       call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
-      call(tryGet, casePath(dataset, id, "snv_matrix.json"), { cancelToken }),
+      // SNV matrix: the columnar site table first (snv_matrix.sites.json; its .cells.bin is decoded in a Web Worker while the
+      // cell files load), else snv_matrix.json (skilift gos_sc_snv_columnar.py writes both from the same content)
+      call(tryGet, casePath(dataset, id, "snv_matrix.sites.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/cells.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/genes.tsv"), { cancelToken, responseType: "text" }),
       // SigProfilerAssignment fits of preset SNV sets (skilift / gos_sc_upload.R)
@@ -139,6 +143,10 @@ function* fetchSingleCellData(action = {}) {
     ]);
     // Precomputed outputs (srctools precompute pipeline); each may be missing ("not yet computed").
     const precomputeKeys = Object.keys(PRECOMPUTE_FILES);
+    const columnar = snvTableFile.status === "ok" && isColumnarTable(snvTableFile.data) ? snvTableFile.data : null;
+    const snvDensePromise = columnar
+      ? loadColumnarMatrix(casePath(dataset, id, columnar.matrix.file), columnar, cellIds).catch((error) => ({ error }))
+      : null;
     const precomputeFiles = yield all(
       precomputeKeys.map((k) => call(tryGet, casePath(dataset, id, PRECOMPUTE_FILES[k]), { cancelToken }))
     );
@@ -194,12 +202,22 @@ function* fetchSingleCellData(action = {}) {
       junctionsRaw.status === "ok" && junctionsRaw.data.junctions.length === 0
         ? missing()
         : junctionsRaw;
+    const siteQc = siteQcFile.status === "ok" ? siteQcFile.data : null;
+    const snvDense = snvDensePromise ? yield snvDensePromise : null;
+    const snvMatrixFile =
+      snvDense && !snvDense.error ? { status: "columnar" } : yield call(tryGet, casePath(dataset, id, "snv_matrix.json"), { cancelToken });
     const snvRaw =
-      snvMatrixFile.status === "ok"
-        ? attempt(() => snvFromSparse(mergeSiteQc(snvMatrixFile.data, siteQcFile.status === "ok" ? siteQcFile.data : null), cellIds, chromoBins))
+      snvMatrixFile.status === "columnar"
+        ? attempt(() => snvFromColumnar(columnar, snvDense, cellIds, chromoBins, { mergeQc: (sparse) => mergeSiteQc(sparse, siteQc) }))
+        : snvMatrixFile.status === "ok"
+        ? attempt(() => snvFromSparse(mergeSiteQc(snvMatrixFile.data, siteQc), cellIds, chromoBins))
         : anyMutations
         ? attempt(() => snvFromMutations(cellIds, mutations, chromoBins))
         : missing();
+    if (typeof window !== "undefined") {
+      // perf probes: where the SNV matrix came from and how long the worker decode took
+      window.__gosSnvLoad = { source: snvMatrixFile.status === "columnar" ? "columnar" : snvMatrixFile.status === "ok" ? "snv_matrix.json" : "none", sites: snvRaw.data?.variants?.length ?? 0, decodeMs: snvDense?.ms ?? null, t: performance.now() };
+    }
     const rna =
       rnaCellsFile.status === "ok" && rnaGenesFile.status === "ok"
         ? attempt(() => parseRnaSummary(rnaCellsFile.data, rnaGenesFile.data))
@@ -345,6 +363,30 @@ function* loadAllelic() {
   }
 }
 
+/** CN-mapped SNVs of the open patient (cn_mapped_snvs.sites.json + .cells.bin), decoded in a Web Worker. */
+function* loadCnMapped() {
+  const state = yield select(getState);
+  const { SingleCell } = state;
+  const { dataset, chromoBins } = state.Settings;
+  const id = SingleCell.patient?.caseReportId;
+  if (!dataset || !id || SingleCell.cnMapped.status !== "loading") return;
+  const done = (cnMapped) => put({ type: actions.SC_CN_MAPPED_LOADED, patient: id, cnMapped });
+  try {
+    const tab = yield call(tryGet, casePath(dataset, id, "cn_mapped_snvs.sites.json"));
+    if (tab.status !== "ok" || !isColumnarTable(tab.data)) {
+      yield done({ status: "missing", data: null, error: null, reason: tab.status === "error" ? "cn_mapped_snvs.sites.json could not be read" : "no CN-aware mapping exported for this patient" });
+      return;
+    }
+    const cellIds = SingleCell.snv.status === "ok" ? SingleCell.snv.data.cells : SingleCell.cells.map((c) => c.cell_id);
+    const dense = yield call(loadColumnarMatrix, casePath(dataset, id, tab.data.matrix.file), tab.data, cellIds);
+    const data = snvFromColumnar(tab.data, dense, cellIds, chromoBins);
+    const meta = { method: tab.data.method || null, created: tab.data.created || null, validation: tab.data.validation || null, decodeMs: dense.ms ?? null };
+    yield done({ status: "ok", data, meta, error: null });
+  } catch (error) {
+    yield done({ status: "error", data: null, error });
+  }
+}
+
 function* persistPalette() {
   const { SingleCell } = yield select(getState);
   try {
@@ -366,6 +408,7 @@ function* persistLayout() {
 function* actionWatcher() {
   yield takeLatest(actions.SC_LAYOUT_UPDATED, persistLayout);
   yield takeLatest(actions.SC_CN_MODE_UPDATED, loadAllelic);
+  yield takeLatest(actions.SC_CN_MAPPED_REQUEST, loadCnMapped);
   yield takeLatest(actions.SC_PALETTE_UPDATED, persistPalette);
   yield takeLatest(actions.FETCH_SINGLE_CELL_DATA_REQUEST, fetchSingleCellData);
   yield takeEvery(

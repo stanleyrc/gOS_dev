@@ -5,7 +5,7 @@
 import { binAt, snvMetricValue } from "./matrix";
 
 const median = (v) => {
-  const s = v.filter(Number.isFinite).sort((a, b) => a - b);
+  const s = Float64Array.from(v.filter(Number.isFinite)).sort(); // typed-array sort is numeric and much faster than a comparator
   if (!s.length) return NaN;
   return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
 };

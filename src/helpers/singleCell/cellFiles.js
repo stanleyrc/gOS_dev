@@ -385,20 +385,16 @@ export function parseVariantId(id) {
 }
 
 /**
- * Build the SNV matrix from a patient's snv_matrix.json, in pgv's sparse
- * format: { variants: [{ id, gene? }], cells: { cellId: [{ variantId, refCount,
- * altCount, vaf }] } }. Unlike per-cell mutations.json it records reads at
- * sites where the variant was not called, so depth and VAF are known there.
- * Status per cell: 1 alt reads, 0 reads but no alt, -1 no reads or no entry.
- * Variant order in the file is kept as `index` (the "catalog" order).
- * Entries may also be compact [variantIndex, refCount, altCount] triples,
- * indexing the file's `variants` array (about 6x smaller than objects).
+ * Variant records of an SNV site list (snv_matrix.json `variants`, or the
+ * decoded columns of a columnar site table): parsed position, annotation,
+ * tree placement and QC fields. Duplicate / unparsable ids are dropped;
+ * bySourceIndex maps the input index to the kept record.
  */
-export function snvFromSparse(sparse, cellIds, chromoBins) {
+export function snvVariantRecords(variantsIn, chromoBins) {
   const variants = [];
   const byId = new Map();
   const bySourceIndex = new Map();
-  (sparse?.variants || []).forEach((v, sourceIndex) => {
+  (variantsIn || []).forEach((v, sourceIndex) => {
     const id = `${v.id ?? v.variantId ?? ""}`;
     const parsed = parseVariantId(id);
     if (!id || !parsed || byId.has(id)) return;
@@ -443,8 +439,42 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
       refInClade: v.ref_in_clade ?? null,
       altOutsideClade: v.alt_outside_clade ?? null,
       refOutsideClade: v.ref_outside_clade ?? null,
+      // CN-aware mapping (cn_mapped_snvs.sites.json): a site in a copy-number-altered region placed on the
+      // current tree, not a tree-building site
+      ...(v.cn_mapped
+        ? {
+            cnMapped: true,
+            cnStatus: v.status ?? null,
+            posterior: v.posterior ?? null,
+            confidence: v.confidence ?? null,
+            multiplicity: v.multiplicity ?? null,
+            lostIn: v.lost_in || "",
+            lostAnchors: v.lost_anchors || "",
+            lostCells: v.lost_cells ?? null,
+            modalCn: v.modal_cn ?? null,
+            cnCounts: v.cn_counts || "",
+            dIid: v.d_iid ?? null,
+            normalReads: v.normal_reads ?? null,
+            altMapq: v.alt_mapq_mean ?? null,
+          }
+        : {}),
     });
   });
+  return { variants, byId, bySourceIndex };
+}
+
+/**
+ * Build the SNV matrix from a patient's snv_matrix.json, in pgv's sparse
+ * format: { variants: [{ id, gene? }], cells: { cellId: [{ variantId, refCount,
+ * altCount, vaf }] } }. Unlike per-cell mutations.json it records reads at
+ * sites where the variant was not called, so depth and VAF are known there.
+ * Status per cell: 1 alt reads, 0 reads but no alt, -1 no reads or no entry.
+ * Variant order in the file is kept as `index` (the "catalog" order).
+ * Entries may also be compact [variantIndex, refCount, altCount] triples,
+ * indexing the file's `variants` array (about 6x smaller than objects).
+ */
+export function snvFromSparse(sparse, cellIds, chromoBins) {
+  const { variants, byId, bySourceIndex } = snvVariantRecords(sparse?.variants, chromoBins);
   const n = variants.length;
   const cellsIn = sparse?.cells || {};
   const status = [];

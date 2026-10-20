@@ -8,7 +8,7 @@ import { LABEL_MODES } from "../../helpers/singleCell/snvLabels";
 import { PHYLO_PRESET, isPhyloPreset } from "../../helpers/singleCell/snvPhyloFit";
 
 const { Text } = Typography;
-const TREE_LABEL = { truncal: "truncal", subclonal: "subclonal", private: "private", outside_tumor: "outside tumour", unmapped: "unmapped" };
+const TREE_LABEL = { truncal: "truncal", subclonal: "subclonal", private: "private", outside_tumor: "outside tumour", unmapped: "unmapped", cn_mapped: "CN-mapped" };
 
 /** Min / max boxes of one numeric filter key. */
 function RangeBox({ label, title, filter, field, onChange, step = 1, max = null }) {

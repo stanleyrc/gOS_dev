@@ -5,6 +5,7 @@ import { Button, Checkbox, Descriptions, Drawer, Space, Table, Tag, Tooltip, Typ
 import singleCellActions from "../../redux/singleCell/actions";
 import { snvMetricValue } from "../../helpers/singleCell/matrix";
 import { SIG_PROB_TOOLTIP, formatSigProbability } from "../../helpers/singleCell/siteSignature";
+import { cnMappedRows } from "../../helpers/singleCell/cnMapped";
 import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
 import { SNV_CATEGORIES } from "./mutationSidePanel";
 import { SBS96 } from "../../helpers/singleCell/signatures";
@@ -23,12 +24,13 @@ const SBS96_INDEX = new Map(SBS96.map((c, k) => [c, k]));
  * reads at the site (alt / depth / VAF). Pick cells (carriers preselected,
  * up to 8) and open them together in IGV.
  */
-export default function SnvSiteDrawer({ open, onClose, variant, order, rows, clickedRow, cnInfo = null }) {
+export default function SnvSiteDrawer({ open, onClose, variant, order, rows, clickedRow, cnInfo = null, snvData: snvDataProp = null }) {
   const { t } = useTranslation("common");
   const cellLabels = useCellLabels();
   const dispatch = useDispatch();
   const { snv, cells, cloneColors } = useSelector((state) => state.SingleCell);
-  const snvData = snv.status === "ok" ? snv.data : null;
+  // the panel passes its matrix (tree sites + CN-mapped sites when that layer is on); else the store's
+  const snvData = snvDataProp || (snv.status === "ok" ? snv.data : null);
   const model = useSignatureModel();
   const assigned = model.ready && variant ? { signature: model.assignment.signature[variant.index], prob: model.assignment.prob[variant.index] } : null;
   const cloneOf = useMemo(() => new Map(cells.map((c) => [c.cell_id, c.clone_id])), [cells]);
@@ -102,6 +104,11 @@ export default function SnvSiteDrawer({ open, onClose, variant, order, rows, cli
               {cnInfo.allelic.nLoh === cnInfo.allelic.n && cnInfo.allelic.n > 0 && <Tag color="blue" style={{ marginLeft: 6 }}>LOH</Tag>}
             </Descriptions.Item>
           )}
+          {cnMappedRows(variant).map(([label, value]) => (
+            <Descriptions.Item key={label} label={label}>
+              {value}
+            </Descriptions.Item>
+          ))}
           <Descriptions.Item label={t("components.single-cell.site.carriers")}>{t("components.single-cell.site.carriers-of", { carriers, covered: table.length })}</Descriptions.Item>
           {calls && <Descriptions.Item label={t("components.single-cell.site.genotypes")}>{t("components.single-cell.site.genotypes-of", calls)}</Descriptions.Item>}
         </Descriptions>
