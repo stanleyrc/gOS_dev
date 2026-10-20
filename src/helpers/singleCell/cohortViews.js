@@ -35,6 +35,7 @@ export const COHORT_VIEWS = [
   { key: "figures", group: "explore" },
   { key: "welcome", group: "guide" },
   { key: "methods", group: "guide" },
+  { key: "concepts", group: "guide" },
 ];
 
 const KEYS = new Set(COHORT_VIEWS.map((v) => v.key));
