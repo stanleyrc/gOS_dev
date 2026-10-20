@@ -16,6 +16,7 @@ import {
   GEOMETRY, trackView, densityBins, layoutCollapsed, layoutIsoforms, placeLabels, trackHeight, chevronPositions, visibleSpan,
 } from "../../helpers/genes/trackLayout";
 import { useGeneModels, useGeneMode } from "./useGeneModels";
+import GeneSearchBox from "./geneSearchBox";
 
 const { Text } = Typography;
 const fmt = d3.format(",");
@@ -35,6 +36,7 @@ function colours(theme) {
     pseudo: theme.faint,
     priority: theme.danger,
     hover: theme.hover,
+    pick: dark ? "#ffb347" : "#d97706",
     line: theme.axis,
     density: dark ? "#6fa8ff" : "#1d4f91",
   };
@@ -119,11 +121,14 @@ function clampDomain(domains, index, selection) {
  * right margin, 50 to line up with the other tracks; gapRight overrides the right one), showControls, mode / onModeChange (controlled; default the
  * shared `genemode` URL value), priorityGenes (override), exportName, hoverLine, maxHeight (collapsed-mode height
  * budget of a fixed-height host: rows that do not fit are left unlabelled, never cut), onHeightChange(px incl. controls),
- * interactive (false: no pan / zoom / click-zoom, for fixed windows such as the driver locus plots).
+ * interactive (false: no pan / zoom / click-zoom, for fixed windows such as the driver locus plots),
+ * geneSearch (adds a gene type-ahead to the controls; picked genes are highlighted and the shared domains move to them),
+ * homeDomains (the event's own windows: with geneSearch, a "Back to event" button restores them).
  */
 export default function GeneTrack({
   width, domains: domainsProp, gapX = 50, gapRight = null, showControls = true, mode: modeProp, onModeChange, priorityGenes: prioProp,
   onGeneShiftClick, exportName = "genes", hoverLine = true, maxHeight = null, interactive = true, onHeightChange = null,
+  geneSearch = false, homeDomains = null,
 }) {
   const dispatch = useDispatch();
   const theme = usePlotTheme();
@@ -146,6 +151,8 @@ export default function GeneTrack({
   const svgRef = useRef(null);
   const panelRefs = useRef([]);
   const [hover, setHover] = useState(null);
+  const [picked, setPicked] = useState([]);
+  const pickedSet = useMemo(() => new Set(picked.map((n) => `${n}`.toUpperCase())), [picked]);
   const hideTimer = useRef(null);
   const uid = useRef(`gt${Math.random().toString(36).slice(2, 9)}`).current;
 
@@ -308,6 +315,7 @@ export default function GeneTrack({
   };
 
   const geneColor = (gene, tx) => {
+    if (pickedSet.size && pickedSet.has(`${gene.name}`.toUpperCase())) return col.pick;
     if (hover && hover.gene?.id === gene.id && (!tx || !hover.tx || hover.tx.id === tx.id)) return col.hover;
     const cls = geneClass(tx ? tx.type : gene.type || "protein_coding");
     return col[cls] || col.coding;
@@ -434,7 +442,8 @@ export default function GeneTrack({
               ...status,
             ].filter(Boolean).join(" · ")}
           </Text>
-          <span style={{ marginLeft: "auto", flex: "none" }}>
+          <span style={{ marginLeft: "auto", flex: "none", display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {geneSearch && <GeneSearchBox homeDomains={homeDomains} picked={picked} onPicked={setPicked} />}
             <SvgExportButton containerRef={containerRef} name={exportName} />
           </span>
         </div>

@@ -82,10 +82,11 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
   }, [carriers, focusCell]);
 
   const location = complexLocation || record?.actualLocation || record?.location;
+  const eventDomains = useMemo(() => paddedEventDomains(chromoBins, location, pad, genomeLength), [chromoBins, location, pad, genomeLength]);
+  const eventDomainsKey = eventDomains ? JSON.stringify(eventDomains) : "";
   useEffect(() => {
-    const domains = paddedEventDomains(chromoBins, location, pad, genomeLength);
-    if (domains) dispatch(settingsActions.updateDomains(domains));
-  }, [dispatch, chromoBins, location, pad, genomeLength]);
+    if (eventDomainsKey) dispatch(settingsActions.updateDomains(JSON.parse(eventDomainsKey)));
+  }, [dispatch, eventDomainsKey]);
 
   // complex SVs: IGV is centred on the first event junction's breakpoint in the first shown cell
   const dataset = useSelector((state) => state.Settings.dataset);
@@ -160,7 +161,7 @@ export function SingleCellEventTracks({ record, rnaFusion = null, focusCell = nu
       )}
       <div ref={trackRef} style={{ padding: "0 8px", position: "relative" }}>
         <Text type="secondary" style={{ fontSize: 12.5 }}>{t("components.single-cell.event-cells.genes")}</Text>
-        {domains?.length > 0 && <GeneTrack width={Math.max(200, trackWidth - 16)} domains={domains} exportName="event-genes" />}
+        {domains?.length > 0 && <GeneTrack width={Math.max(200, trackWidth - 16)} domains={domains} exportName="event-genes" geneSearch homeDomains={eventDomains} />}
       </div>
       <CellTracksPanel
         cellIds={shown}
