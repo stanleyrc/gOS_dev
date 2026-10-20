@@ -8,7 +8,8 @@ import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, form
 import { announceCohortView, requestHelpTarget } from "../../../helpers/singleCell/helpNav";
 import { PanelModal, STATUS_TAG_COLOR, ZoomPanImage, targetLabel } from "./paperFiguresViewer";
 import { tryGet } from "../../../redux/singleCell/loaders";
-import { highlightRects, hitAt, markPositions, parseSidecar, plotHitAt, rowsBetween } from "../../../helpers/singleCell/paperSidecar";
+import { highlightRects, hitAt, markPositions, parseSidecar, plotHitAt, rowsBetween, sidecarExtras } from "../../../helpers/singleCell/paperSidecar";
+import { applyPaperTokens, paperTokensVersion } from "../../../helpers/singleCell/paperPalette";
 import { encodeGroups } from "../../../helpers/singleCell/savedGroups";
 
 const InteractiveSlot = React.lazy(() => import("./interactiveSlot"));
@@ -113,6 +114,23 @@ export default function PaperFigurePage({ label }) {
       live = false;
     };
   }, [fig?.interactive]);
+  // the paper's style tokens (CN scale, states, clades): applied before the live panels draw
+  const [tokens, setTokens] = useState("loading");
+  useEffect(() => {
+    if (!manifest) return undefined;
+    if (!manifest.styleTokens) {
+      setTokens("none");
+      return undefined;
+    }
+    let live = true;
+    tryGet(manifest.styleTokens).then((r) => {
+      if (!live) return;
+      setTokens(r.status === "ok" && applyPaperTokens(r.data) ? `v${paperTokensVersion()}` : "none");
+    });
+    return () => {
+      live = false;
+    };
+  }, [manifest]);
   const [hit, setHit] = useState(null);
   const [plotHit, setPlotHit] = useState(null);
   const [sel, setSel] = useState(null); // { rowset, regionId, ids: Set, patient, label }
@@ -303,7 +321,7 @@ export default function PaperFigurePage({ label }) {
         <Segmented size="small" value="interactive" onChange={(v) => setMode(seg.slot.key, v)} options={[{ value: "interactive", label: "Interactive" }, { value: "pdf", label: "PDF" }]} />
       </div>
       <React.Suspense fallback={<Text type="secondary">Loading the interactive panel…</Text>}>
-        <InteractiveSlot patient={seg.slot.patient} />
+        {tokens === "loading" ? <Text type="secondary">Loading the figure style…</Text> : <InteractiveSlot patient={seg.slot.patient} {...sidecarExtras(sidecar, seg.slot.patient)} />}
       </React.Suspense>
     </div>
   );

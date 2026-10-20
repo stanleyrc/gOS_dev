@@ -47,7 +47,7 @@ export function parseSidecar(json) {
       marks: arr(r.marks).map(markOf).filter(Boolean),
     }))
     .filter((r) => [r.x, r.y, r.w, r.h].every(Number.isFinite) && r.w > 0 && r.h > 0);
-  return { page: { w: Number(json.page?.w) || null, h: Number(json.page?.h) || null }, regions };
+  return { page: { w: Number(json.page?.w) || null, h: Number(json.page?.h) || null }, regions, data: json.data && typeof json.data === "object" ? json.data : {} };
 }
 
 /** Row index of a page y inside a rows region, or -1. */
@@ -198,5 +198,29 @@ export function markPositions(sidecar, field, ids, limit = 4000) {
       });
     });
   });
+  return out;
+}
+
+/** Figure-context extras of a sidecar for one patient: { walkNames: { walk label: display name }, walkColors, ecdnaSnvs: [site] } */
+export function sidecarExtras(sidecar, patient) {
+  const d = sidecar?.data || {};
+  const out = { walkNames: null, walkColors: null, ecdnaSnvs: null };
+  const wn = d.walk_names;
+  if (wn && (!wn.patient || `${wn.patient}` === `${patient}`) && wn.names && typeof wn.names === "object") {
+    out.walkNames = Object.fromEntries(Object.entries(wn.names).map(([k, v]) => [k, `${arr(v)[0]}`]));
+    if (wn.colors && typeof wn.colors === "object") out.walkColors = Object.fromEntries(Object.entries(wn.colors).map(([k, v]) => [k, `${arr(v)[0]}`]));
+  }
+  const e = d.ecdna_snvs;
+  if (e && (!e.patient || `${e.patient}` === `${patient}`)) {
+    const sites = arr(e.sites).map(String);
+    const pos = arr(e.pos).map(Number);
+    const cls = arr(e.class);
+    const by = new Map(sites.map((id) => [id, new Map()]));
+    const cells = arr(e.cell);
+    const ss = arr(e.site);
+    const fr = arr(e.frac);
+    cells.forEach((c, i) => by.get(`${ss[i]}`)?.set(`${c}`, Number(fr[i])));
+    out.ecdnaSnvs = sites.map((id, i) => ({ id: `${e.chromosome || ""}${e.chromosome ? "_" : ""}${id}`, pos: pos[i], cls: cls[i] ?? null, frac: by.get(id), gene: `${cls[i] ?? ""} · fraction of copies mutated`.trim() }));
+  }
   return out;
 }
