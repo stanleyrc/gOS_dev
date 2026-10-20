@@ -6,7 +6,7 @@ if (typeof global.TextDecoder === "undefined") global.TextDecoder = TextDecoder;
 if (typeof global.TextEncoder === "undefined") global.TextEncoder = TextEncoder;
 import { Provider } from "react-redux";
 import { combineReducers, createStore } from "redux";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 
 // d3 is ESM-only (Jest cannot parse it) and only reached through import-time
 // helpers of unrelated reducers here: a chainable stand-in is enough.
@@ -40,7 +40,7 @@ describe("ScEventModal with the real reducers and modal", () => {
     });
     expect(store.getState().FilteredEvents.selectedFilteredEvent?.gene).toBe("MDM2");
     expect(`${store.getState().Settings.tab}`).toBe("12");
-    expect(document.querySelector(".ant-modal")).not.toBeNull();
+    await waitFor(() => expect(document.querySelector(".ant-modal")).not.toBeNull()); // the modal is a lazy chunk
     expect(screen.getAllByText(/MDM2/).length).toBeGreaterThan(0);
   });
 });
