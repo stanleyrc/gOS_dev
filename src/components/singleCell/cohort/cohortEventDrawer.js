@@ -61,18 +61,21 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
 
   // zoom the (shared) genome domains to the event; pick carriers (point mutations: tumour cells
   // with alt reads) and open IGV straight away on a point mutation
+  const eventDomains = useMemo(() => {
+    if (!event) return null;
+    const loc = event.Genome_Location || `${event.seqnames}:${event.start}-${event.end}`;
+    try {
+      return padDomains(locationToDomains(chromoBins, loc, { clampRanges: true }), 2.5e5, genomeLength) || null;
+    } catch (error) {
+      return null; // bad coordinates: keep the current view
+    }
+  }, [event, chromoBins, genomeLength]);
   useEffect(() => {
     if (!event) return;
     setPicked(pickInfo.cells);
     setShowIgv(Boolean(snvSite));
-    const loc = event.Genome_Location || `${event.seqnames}:${event.start}-${event.end}`;
-    try {
-      const domains = padDomains(locationToDomains(chromoBins, loc, { clampRanges: true }), 2.5e5, genomeLength);
-      if (domains) dispatch(settingsActions.updateDomains(domains));
-    } catch (error) {
-      // bad coordinates: keep the current view
-    }
-  }, [event, pickInfo, snvSite, chromoBins, genomeLength, dispatch]);
+    if (eventDomains) dispatch(settingsActions.updateDomains(eventDomains));
+  }, [event, pickInfo, snvSite, eventDomains, dispatch]);
 
   useEffect(() => {
     if (!dataset) return undefined;
@@ -179,7 +182,7 @@ export default function CohortEventDrawer({ open, onClose, summary, event, datas
             </Text>
           )}
           <Checkbox.Group value={tracks} onChange={setTracks} options={SC_TRACKS.map((track) => ({ value: track, label: t(`components.single-cell.tracks.${track}`) }))} />
-          {domains?.length > 0 && <GeneTrack width={Math.max(300, width - 8)} domains={domains} exportName="event-genes" />}
+          {domains?.length > 0 && <GeneTrack width={Math.max(300, width - 8)} domains={domains} exportName="event-genes" geneSearch homeDomains={eventDomains} />}
           {/* the drawer portals to <body>: bring the single-cell styles along for compact per-cell lanes */}
           {picked.length > 0 && (
             <Wrapper>
