@@ -11,13 +11,55 @@ import { allelicToGenome, dataToGenome, splitFloat64 } from "../../helpers/utili
 import { SC_FETCHED_TRACKS } from "./actions";
 import { hetBlocksToGraph } from "../../helpers/singleCell/hetTracks";
 import { parseRnaSummary, readMatrixBuffers } from "../../helpers/singleCell/staticRna";
+import { GZ_INDEX_FILE, dataRootOf, gunzipText, hasGzSibling, parseGzIndex } from "../../helpers/singleCell/gzIndex";
 
 export const casePath = (dataset, caseReportId, filename) =>
   `${dataset.dataPath}${caseReportId}/${filename}`;
 
+// gz_index.json of each data root, fetched once (empty set when absent): which files have a .gz sibling
+const gzIndexCache = new Map();
+function gzIndexFor(path) {
+  const root = dataRootOf(path);
+  if (!root) return Promise.resolve(null);
+  if (!gzIndexCache.has(root)) {
+    gzIndexCache.set(
+      root,
+      axios
+        .get(`${root}${GZ_INDEX_FILE}`, { responseType: "json" })
+        .then((r) => (isMissingDataResponse(r) ? new Set() : parseGzIndex(r.data)))
+        .catch(() => new Set())
+    );
+  }
+  return gzIndexCache.get(root);
+}
+
+/** The text of path.gz gunzipped in the browser, or null (no index entry, no browser support, any failure). */
+async function getGzText(path, cancelToken) {
+  const index = await gzIndexFor(path);
+  if (!hasGzSibling(index, path)) return null;
+  try {
+    const response = await axios.get(`${path}.gz`, { cancelToken, responseType: "arraybuffer" });
+    return await gunzipText(response.data);
+  } catch (error) {
+    if (axios.isCancel(error)) throw error;
+    return null;
+  }
+}
+
 /** GET a file: resolves to { status: "ok", data } | { status: "missing" } | { status: "error", error }. */
 export async function tryGet(path, { cancelToken, responseType = "json" } = {}) {
   try {
+    if (responseType === "json" || responseType === "text") {
+      const text = await getGzText(path, cancelToken);
+      if (text !== null) {
+        if (responseType === "text") return { status: "ok", data: text };
+        try {
+          return { status: "ok", data: JSON.parse(text) };
+        } catch (parseError) {
+          // unreadable .gz: use the plain file
+        }
+      }
+    }
     const response = await axios.get(path, {
       cancelToken,
       responseType,
