@@ -338,6 +338,30 @@ const Wrapper = styled.div`
     border: 1px dashed #1677ff;
     pointer-events: none;
   }
+  .sc-paperslot-wrap {
+    margin: 6px 0 10px;
+    padding: 6px 8px;
+    border: 1px solid rgba(22, 119, 255, 0.35);
+    border-radius: 4px;
+    background: var(--sc-panel, #fff);
+  }
+  .sc-paperslot-head {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .sc-paperslot-head .ant-segmented {
+    margin-left: auto;
+  }
+  .sc-paperslot-sub {
+    font-size: 12px;
+    color: var(--sc-muted, #666);
+    margin-top: 4px;
+  }
+  .sc-paperslot-cell {
+    padding: 1px 0;
+  }
   .sc-paperpage-ring {
     position: absolute;
     width: 10px;
