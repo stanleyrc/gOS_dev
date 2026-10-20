@@ -373,6 +373,51 @@ const Wrapper = styled.div`
   .sc-paperpage-ring.is-sel {
     border-color: #1677ff;
   }
+  .sc-paperctl {
+    position: absolute;
+    z-index: 9;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 3px 5px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(22, 119, 255, 0.5);
+    border-radius: 4px;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+  }
+  .sc-paperctl-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sc-paperctl-wash {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.72);
+    pointer-events: none;
+  }
+  .sc-paperctl-dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(0, 0, 0, 0.55);
+    box-sizing: border-box;
+  }
+  .sc-paperctl-dot.is-ring {
+    width: 9px;
+    height: 9px;
+    margin: -4.5px 0 0 -4.5px;
+    border: 2px solid #1677ff;
+    background: transparent;
+    pointer-events: none;
+  }
+  .sc-paperctl-rect {
+    position: absolute;
+    outline: 2px solid #1677ff;
+    background: rgba(22, 119, 255, 0.18);
+    pointer-events: none;
+  }
   .sc-paperlens {
     outline: 1.5px solid rgba(22, 119, 255, 0.7);
     background: #fff;
