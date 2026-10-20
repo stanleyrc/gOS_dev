@@ -323,7 +323,7 @@ const Wrapper = styled.div`
   }
   .sc-paperpage-hover {
     position: absolute;
-    background: rgba(250, 140, 22, 0.35);
+    background: rgba(22, 119, 255, 0.16);
     pointer-events: none;
   }
   .sc-paperpage-sel {
@@ -362,30 +362,41 @@ const Wrapper = styled.div`
   .sc-paperslot-cell {
     padding: 1px 0;
   }
+  /* highlight rings: centred on the mark (translate -50%), thin accent line, no layout shift */
   .sc-paperpage-ring {
     position: absolute;
-    width: 10px;
-    height: 10px;
-    border: 2px solid #fa8c16;
+    box-sizing: border-box;
+    border: 1.5px solid #1677ff;
     border-radius: 50%;
     pointer-events: none;
   }
   .sc-paperpage-ring.is-sel {
     border-color: #1677ff;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+  }
+  .sc-paperctl-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
+    min-height: 32px;
+    margin: 4px 0 2px;
   }
   .sc-paperctl {
-    position: absolute;
-    width: max-content;
-    white-space: nowrap;
-    z-index: 9;
     display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 3px 5px;
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid rgba(22, 119, 255, 0.5);
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 2px 8px 2px 6px;
+    background: rgba(22, 119, 255, 0.05);
+    border: 1px solid rgba(22, 119, 255, 0.28);
     border-radius: 4px;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.15);
+  }
+  .sc-paperctl-letter {
+    font-size: 11px;
+    font-weight: 600;
+    color: #1677ff;
+    min-width: 20px;
   }
   .sc-paperctl-row {
     display: flex;
@@ -395,7 +406,7 @@ const Wrapper = styled.div`
   }
   .sc-paperctl-wash {
     position: absolute;
-    background: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.65); /* other marks dimmed to about 35% */
     pointer-events: none;
   }
   .sc-paperctl-dot {
@@ -408,17 +419,16 @@ const Wrapper = styled.div`
     box-sizing: border-box;
   }
   .sc-paperctl-dot.is-ring {
-    width: 9px;
-    height: 9px;
-    margin: -4.5px 0 0 -4.5px;
-    border: 2px solid #1677ff;
+    margin: 0;
+    box-sizing: border-box;
+    border: 1.5px solid #1677ff;
     background: transparent;
     pointer-events: none;
   }
   .sc-paperctl-rect {
     position: absolute;
-    outline: 2px solid #1677ff;
-    background: rgba(22, 119, 255, 0.18);
+    outline: 1.5px solid #1677ff;
+    background: rgba(22, 119, 255, 0.12);
     pointer-events: none;
   }
   .sc-paperlens {
