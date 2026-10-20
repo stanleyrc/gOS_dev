@@ -41,6 +41,7 @@ const TREE_CATEGORIES = [
   { key: "private", label: "private", color: "#33a02c" },
   { key: "outside_tumor", label: "outside tumour", color: "#8c8c8c" },
   { key: "unmapped", label: "unmapped", color: "#d9d9d9" },
+  { key: "cn_mapped", label: "CN-mapped", color: "#1b9e9e" },
 ];
 
 /** Track definitions: kind "cat" (classes) or "num" (continuous, with a [lo, hi] colour range). */
@@ -198,8 +199,18 @@ export function siteAnnotations(snv, { signatures = null, phylo = null, fit = nu
 }
 
 /** Legend entries of a categorical track: [{ value, label, color, count }], commonest first for signatures. */
+const LEGEND_CACHE = new WeakMap(); // annot.cat[key] array -> legend (colour lookups call this once per value)
+
 export function catLegend(annot, key) {
   if (!annot || !annot.cat[key]) return [];
+  const hit = LEGEND_CACHE.get(annot.cat[key]);
+  if (hit && hit.sigOrder === annot.sigOrder) return hit.entries;
+  const entries = catLegendUncached(annot, key);
+  LEGEND_CACHE.set(annot.cat[key], { sigOrder: annot.sigOrder, entries });
+  return entries;
+}
+
+function catLegendUncached(annot, key) {
   const counts = {};
   annot.cat[key].forEach((v) => v != null && (counts[v] = (counts[v] || 0) + 1));
   let entries;

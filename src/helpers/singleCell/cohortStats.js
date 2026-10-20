@@ -35,8 +35,17 @@ export const isCalledNotTree = (e) => Boolean(e) && `${e.source}` === CALLED_SOU
 /** Driver found by the pooled driver scan (exporter gos_sc_pooled_drivers): reads of all cells pooled per patient; carriers per cell, depth pooled. */
 export const POOLED_SOURCE = "pooled driver scan";
 export const isPooledScan = (e) => Boolean(e) && `${e.source}` === POOLED_SOURCE;
+/** SNV in a copy-number-altered region placed on the tree by the CN-aware mapping (skilift gos_sc_snv_columnar.py --drivers): evidence "CN-aware mapped". */
+export const CN_MAPPED_EVIDENCE = "CN-aware mapped";
+export const isCnMappedEvent = (e) => Boolean(e) && (e.cn_mapped === true || `${e.evidence}` === CN_MAPPED_EVIDENCE);
 export const rescueSourceText = (e) =>
-  isCalledNotTree(e) ? "Called SNV, not a tree site" : isPooledScan(e) ? "Pooled driver scan (not in the per-cell SNV calls)" : "Rescued from site evidence (not in the SNV calls)";
+  isCnMappedEvent(e)
+    ? "CN-aware mapped (copy-number-altered region, placed on the tree; not a tree-building site)"
+    : isCalledNotTree(e)
+    ? "Called SNV, not a tree site"
+    : isPooledScan(e)
+    ? "Pooled driver scan (not in the per-cell SNV calls)"
+    : "Rescued from site evidence (not in the SNV calls)";
 
 /**
  * TERT promoter rearrangement (exporter gos_sc_tert_sv): a fusion with TERT as the 3' partner that keeps the whole TERT
