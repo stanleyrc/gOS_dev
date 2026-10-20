@@ -13,6 +13,8 @@ import {
   clonalityText,
   contrastRows,
   driverGeneRows,
+  excludedLabels,
+  strictQ,
   fmtP,
   headlineGenes,
   pathwayMatrix,
@@ -207,6 +209,11 @@ function HitsTable({ hits, verdicts, onIgv }) {
             </Tooltip>
           )}
           {h.patient === "BWH69" && <Tag color="gold">noisy patient</Tag>}
+          {excludedLabels(h).length > 0 && (
+            <Tooltip title="Excluded from the strict recurrence test (kept in the all-hits test)">
+              <Tag color="red">excluded: {excludedLabels(h).map((e) => e.label).join(", ")}</Tag>
+            </Tooltip>
+          )}
           {(h.read_qc?.flags || []).map((f) => (
             <Tooltip
               key={f}
@@ -309,6 +316,7 @@ function RecurrenceCard({ data }) {
     { title: "q (hits)", dataIndex: "q_hits", render: fmtP },
     { title: "q without BWH69", dataIndex: "q_patients_no_bwh69", render: fmtP },
     { title: "q read-QC pass", key: "qqc", render: (_, r) => (r.q_patients_read_qc_pass == null ? "n/a" : <Tooltip title={`${r.patients_read_qc_pass} patients after dropping driver sites with read-level artefact flags (spliced / split-only / read-end / same allele in other patients)`}><span>{fmtP(r.q_patients_read_qc_pass)}</span></Tooltip>) },
+    { title: "q strict", key: "qstrict", render: (_, r) => (strictQ(r) == null ? "n/a" : <Tooltip title={`${r.patients_strict} patients, ${r.hits_strict} hits after excluding hits flagged spliced / split-only / read-end / low carrier VAF / single-read / paralog / recurrent allele (the all-hits q is the column to the left)`}><span>{fmtP(strictQ(r))}</span></Tooltip>) },
     { title: "Per patient", key: "pp", render: (_, r) => (r.per_patient || []).map((x) => `${x.patient} ${x.hits}${x.read_qc_flagged?.length ? ` (${x.read_qc_flagged.length} flagged)` : ""}`).join(", ") },
   ];
   return (

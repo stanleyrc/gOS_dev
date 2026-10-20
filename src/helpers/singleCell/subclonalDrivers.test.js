@@ -1,5 +1,7 @@
 import {
   clonalityText,
+  excludedLabels,
+  strictQ,
   cladeSignatureRows,
   contrastRows,
   driverGeneRows,
@@ -100,6 +102,24 @@ test("headlineGenes demotes genes whose q is lost after read-QC", () => {
   expect(h.map((x) => x.gene)).toEqual(["OK", "BAD"]);
   expect(h[0].significant).toBe(true);
   expect(h[1]).toMatchObject({ qcFailed: true, significant: false });
+});
+
+test("headlineGenes prefers the strict q over the read-QC-pass q", () => {
+  const d = { recurrence: [{ set: "trunc", n_genes_tested: 10, rows: [
+    { gene: "A", patients: 3, hits: 5, q_patients: 0.001, q_patients_read_qc_pass: 0.001, q_patients_strict: 0.5, patients_strict: 1, per_patient: [] },
+    { gene: "B", patients: 2, hits: 2, q_patients: 0.02, q_patients_strict: 0.04, patients_strict: 2, per_patient: [] },
+  ] }] };
+  const h = headlineGenes(d);
+  expect(h.map((x) => x.gene)).toEqual(["B", "A"]);
+  expect(h[0]).toMatchObject({ qStrict: 0.04, patientsStrict: 2, significant: true });
+  expect(h[1]).toMatchObject({ qcFailed: true, significant: false });
+});
+
+test("excludedLabels and strictQ", () => {
+  expect(excludedLabels({ excluded_reason: ["paralog", "read_end"] }).map((e) => e.label)).toEqual(["paralog site", "alt at read ends"]);
+  expect(excludedLabels({})).toEqual([]);
+  expect(strictQ({ q_patients_strict: 0.2 })).toBe(0.2);
+  expect(strictQ({})).toBeNull();
 });
 
 test("pathwayMatrix", () => {

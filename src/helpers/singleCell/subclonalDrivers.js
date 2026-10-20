@@ -65,7 +65,9 @@ export function headlineGenes(doc, { qMax = 0.1, max = 5 } = {}) {
   const { rows } = recurrenceRows(doc, "trunc", { limit: 200 });
   const sig = rows.filter((r) => r.q_patients < qMax);
   // genes that stop being significant once read-QC-flagged sites are removed are demoted below the ones that pass
-  const qcFails = (r) => r.q_patients_read_qc_pass != null && r.q_patients_read_qc_pass >= qMax;
+  // strict q (excluding read-QC / paralog filters) when the export has it, else the older read-QC-pass q
+  const qStrict = (r) => (r.q_patients_strict != null ? r.q_patients_strict : r.q_patients_read_qc_pass);
+  const qcFails = (r) => qStrict(r) != null && qStrict(r) >= qMax;
   const sigPass = sig.filter((r) => !qcFails(r));
   const base = sig.length ? sig : rows.filter((r) => r.patients >= 2);
   const pick = [...base.filter((r) => !qcFails(r)), ...base.filter(qcFails)].slice(0, max);
@@ -79,6 +81,8 @@ export function headlineGenes(doc, { qMax = 0.1, max = 5 } = {}) {
     qNoBwh69: r.q_patients_no_bwh69,
     patientsQc: r.patients_read_qc_pass ?? null,
     qQc: r.q_patients_read_qc_pass ?? null,
+    patientsStrict: r.patients_strict ?? null,
+    qStrict: r.q_patients_strict ?? null,
     qcFailed: qcFails(r),
     significant: r.q_patients < qMax && !qcFails(r),
     nPassing: sigPass.length,
@@ -190,4 +194,24 @@ export function passesCladeFilter(event, score, minF1, { includeSnv = false } = 
 
 export function isSnvEvent(e) {
   return /^(snv|indel)$/i.test(`${e?.vartype || ""}`) || /^(trunc|splice|missense|inframe)/i.test(`${e?.type || ""}`);
+}
+
+const EXCLUDE_LABELS = {
+  exon_split: "spliced reads",
+  split_only: "split reads only",
+  read_end: "alt at read ends",
+  low_carrier_vaf: "low carrier VAF",
+  single_read: "single-read carriers",
+  paralog: "paralog site",
+  recurrent_allele: "allele in other patients",
+};
+
+/** Labels for the excluding filter codes of a hit (hit.excluded_reason); [] when none or the export predates the filters. */
+export function excludedLabels(hit) {
+  return (hit?.excluded_reason || []).map((c) => ({ code: c, label: EXCLUDE_LABELS[c] || c }));
+}
+
+/** "strict q" column value: null (not available) when the export has no strict test. */
+export function strictQ(row) {
+  return row?.q_patients_strict ?? null;
 }
