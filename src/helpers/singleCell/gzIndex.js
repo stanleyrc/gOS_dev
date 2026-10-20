@@ -21,16 +21,32 @@ export function relativeToRoot(path) {
   return `${path}`.split(/[?#]/)[0].slice(root.length) || null;
 }
 
-/** Set of relative paths from a parsed gz_index.json (empty for anything unexpected). */
+/**
+ * Map of relative path -> { source, size, mtime, derived } from a parsed gz_index.json (schemaVersion 2).
+ * `source` is the plain file the .gz (or derived file) was built from; size / mtime(ms) are that source's
+ * at build time. Anything unexpected gives an empty map.
+ */
 export function parseGzIndex(raw) {
-  const files = raw && typeof raw === "object" && Array.isArray(raw.files) ? raw.files : [];
-  return new Set(files.filter((f) => typeof f === "string" && f.length > 0));
+  const out = new Map();
+  if (!raw || raw.schemaVersion !== 2 || !raw.files || typeof raw.files !== "object") return out;
+  Object.entries(raw.files).forEach(([rel, e]) => {
+    if (e && typeof e.source === "string" && Number.isFinite(e.size) && Number.isFinite(e.mtime)) out.set(rel, { source: e.source, size: e.size, mtime: e.mtime, derived: Boolean(e.derived) });
+  });
+  return out;
 }
 
-/** Whether the index lists a gzipped sibling for this path. */
-export function hasGzSibling(index, path) {
+/** The index entry for this path, or null. */
+export function gzEntry(index, path) {
   const rel = relativeToRoot(path);
-  return Boolean(rel && index && index.has(rel));
+  return (rel && index && index.get(rel)) || null;
+}
+
+/** Whether the live source file (HEAD headers) still has the size and mtime the .gz was built from. */
+export function sourceIsFresh(entry, headers = {}) {
+  const get = (k) => headers[k] ?? headers[k.toLowerCase()];
+  const len = Number(get("content-length"));
+  const modified = Date.parse(get("last-modified"));
+  return Boolean(entry) && len === entry.size && Number.isFinite(modified) && Math.abs(modified - entry.mtime) <= 2000;
 }
 
 /** Gunzip an ArrayBuffer to text; null when the browser has no DecompressionStream. */
