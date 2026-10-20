@@ -40,7 +40,7 @@ const CLASS_NAMES = {
   amp: "Amplification",
   homdel: "Deep deletion",
   fusion: "SV fusion",
-  complex: "Complex (DM / TIC / BFB)",
+  complex: "Complex (ecDNA / TIC / BFB)",
 };
 
 const Sw = ({ c, label, tip }) => (
@@ -67,7 +67,7 @@ function MiniLegend() {
       <Sw c={c.dna} label="fusion DNA" />
       <Sw c={c.rna} label="RNA" />
       <Sw c={c.both} label="both" />
-      <Sw c={c.complex} label="complex" tip="Complex event present (DM / TIC / BFB, gGnome event classifier)" />
+      <Sw c={c.complex} label="complex" tip="Complex event present (ecDNA / TIC / BFB, gGnome event classifier)" />
     </span>
   );
 }

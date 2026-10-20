@@ -20,7 +20,7 @@ import { ClassGlyph, HeaderStrip, headerHeight, statusFill } from "./clinicalViz
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", snv: "#1B9E77", complex: "#E66101" };
-const CLASS_NAMES = { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "Fusion", complex: "Complex (DM / TIC / BFB)" };
+const CLASS_NAMES = { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "Fusion", complex: "Complex (ecDNA / TIC / BFB)" };
 const SHAPE = { snv: "tert", amp: "amp", homdel: "homdel", fusion: "sv", complex: "snv" };
 const CLONAL_MIN = 0.8; // carrier fraction at or above which a driver is drawn solid (clonal); below = faded (subclonal)
 const classOf = (c) => (CLASS_COLORS[c] && c !== "snv" ? c : "snv"); // eventClass values trunc / splice / missense / promoter / other draw as SNV / indel

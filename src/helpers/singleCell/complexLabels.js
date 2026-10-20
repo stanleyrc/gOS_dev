@@ -4,6 +4,8 @@ import { parseFootprint } from "./complexZoom";
 
 const splitIds = (s) => `${s || ""}`.split(",").map((x) => x.trim()).filter(Boolean);
 const NAMES = { dm: "ecDNA", cpxdm: "complex ecDNA", tyfonas: "tyfonas", pyrgo: "pyrgo", rigma: "rigma", qrp: "QRP", chromoplexy: "chromoplexy", chromothripsis: "chromothripsis" };
+/** Display text of a classifier label: gGnome "DM" / "Cpxdm" read as ecDNA ("DM (7)" -> "ecDNA (7)"). Raw names stay in tooltips. */
+export const ecdnaText = (s) => `${s ?? ""}`.replace(/\b(?:complex DM|cpxdm)\b/gi, "complex ecDNA").replace(/\bDM\b/g, "ecDNA");
 export const kindName = (v) => (v ? NAMES[`${v}`.toLowerCase()] || `${v}` : "complex");
 
 /** Chromosomes of a footprint, unique, in footprint order. */
@@ -91,7 +93,7 @@ export function dmOverlap(entry, entries = []) {
     if (!mine.every((iv) => intervalInside(iv, theirs))) return; // the whole footprint sits inside the DM footprint
     const shared = (o.carriers || splitIds(o.event.cell_ids)).filter((c) => carriers.has(c));
     shared.forEach((c) => union.add(c));
-    dms.push({ label: o.event.Variant || o.label, n: (o.carriers || splitIds(o.event.cell_ids)).length, overlap: shared.length });
+    dms.push({ label: ecdnaText(o.event.Variant || o.label), n: (o.carriers || splitIds(o.event.cell_ids)).length, overlap: shared.length });
   });
   return dms.length ? { dms, overlap: union.size, carriers: carriers.size } : null;
 }
@@ -102,6 +104,6 @@ export function dmOverlapText(o) {
   const names = o.dms.length > 3 ? `${o.dms.slice(0, 3).map((d) => d.label).join(", ")} +${o.dms.length - 3} more` : o.dms.map((d) => d.label).join(", ");
   return {
     chip: `inside ${names} footprint in ${o.overlap} of ${o.carriers} carriers`,
-    note: `In those ${o.overlap} cells the DM call covers this junction's region, so the segment may be part of the ecDNA; in the other ${o.carriers - o.overlap} the junction is called without a DM covering it. Overlap of calls, not direct proof that the junction lies on the ecDNA.`,
+    note: `In those ${o.overlap} cells the ecDNA (DM) call covers this junction's region, so the segment may be part of the ecDNA; in the other ${o.carriers - o.overlap} the junction is called without an ecDNA call covering it. Overlap of calls, not direct proof that the junction lies on the ecDNA.`,
   };
 }

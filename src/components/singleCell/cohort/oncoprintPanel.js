@@ -213,7 +213,7 @@ export default function OncoprintPanel({ summaries, files, onOpen, onEvent = nul
         />
         <HintLine text={t("components.single-cell.cohort.oncoprint-help")} />
         <HintLine text={f1Filter ? `Hover a cell for the Clade F1 of each event (how well its carrier cells form one clade of the patient tree). ${f1Tooltip(null, f1Filter).replace(/^[^.]*\.\s*/, "")}` : "Hover a cell for the Clade F1 of each event."} />
-        <HintLine text="Row labels: click a gene for its card (OncoKB role, drugs, cohort evidence, cBioPortal); OG / TSG = OncoKB oncogene / tumour suppressor. Structural rows: DM = double minute / ecDNA, TIC = templated insertion chain, rDup / rDel = reciprocal duplication / deletion pair, BFB = breakage-fusion-bridge; numbers in brackets are chromosomes (hover a label for its meaning). Hover a cell for the alterations behind it." />
+        <HintLine text="Row labels: click a gene for its card (OncoKB role, drugs, cohort evidence, cBioPortal); OG / TSG = OncoKB oncogene / tumour suppressor. Structural rows: ecDNA = gGnome DM (double minute), TIC = templated insertion chain, rDup / rDel = reciprocal duplication / deletion pair, BFB = breakage-fusion-bridge; numbers in brackets are chromosomes (hover a label for its meaning). Hover a cell for the alterations behind it." />
       </div>
     </Card>
   );

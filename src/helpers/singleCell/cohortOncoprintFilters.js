@@ -15,7 +15,7 @@ export const ROLE_CHOICES = [
   { value: "both", label: "Oncogene and TSG" },
   { value: "unannotated", label: "Unannotated" },
   { value: "fusion", label: "Fusion" },
-  { value: "structural", label: "Structural (DM / TIC / BFB ...)" },
+  { value: "structural", label: "Structural (ecDNA / TIC / BFB ...)" },
 ];
 export const CONSEQUENCE_CHOICES = [
   { value: "amp", label: "Amplification" },

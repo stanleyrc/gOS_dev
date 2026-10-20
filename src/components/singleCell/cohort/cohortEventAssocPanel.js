@@ -19,7 +19,7 @@ import { eventF1ByPatient, f1Summary } from "../../../helpers/singleCell/cladeF1
 const { Text } = Typography;
 // copy-number events shown as one-click examples (dosage of the event's own gene; CDKN2A homdel is the positive control)
 const EXAMPLES = ["SOX2 amp", "EGFR amp", "CDK4 amp", "CDKN2A homdel"];
-const CLASS_NAMES = { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "Fusion", complex: "Complex (DM / TIC / BFB)" };
+const CLASS_NAMES = { snv: "SNV / indel", amp: "Amplification", homdel: "Homozygous deletion", fusion: "Fusion", complex: "Complex (ecDNA / TIC / BFB)" };
 
 /** Forest plot: per-patient effect +- 95% CI and the combined estimate. */
 function Forest({ row, width, theme }) {

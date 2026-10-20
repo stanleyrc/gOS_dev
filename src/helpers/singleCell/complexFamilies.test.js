@@ -52,7 +52,7 @@ describe("event families", () => {
     expect(familyCountText([])).toBeNull();
   });
   test("classification text", () => {
-    expect(classificationText(familyClassifications([dm, dmSub, rdd]))).toBe("rDelDup (1,7) in 6 cells, DM (7) in 4 cells, DM (1,7) in 2 cells");
+    expect(classificationText(familyClassifications([dm, dmSub, rdd]))).toBe("rDelDup (1,7) in 6 cells, ecDNA (7) in 4 cells, ecDNA (1,7) in 2 cells");
   });
 });
 

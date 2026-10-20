@@ -51,7 +51,7 @@ export default function NotableSvCard() {
     { title: "Cells", width: 110, render: (_, r) => `${r.n}${r.fraction ? ` (${Math.round(100 * r.fraction)}%)` : ""}` },
     { title: "Clade", width: 170, render: (_, r) => (r.f1 != null ? <Tag color={COLORS[r.placement]}>{`${r.placement}, ${r.cladeSize} cells, F1 ${r.f1.toFixed(2)}`}</Tag> : <Text type="secondary">not available (no tree)</Text>) },
     { title: "Genes inside (drivers first)", render: (_, r) => <GenesText r={r} /> },
-    { title: "ecDNA", width: 190, render: (_, r) => (r.ecdna ? <Tooltip title="The whole footprint lies inside the footprint of a DM family; overlap of calls, not proof the junction is on the ecDNA"><Tag color="purple">{`inside ${r.ecdna.label} (${r.ecdna.overlap}/${r.ecdna.carriers} cells)`}</Tag></Tooltip> : <Text type="secondary">no</Text>) },
+    { title: "ecDNA", width: 190, render: (_, r) => (r.ecdna ? <Tooltip title="The whole footprint lies inside the footprint of an ecDNA (gGnome DM) family; overlap of calls, not proof the junction is on the ecDNA"><Tag color="purple">{`inside ${r.ecdna.label} (${r.ecdna.overlap}/${r.ecdna.carriers} cells)`}</Tag></Tooltip> : <Text type="secondary">no</Text>) },
   ];
   return (
     <div data-notable-svs>

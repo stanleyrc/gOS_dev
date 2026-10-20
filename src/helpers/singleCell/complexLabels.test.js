@@ -59,10 +59,10 @@ describe("ecDNA footprint overlap", () => {
     const o = dmOverlap(mine, entries);
     expect(o.carriers).toBe(4);
     expect(o.overlap).toBe(2);
-    expect(o.dms.map((d) => d.label)).toEqual(["DM (1,7)"]);
+    expect(o.dms.map((d) => d.label)).toEqual(["ecDNA (1,7)"]);
     expect(dmOverlap(entries.find((e) => e.event === dm17), entries)).toBeNull();
     const text = dmOverlapText(o);
-    expect(text.chip).toBe("inside DM (1,7) footprint in 2 of 4 carriers");
+    expect(text.chip).toBe("inside ecDNA (1,7) footprint in 2 of 4 carriers");
     expect(text.note).toMatch(/not direct proof/);
     expect(dmOverlap(mine, [mine])).toBeNull();
     // a DM holding only one of the two intervals does not contain the footprint
@@ -79,5 +79,17 @@ describe("ecDNA naming", () => {
     expect(kindName("DM")).toBe("ecDNA");
     expect(kindName("Cpxdm")).toBe("complex ecDNA");
     expect(kindName("rDelDup")).toBe("rDelDup");
+  });
+});
+
+describe("ecdnaText", () => {
+  const { ecdnaText } = require("./complexLabels");
+  it("shows gGnome DM / Cpxdm labels as ecDNA", () => {
+    expect(ecdnaText("DM (7)")).toBe("ecDNA (7)");
+    expect(ecdnaText("Cpxdm (1,7)")).toBe("complex ecDNA (1,7)");
+    expect(ecdnaText("complex DM chr7")).toBe("complex ecDNA chr7");
+    expect(ecdnaText("TIC (19,20)")).toBe("TIC (19,20)");
+    expect(ecdnaText("DMD amp")).toBe("DMD amp");
+    expect(ecdnaText(null)).toBe("");
   });
 });

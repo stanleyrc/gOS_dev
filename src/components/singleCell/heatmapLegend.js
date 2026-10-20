@@ -98,7 +98,7 @@ export default function HeatmapLegend({
         ],
       });
     }
-    if (has("complex")) groups.push({ key: "d-complex", title: "Complex event", items: [{ color: c.complex, label: "carrier (DM / TIC / BFB, gGnome event classifier)" }] });
+    if (has("complex")) groups.push({ key: "d-complex", title: "Complex event", items: [{ color: c.complex, label: "carrier (ecDNA / TIC / BFB, gGnome event classifier)" }] });
   }
   if (snvMetric) {
     const rgb = (c) => `rgb(${c.join(",")})`;
