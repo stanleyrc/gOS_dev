@@ -98,6 +98,7 @@ describe("bins", () => {
     const rows = Object.fromEntries(binDetail(annot, order, 0, 3, ["region", "depth"]));
     expect(rows.Sites).toBe("3");
     expect(rows.Region).toContain("intron");
+    expect(rows.Region).toMatch(/: \d+ \(\d+%\)/); // count with the share of the bin
     expect(rows["Mean depth"]).toContain("mean");
   });
 });

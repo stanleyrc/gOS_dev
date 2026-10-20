@@ -1,4 +1,6 @@
 import GeneQuickLook, { ReadQcBadge } from "./geneQuickLook";
+import { BurdenSegmented } from "../signatures/burdenToggle";
+import { BURDEN_COUNT, attributedCount, fmtBurden, fmtCount } from "../../../helpers/singleCell/signatureBurden";
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Card, Col, Drawer, Empty, Row, Segmented, Select, Skeleton, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { BranchesOutlined, ExperimentOutlined, LinkOutlined } from "@ant-design/icons";
@@ -375,8 +377,8 @@ function ContrastCard({ data }) {
   const columns = [
     { title: "Patient", dataIndex: "patient" },
     { title: "Signature", dataIndex: "signature" },
-    { title: "Truncal", dataIndex: "frac_b", render: (v) => pct(v) },
-    { title: contrast.split(" vs ")[0], dataIndex: "frac_a", render: (v) => pct(v) },
+    { title: "Truncal mutations (share)", dataIndex: "frac_b", render: (v, r) => fmtBurden(attributedCount(v, r.n_b), v) },
+    { title: `${contrast.split(" vs ")[0]} mutations (share)`, dataIndex: "frac_a", render: (v, r) => fmtBurden(attributedCount(v, r.n_a), v) },
     { title: "Difference (95% CI)", key: "d", render: (_, r) => <Text strong={r.q < 0.1}>{`${r.diff > 0 ? "+" : ""}${Math.round(100 * r.diff)} pts (${Math.round(100 * r.lo)} to ${Math.round(100 * r.hi)})`}</Text> },
     { title: "q", dataIndex: "q", render: fmtP },
     { title: "Sites", key: "n", render: (_, r) => `${r.n_a} vs ${r.n_b}` },
@@ -403,17 +405,21 @@ function CladeSignatureCard({ data }) {
   const [patient, setPatient] = useState(patients[0]);
   const shifts = useMemo(() => shiftSummary(data), [data]);
   const sig = useMemo(() => cladeSignatureRows(data, patient), [data, patient]);
+  const [mode, setMode] = useState(BURDEN_COUNT);
   const cell = (r, s) => {
     if (!r.fitted) return null;
     const f = r.frac[s];
     if (!f) return null;
+    // burden = fraction x the clade's branch SNVs (n/a when the export has no SNV total)
+    const n = attributedCount(f.frac, r.n_sites);
     const tests = r.tests[s] || [];
     const up = tests.some((t) => t.diff > 0);
     const down = tests.some((t) => t.diff < 0);
     return (
-      <Tooltip title={<div>{`${s}: ${pct(f.frac)} (95% CI ${pct(f.lo)}–${pct(f.hi)})`}{tests.map((t) => <div key={t.vs}>{shiftText(t)}</div>)}</div>}>
+      <Tooltip title={<div>{`${s}: ${fmtCount(n)} of ${fmtCount(r.n_sites)} branch SNVs, ${pct(f.frac)} (95% CI ${fmtCount(attributedCount(f.lo, r.n_sites))}–${fmtCount(attributedCount(f.hi, r.n_sites))} SNVs, ${pct(f.lo)}–${pct(f.hi)})`}{tests.map((t) => <div key={t.vs}>{shiftText(t)}</div>)}</div>}>
         <div style={{ background: shade(f.frac), padding: "1px 4px", textAlign: "right", outline: up ? "2px solid #d4380d" : down ? "2px solid #1d39c4" : undefined }}>
-          {Math.round(100 * f.frac)}
+          {mode === BURDEN_COUNT ? fmtCount(n) : `${Math.round(100 * f.frac)}%`}
+          <span style={{ opacity: 0.65, fontSize: 11 }}>{mode === BURDEN_COUNT ? ` ${Math.round(100 * f.frac)}%` : ` ${fmtCount(n)}`}</span>
           {up ? " ▲" : down ? " ▼" : ""}
         </div>
       </Tooltip>
@@ -422,7 +428,7 @@ function CladeSignatureCard({ data }) {
   const columns = [
     { title: "Clade (tree order)", key: "c", fixed: "left", width: 220, render: (_, r) => <span style={{ paddingLeft: 12 * r.depth }}>{`${r.clade}`.replace(/^[A-Z0-9]+_/, "")} <Text type="secondary">{r.n_cells} cells{r.is_trunk ? " · trunk" : ""}</Text></span> },
     { title: "Branch SNVs", dataIndex: "n_sites", width: 90 },
-    ...sig.signatures.map((s) => ({ title: <span>{s}{sig.added.includes(s) ? "*" : ""}</span>, key: s, width: 72, render: (_, r) => (r.fitted ? cell(r, s) : null) })),
+    ...sig.signatures.map((s) => ({ title: <span>{s}{sig.added.includes(s) ? "*" : ""}</span>, key: s, width: 96, render: (_, r) => (r.fitted ? cell(r, s) : null) })),
     { title: "Note", key: "n", render: (_, r) => (!r.fitted ? <Text type="secondary">{r.reason}: not fitted</Text> : r.flagged.length ? r.flagged.map((t) => <Tag key={`${t.vs}${t.signature}`} color={t.diff > 0 ? "volcano" : "geekblue"}>{shiftText(t)}</Tag>) : null) },
   ];
   const truncalRow = { clade: "truncal set", key: "__truncal", depth: 0, n_cells: null, n_sites: sig.nTruncal, fitted: true, frac: sig.truncal || {}, tests: {}, flagged: [] };
@@ -430,9 +436,9 @@ function CladeSignatureCard({ data }) {
     <Card
       size="small"
       title="Signature shifts per clade"
-      extra={<Select size="small" style={{ width: 140 }} value={patient} onChange={setPatient} options={patients.map((p) => ({ value: p, label: p }))} />}
+      extra={<Space size={8}><BurdenSegmented value={mode} onChange={setMode} /><Select size="small" style={{ width: 140 }} value={patient} onChange={setPatient} options={patients.map((p) => ({ value: p, label: p }))} /></Space>}
     >
-      <Paragraph type="secondary" style={{ fontSize: 12 }}>{data.clade_signature_method} * added to the patient set so an APOBEC gain can show. ▲ / ▼: significant gain / loss (q &lt; 0.1) vs the truncal set or the parent branch.</Paragraph>
+      <Paragraph type="secondary" style={{ fontSize: 12 }}>{data.clade_signature_method} Cells: mutations attributed (exposure fraction x the clade&apos;s branch SNVs) with the percentage beside it; Percent shows the reverse. * added to the patient set so an APOBEC gain can show. ▲ / ▼: significant gain / loss (q &lt; 0.1) vs the truncal set or the parent branch.</Paragraph>
       <Table size="small" rowKey="key" columns={columns} dataSource={[truncalRow, ...sig.rows]} pagination={false} scroll={{ x: true, y: 520 }} />
       <div style={{ marginTop: 12 }}>
         <Text strong>Cohort: significant clade shifts (q &lt; 0.1, ≥ 5 points)</Text>

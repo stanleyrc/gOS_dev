@@ -2,13 +2,15 @@ import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { Card, Checkbox, Empty, InputNumber, Segmented, Select, Slider, Space, Table, Tooltip, Typography } from "antd";
+import { Card, Checkbox, Empty, InputNumber, Select, Slider, Space, Table, Tooltip, Typography } from "antd";
 import { ApartmentOutlined } from "@ant-design/icons";
 import PhylogenyCanvas from "../phylogenyCanvas";
 import useContainerWidth from "../useContainerWidth";
 import usePixelRatio from "../usePixelRatio";
 import useTreeView from "../useTreeView";
 import SvgExportButton from "../svgExportButton";
+import BurdenToggle, { useBurdenMode } from "./burdenToggle";
+import { burdenLabel } from "../../../helpers/singleCell/signatureBurden";
 import useSignatureModel from "./useSignatureModel";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { AetiologyLegend, signatureColorOf } from "../signaturePanel";
@@ -45,7 +47,7 @@ export default function SignatureTreeCard() {
   const { allowed } = useSigSiteFilter();
   const [mode, setMode] = useState("clones");
   const [k, setK] = useState(4);
-  const [unit, setUnit] = useState("count");
+  const unit = useBurdenMode(); // "count" (burden, default) | "percent"
   const [siteSet, setSiteSet] = useState("all");
   const [hoverRange, setHoverRange] = useState(null);
   const [focus, setFocus] = useState(null);
@@ -134,7 +136,7 @@ export default function SignatureTreeCard() {
           <Select size="small" style={{ width: 150 }} value={mode} onChange={setMode} options={[{ value: "cells", label: t("components.single-cell.bars.per-cell") }, { value: "clones", label: t("components.single-cell.bars.per-clone") }, { value: "cut", label: t("components.single-cell.bars.per-clade") }]} />
           {mode === "cut" && <InputNumber size="small" min={2} max={30} value={k} onChange={(v) => setK(v || 2)} style={{ width: 64 }} />}
           <Select size="small" style={{ width: 150 }} value={siteSet} onChange={setSiteSet} options={[{ value: "all", label: t("components.single-cell.signatures.sites-all") }, { value: "subclonal", label: t("components.single-cell.signatures.sites-post-trunk") }, { value: "truncal", label: t("components.single-cell.snv.category-truncal") }, { value: "private", label: t("components.single-cell.snv.category-private") }]} />
-          <Segmented size="small" value={unit} onChange={setUnit} options={[{ value: "count", label: t("components.single-cell.signatures.unit-count") }, { value: "share", label: t("components.single-cell.signatures.unit-share") }]} />
+          <BurdenToggle />
           <Space size={4}>
             <Text type="secondary">{t("components.single-cell.signatures.height")}</Text>
             <Slider min={200} max={1400} step={20} value={height} onChange={(v) => dispatch(singleCellActions.updateLayout({ sigTreeHeight: v }))} style={{ width: 120, margin: "0 6px" }} />
@@ -215,7 +217,7 @@ export default function SignatureTreeCard() {
                       const rect = (
                         <g key={s}>
                           <rect x={bx + x} y={cy - barH / 2} width={Math.max(0, w - 0.6)} height={barH} fill={signatureColorOf(s)} rx={1} />
-                          {w > 34 && barH >= 12 && <text x={bx + x + w / 2} y={cy} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff" pointerEvents="none">{s}</text>}
+                          {w > 34 && barH >= 12 && <text x={bx + x + w / 2} y={cy} dy="0.35em" textAnchor="middle" fontSize={11} fill="#fff" pointerEvents="none">{w > 110 ? `${s} ${burdenLabel(n, n / Math.max(1, b.assigned), unit)}` : s}</text>}
                           <title>{`${c.label} · ${s}: ${n} mutations (${pct(n / Math.max(1, b.assigned))})`}</title>
                         </g>
                       );

@@ -64,7 +64,7 @@ describe("signatureJoint", () => {
 
   it("collects significant cohort differences by signature", () => {
     const cohort = { contrasts: [
-      { patient: "A", contrast: "subclonal vs truncal", signature: "SBS13", diff: 0.2, lo: 0.1, hi: 0.3, p: 0.001, q: 0.01 },
+      { patient: "A", contrast: "subclonal vs truncal", signature: "SBS13", diff: 0.2, lo: 0.1, hi: 0.3, p: 0.001, q: 0.01, frac_a: 0.3, frac_b: 0.1, n_a: 200, n_b: 100 },
       { patient: "B", contrast: "subclonal vs truncal", signature: "SBS13", diff: 0.1, lo: 0.05, hi: 0.2, p: 0.01, q: 0.03 },
       { patient: "B", contrast: "subclonal vs truncal", signature: "SBS5", diff: -0.1, lo: -0.3, hi: 0.1, p: 0.5, q: 0.5 },
     ] };
@@ -72,6 +72,8 @@ describe("signatureJoint", () => {
     expect(out).toHaveLength(1);
     expect(out[0].patients.map((p) => p.patient)).toEqual(["A", "B"]);
     expect(out[0].direction).toBe("higher in the non-truncal set");
+    expect(out[0].patients[0]).toMatchObject({ count_a: 60, count_b: 10 }); // fraction x the set's SNVs
+    expect(out[0].patients[1].count_a).toBeNull(); // no totals exported -> n/a, never invented
     expect(cohortDifferences(cohort, { onlySignificant: false })).toHaveLength(2);
   });
 
