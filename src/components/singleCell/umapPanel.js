@@ -30,9 +30,11 @@ import { toScreen, zoomRadius } from "../../helpers/singleCell/umapZoom";
 import { loadUmap3d } from "../../redux/singleCell/loaders";
 import { ZERO_STYLE, themeKey, expressionModel, exprColor, exprDrawOrder, rampGradient } from "../../helpers/singleCell/exprColour";
 
+import { readPref as vsReadPref, writePref as vsWritePref } from "../../helpers/singleCell/viewSettingsStore";
+
 const readPref = (key, fallback) => {
   try {
-    const v = window.localStorage.getItem(key);
+    const v = vsReadPref(key);
     return v == null ? fallback : v;
   } catch (error) {
     return fallback;
@@ -40,7 +42,7 @@ const readPref = (key, fallback) => {
 };
 const writePref = (key, value) => {
   try {
-    window.localStorage.setItem(key, value);
+    vsWritePref(key, value);
   } catch (error) {
     // storage unavailable: the choice still applies for this visit
   }

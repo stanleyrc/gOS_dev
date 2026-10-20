@@ -8,6 +8,7 @@ import { THEMES } from "../../helpers/singleCell/themes";
 import { CN_PALETTE_PRESETS } from "../../helpers/singleCell/matrix";
 import singleCellActions from "../../redux/singleCell/actions";
 import useCellLabels from "../singleCell/useCellLabels";
+import RememberViewSwitch from "./rememberViewSwitch";
 import { clearSiteSettings } from "../../helpers/clearSiteSettings";
 
 const { Text } = Typography;
@@ -15,7 +16,7 @@ const { Text } = Typography;
 /**
  * Appearance settings in the top bar: light / dark, categorical colour
  * theme (clones, groups, UMAP fields, violins, signatures) and the
- * copy-number heatmap palette. All persist in this browser.
+ * copy-number heatmap palette. Display choices persist only if "Remember my view settings" is on.
  */
 export default function SettingsMenu() {
   const { t } = useTranslation("common");
@@ -85,6 +86,8 @@ export default function SettingsMenu() {
         />
         <Text type="secondary" style={{ fontSize: 12 }}>{t("settings.heatmap-palette-help")}</Text>
       </div>
+      <Divider style={{ margin: "4px 0" }} />
+      <RememberViewSwitch />
       <Divider style={{ margin: "4px 0" }} />
       <div>
         <Popconfirm
