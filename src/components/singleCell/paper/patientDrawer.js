@@ -18,7 +18,7 @@ const { Text } = Typography;
  * cells and clone mix, clonal / subclonal drivers, signatures, burden, ecDNA amplicons with their carriers, and
  * links into the patient pages. Reads the patient's light files only (events, signatures, walks).
  */
-export default function PatientDrawer({ patient, onClose }) {
+export default function PatientDrawer({ patient, focus = null, onClose }) {
   const dataset = useSelector((s) => s.Settings?.dataset);
   const datafiles = useSelector((s) => s.CaseReports.datafiles);
   const [files, setFiles] = useState(null);
@@ -53,6 +53,16 @@ export default function PatientDrawer({ patient, onClose }) {
         <Text type="secondary">Loading…</Text>
       ) : (
         <Space direction="vertical" size={10} style={{ width: "100%" }}>
+          {focus?.fields && (
+            <div>
+              <Text type="secondary" style={{ fontSize: 13 }}>{`From ${focus.panel || "the figure"}: `}</Text>
+              {Object.entries(focus.fields)
+                .filter(([k]) => k !== "patient")
+                .map(([k, v]) => (
+                  <Tag key={k}>{`${k}: ${typeof v === "number" ? Number(v.toPrecision(4)) : v}`}</Tag>
+                ))}
+            </div>
+          )}
           <Space wrap>
             <Button type="primary" icon={<LinkOutlined />} href={patientCellsUrl(patient, [], "")} target="_blank" rel="noopener noreferrer">
               {`Open ${patient}`}
