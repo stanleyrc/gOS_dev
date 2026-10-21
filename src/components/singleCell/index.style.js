@@ -445,6 +445,26 @@ const Wrapper = styled.div`
     padding: 0 4px;
     pointer-events: none;
   }
+  .sc-cellgraph-lens {
+    background: #fff;
+    border: 1px solid rgba(22, 119, 255, 0.55);
+    border-radius: 4px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    cursor: default;
+    user-select: text;
+  }
+  .sc-cellgraph-lens .ant-wrapper {
+    background: transparent !important;
+    min-height: 0 !important;
+  }
+  .sc-cellgraph-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+    padding: 3px 8px;
+    border-bottom: 1px solid #f0f0f0;
+  }
   .sc-paperzoom {
     outline: 1px solid rgba(22, 119, 255, 0.6);
   }
