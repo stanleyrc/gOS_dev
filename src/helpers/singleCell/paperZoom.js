@@ -68,11 +68,18 @@ export function cellFromLabel(label) {
 
 /**
  * Axis windows of a genome-axis region: `axis.windows` [{ chr, from, to, f0, f1 }] (f0 / f1: fractions of the region
- * width; broken axes such as chr2 14-16 Mb | chr2 33 Mb | chr12 57.5 Mb), else the single axis over the whole width.
+ * width, or x / w in page pt; broken axes such as chr2 14-16 Mb | chr2 33 Mb | chr12 57.5 Mb), else the single axis over the whole width.
  */
 export function axisWindows(region) {
   const a = region.axis || {};
-  if (Array.isArray(a.windows) && a.windows.length) return a.windows.map((w) => ({ chr: `${w.chr}`.replace(/^chr/, ""), from: Number(w.from), to: Number(w.to), f0: Number(w.f0), f1: Number(w.f1) }));
+  if (Array.isArray(a.windows) && a.windows.length)
+    return a.windows.map((w) => {
+      // f0 / f1 (fractions of the region width), or x / w (page pt, as the figure sidecars write them)
+      const byPt = !Number.isFinite(Number(w.f0)) && Number.isFinite(Number(w.x)) && Number.isFinite(Number(w.w)) && region.w > 0;
+      const f0 = byPt ? (Number(w.x) - region.x) / region.w : Number(w.f0);
+      const f1 = byPt ? (Number(w.x) + Number(w.w) - region.x) / region.w : Number(w.f1);
+      return { chr: `${w.chr}`.replace(/^chr/, ""), from: Number(w.from), to: Number(w.to), f0, f1 };
+    });
   return [{ chr: `${a.chr}`.replace(/^chr/, ""), from: Number(a.from), to: Number(a.to), f0: 0, f1: 1 }];
 }
 
