@@ -48,9 +48,10 @@ describe("paperCellGraph", () => {
     segs.push({ chr: "7", start: 700000, end: 760000, cn: 30 });
     const cov = Array.from({ length: 1000 }, (_, i) => (i < 995 ? 3 : 500));
     const top = lensYMax(segs, cov, { chr: "7", from: 0, to: 1e6 });
-    expect(top).toBe(Math.ceil(30 * 1.05));
+    expect(top).toBe(35); // 30 x 1.05 rounded up to 5; not 200 (spike) or 500 (top 0.5% coverage)
     expect(lensYMax([], [], { chr: "7", from: 0, to: 10 })).toBe(5);
-    expect(lensYMax([], Array(100).fill(40), { chr: "7", from: 0, to: 10 })).toBe(42);
+    expect(lensYMax([], Array(100).fill(40), { chr: "7", from: 0, to: 10 })).toBe(45);
+    expect(lensYMax([{ chr: "7", start: 0, end: 10, cn: 79 }], [], { chr: "7", from: 0, to: 10 })).toBe(90);
     expect(quantile([3, 1, 2], 0.99)).toBe(3);
   });
   it("ticks reach the axis top", () => {
