@@ -7,7 +7,8 @@ args <- commandArgs(TRUE)
 pat <- args[1]; run <- args[2]; task <- as.integer(args[3]); ntask <- as.integer(args[4])
 root <- "/gpfs/commons/groups/imielinski_lab/projects/single_cell_GBM"
 outroot <- if (length(args) >= 5 && nzchar(args[5])) args[5] else file.path(root, "analysis/hetsnps/out")
-datadir <- "/gpfs/commons/projects/imielinski_web/sclarke/gOS_GBM_sc/data"
+## gOS data dir holding <pair>/allelic.json (segments for the blocks); HETSNPS_DATADIR points it at a staging copy
+datadir <- Sys.getenv("HETSNPS_DATADIR", "/gpfs/commons/projects/imielinski_web/sclarke/gOS_GBM_sc/data")
 CAP_PER_CHR <- 2500L   # display rule: depth >= 2, at most 2500 points per chromosome (even thinning by position)
 MIN_DEPTH_DISPLAY <- 2L
 MIN_SNP_BLOCK <- 3L
