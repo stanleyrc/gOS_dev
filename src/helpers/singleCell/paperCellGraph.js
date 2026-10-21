@@ -92,8 +92,8 @@ export function quantile(values, q) {
 
 /**
  * CN axis top for a window: the 99th percentile of the coverage in it, but never below the highest CN of a segment
- * covering more than 1% of the window (tiny segments do not stretch the axis), and at least `floor`. Rounded up to an
- * integer with 5% headroom.
+ * covering more than 1% of the window (tiny segments do not stretch the axis), and at least `floor`; 5% headroom,
+ * rounded up to 1 / 5 / 10.
  */
 export function lensYMax(segs, coverage, wins, floor = 4) {
   const W = normWins(wins);
@@ -103,8 +103,9 @@ export function lensYMax(segs, coverage, wins, floor = 4) {
     const cover = W.reduce((n, w) => (s.chr && s.chr !== w.chr ? n : n + Math.max(0, Math.min(s.end, w.to) - Math.max(s.start, w.from))), 0);
     if (cover > 0.01 * span && s.cn > segMax) segMax = s.cn;
   });
-  const top = Math.max(floor, quantile(coverage || [], 0.99), segMax);
-  return Math.ceil(top * 1.05);
+  const top = Math.max(floor, quantile(coverage || [], 0.99), segMax) * 1.05;
+  const step = top > 50 ? 10 : top > 20 ? 5 : 1; // the top lands on a tick (no "80 / 83" label clash)
+  return Math.ceil(top / step) * step;
 }
 
 /** Nice integer ticks from 0 to top (about n of them, always including top). */
