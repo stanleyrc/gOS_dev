@@ -84,4 +84,11 @@ describe("broken genome axes", () => {
     expect(ws.map((w) => [w.chr, w.from, w.to])).toEqual([["2", 15e6, 16e6], ["12", 57e6, 57.5e6]]);
     expect(axisWindows({ x: 0, w: 10, axis: { chr: "7", from: 1, to: 2 } })).toEqual([{ chr: "7", from: 1, to: 2, f0: 0, f1: 1 }]);
   });
+  it("axis windows given in page pt (x / w) map to fractions of the region", () => {
+    const region = { x: 10, y: 0, w: 200, h: 10, axis: { type: "genome", chr: "2", windows: [{ chr: "2", from: 0, to: 100, x: 30, w: 80 }, { chr: "12", from: 500, to: 600, x: 120, w: 60 }] } };
+    const ws = axisWindows(region);
+    expect(ws[0].f0).toBeCloseTo(0.1);
+    expect(ws[0].f1).toBeCloseTo(0.5);
+    expect(regionWindows(region, 150, 160)).toEqual([{ chr: "12", from: 550, to: 567, x0: 150, x1: 160 }]);
+  });
 });
