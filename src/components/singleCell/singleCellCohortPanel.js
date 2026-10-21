@@ -18,6 +18,7 @@ import {
   cohortSummaries,
   medianCnRow,
 } from "../../helpers/singleCell/cellFiles";
+import { maskChrX, CHRX_MASK_NOTE } from "../../helpers/singleCell/chrxMask";
 import {
   binLabel,
   chromosomeSpans,
@@ -116,10 +117,13 @@ async function loadPatientCells(dataset, summary, records, chromoBins, genomeLen
   const cellRows = [];
   genomes.forEach((g, k) => {
     if (g.status === "ok") {
+      // mask the dryclean chrX CN-0 artefact before any median / distance
+      const { row, masked } = maskChrX(cnRowFromGenome(g.data, chromoBins), chromoBins);
       cellRows.push({
         cellId: cells[k].cell_id,
         clone: cells[k].clone_id,
-        row: cnRowFromGenome(g.data, chromoBins),
+        row,
+        masked,
       });
     }
   });
@@ -355,10 +359,12 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
           const entry = rows[s.caseReportId];
           if (!entry?.cellRows.length) return [];
           const byClone = new Map();
+          const maskedByClone = new Map();
           entry.cellRows.forEach((c) => {
             const key = c.clone ?? "NA";
             if (!byClone.has(key)) byClone.set(key, []);
             byClone.get(key).push(c.row);
+            if (c.masked) maskedByClone.set(key, (maskedByClone.get(key) || 0) + 1);
           });
           return [...byClone.entries()]
             .filter(([, list]) => list.length >= 2)
@@ -369,6 +375,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
               label: `${s.caseReportId} · ${clone} (${list.length})`,
               clone,
               nCells: list.length,
+              nMasked: maskedByClone.get(clone) || 0,
               row: medianCnRow(list, chromoBins),
             }));
         }),
@@ -381,6 +388,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
           summary: s,
           patientIndex: k,
           label: s.caseReportId,
+          nMasked: rows[s.caseReportId]?.cellRows.filter((c) => c.masked).length || 0,
           row: rows[s.caseReportId]?.consensus || null,
         })),
       };
@@ -395,7 +403,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
       if (!entry?.cellRows.length) return;
       const prefix = `${k}::`;
       entry.cellRows.forEach((c) =>
-        byLeaf.set(prefix + c.cellId, { summary: s, patientIndex: k, label: c.cellId, clone: c.clone, row: c.row })
+        byLeaf.set(prefix + c.cellId, { summary: s, patientIndex: k, label: c.cellId, clone: c.clone, nMasked: c.masked ? 1 : 0, row: c.row })
       );
       const base = entry.treeRoot
         ? toUnitHeight(entry.treeRoot)
@@ -442,6 +450,21 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
       axis: chromosomeSpans(chromoBins, domainExtents(domains, heatWidth)),
     };
   }, [heatRows, domains, heatWidth, chromoBins, palette, pixelRatio]);
+
+  // Live count of cells whose chrX was masked (all loaded cells, any row mode).
+  const chrxMaskSummary = useMemo(() => {
+    let masked = 0;
+    let total = 0;
+    const byPatient = [];
+    Object.entries(rows).forEach(([id, entry]) => {
+      const cr = entry?.cellRows || [];
+      const m = cr.filter((c) => c.masked).length;
+      masked += m;
+      total += cr.length;
+      if (m) byPatient.push({ id, masked: m, total: cr.length });
+    });
+    return { masked, total, byPatient };
+  }, [rows]);
 
   // Patient blocks for the label column in per-cell mode.
   const patientBlocks = useMemo(() => {
@@ -880,6 +903,9 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                         ...(entry.clone != null ? [[t("components.single-cell.tooltip.clone"), entry.clone]] : []),
                         [t("components.single-cell.tooltip.segment"), binLabel(entry.row.binIndex, col)],
                         [t("components.single-cell.tooltip.state"), entry.row.values[col]],
+                        ...(entry.nMasked > 0 && !Number.isFinite(entry.row.values[col]) && /^(chr)?X$/i.test(entry.row.binIndex.chromosome[col])
+                          ? [["chrX", rowMode === "cells" ? CHRX_MASK_NOTE : `${CHRX_MASK_NOTE}: ${entry.nMasked} cell(s) masked in this row`]]
+                          : []),
                       ],
                     });
                   }}
@@ -916,6 +942,13 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                     </span>
                   ))}
               </div>
+              {chrxMaskSummary.masked > 0 && (
+                <Text type="secondary" className="sc-hint" style={{ display: "block", marginTop: 4 }}>
+                  chrX masked in {chrxMaskSummary.masked} of {chrxMaskSummary.total} cells (CN 0 from a coverage-normalisation
+                  artefact in low-depth cells)
+                  {chrxMaskSummary.byPatient.length ? `: ${chrxMaskSummary.byPatient.map((d) => `${d.id} ${d.masked}/${d.total}`).join(", ")}` : ""}.
+                </Text>
+              )}
               <div className="sc-heatmap-footer">
                 <HeatmapLegend type="cn" palette={palette} showClones={false} />
                 <Text type="secondary" className="sc-hint">{t("components.single-cell.cohort.heatmap-help")}</Text>
