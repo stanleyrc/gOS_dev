@@ -758,16 +758,23 @@ GenomePlot.defaultProps = {
   yAxis2Title: "",
   commonRangeY: null,
 };
-const mapDispatchToProps = (dispatch) => ({
-  updateDomains: (domains) => dispatch(updateDomains(domains)),
-  updateHoveredLocation: (hoveredLocation, panelIndex) =>
-    dispatch(updateHoveredLocation(hoveredLocation, panelIndex)),
-});
-const mapStateToProps = (state) => ({
+// `localDomains` (array of [start, end] places) renders the plot on its own window instead of the app-wide domains:
+// it then never writes the global domains or hovered location, and only zooms with the meta key (the host drives the
+// window, e.g. the paper lens).
+const noop = () => {};
+const mapDispatchToProps = (dispatch, own) =>
+  own.localDomains
+    ? { updateDomains: noop, updateHoveredLocation: noop }
+    : {
+        updateDomains: (domains) => dispatch(updateDomains(domains)),
+        updateHoveredLocation: (hoveredLocation, panelIndex) =>
+          dispatch(updateHoveredLocation(hoveredLocation, panelIndex)),
+      };
+const mapStateToProps = (state, own) => ({
   chromoBins: state.Settings.chromoBins,
   defaultDomain: state.Settings.defaultDomain,
-  domains: state.Settings.domains,
-  zoomedByCmd: state.Settings.zoomedByCmd,
+  domains: own.localDomains || state.Settings.domains,
+  zoomedByCmd: own.localDomains ? true : state.Settings.zoomedByCmd,
   hoveredLocation: state.Settings.hoveredLocation,
   hoveredLocationPanelIndex: state.Settings.hoveredLocationPanelIndex,
 });

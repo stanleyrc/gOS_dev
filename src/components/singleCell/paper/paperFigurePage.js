@@ -10,11 +10,13 @@ import { PanelModal, STATUS_TAG_COLOR, ZoomPanImage, targetLabel } from "./paper
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import CnZoomLayer from "./cnZoomLayer";
 import GenomeTrackLayer from "./genomeTrackLayer";
+import CellGraphLens from "./cellGraphLens";
+import { focusWindows } from "../../../helpers/singleCell/paperCellGraph";
 import SnvLensLayer, { loadSnvLookup } from "./snvLensLayer";
 import { highlightRects, hitAt, markPositions, panelTables, parseSidecar, plotHitAt, rowBand, rowsBetween, selectionTable, sidecarExtras, tableTsv, toPage } from "../../../helpers/singleCell/paperSidecar";
 import { applyPaperTokens, paperTokensVersion } from "../../../helpers/singleCell/paperPalette";
 import { encodeGroups } from "../../../helpers/singleCell/savedGroups";
-import { cellFromLabel, lensContains, lensIsHome, lensOn, lensPan, lensToPage, lensView, lensZoom, marksInBox, nearestJunction, pinchFactor, regionWindow } from "../../../helpers/singleCell/paperZoom";
+import { cellFromLabel, lensContains, lensToDisplay, lensIsHome, lensOn, lensPan, lensToPage, lensView, lensZoom, marksInBox, nearestJunction, pinchFactor, regionWindow } from "../../../helpers/singleCell/paperZoom";
 import { controlKey, figureControls, liveCellsOnPlot, livePatients, zoomTarget } from "../../../helpers/singleCell/paperAxes";
 import { STATE_SCORES_FILE, parseStateScores } from "../../../helpers/singleCell/paperPanels";
 import { isPatientRecord, patientKeyOf } from "../../../helpers/singleCell/cellFiles";
@@ -166,6 +168,9 @@ export default function PaperFigurePage({ label }) {
   const [cnZoom, setCnZoom] = useState({});
   const [lens, setLens] = useState(null); // panel zoom: paperZoom lens + letter
   const graphs = useRef(new Map()); // cell -> JaBbA graph (hover junctions)
+  // the cell whose full genome graph is open under its row / track: { cell, patient, regionId, trackId, row }
+  const [graphFocus, setGraphFocus] = useState(null);
+  const focusOn = (f) => setGraphFocus((cur) => (cur && cur.cell === f.cell && cur.regionId === f.regionId && cur.trackId === f.trackId ? cur : f));
   const [snv, setSnv] = useState({}); // patient -> SNV lookup (SNV heatmaps with site ids), loaded on first zoom / hover
   const wantSnv = (patient) => {
     if (!patient || snv[patient] !== undefined) return;
@@ -178,6 +183,7 @@ export default function PaperFigurePage({ label }) {
     setCnZoom({});
     setLens(null);
     setPatientOpen(null);
+    setGraphFocus(null);
   }, [label]);
   const extras = useMemo(() => (sidecar ? sidecarExtras(sidecar, sidecar.data?.walk_names?.patient || sidecar.data?.ecdna_snvs?.patient) : {}), [sidecar]);
   const walkPatient = sidecar?.data?.walk_names?.patient || null;
@@ -403,6 +409,47 @@ export default function PaperFigurePage({ label }) {
         return <SnvLensLayer key={`sv${r.id}`} region={r} lookup={L} r0={q0} r1={q1} c0={c0} c1={c1} box={{ left: (x0 - lens.ox) * sx, top: (y0 - lens.oy) * sy, width: (x1 - x0) * sx, height: (y1 - y0) * sy }} />;
       });
   };
+  // the focused cell's full gOS genome graph, docked under its row / track, on the window the zoom shows
+  const graphDock = () => {
+    if (!graphFocus || !sidecar) return null;
+    const t = graphFocus.trackId ? tracks.find((q) => q.id === graphFocus.trackId) : null;
+    const region = t ? t.region : sidecar.regions.find((r) => r.id === graphFocus.regionId);
+    if (!region) return null;
+    const rect = t ? t.rect : (() => { const b = rowBand(region, Math.max(0, graphFocus.row || 0)); return { x: region.x, y: b.y0, w: region.w, h: b.y1 - b.y0 }; })();
+    const wz = !t && zoomWin(region.id);
+    const wins = focusWindows(region, { zoom: wz || (cnZoom[region.id] && !lens ? { from: Number(region.axis.from), to: Number(region.axis.to) } : null), view: lens && lens.s >= 1.6 ? lensView(lens) : null, rect });
+    if (!wins) return null;
+    const bottom = rect.y + rect.h;
+    const inLens = !wz && lens && lensContains(lens, k, region.x * k + 1, bottom * k);
+    const below = inLens ? Math.min(lensToDisplay(lens, k, rect.x, bottom)[1], (lens.rect.y + lens.rect.h) * k) : bottom * k;
+    // tracks: dock above the track so the other example tracks stay reachable; heatmap rows: under the row
+    const DOCK_H = 316;
+    const above = t ? (inLens ? Math.max(lensToDisplay(lens, k, rect.x, rect.y)[1], lens.rect.y * k) : rect.y * k) - DOCK_H - 4 : -1;
+    const top = above >= 0 ? above : below;
+    const w = Math.min(width, Math.max(620, region.w * k));
+    const left = Math.max(0, Math.min(region.x * k, width - w));
+    const href = cellsUrl(graphFocus.patient, [graphFocus.cell], graphFocus.cell, wins[0]);
+    return (
+      <div
+        className="sc-cellgraph-dock"
+        style={{ position: "absolute", left, top: top + 2, zIndex: 9 }}
+        onPointerEnter={() => {
+          setHit(null);
+          setTrackHit(null);
+          setPlotHit(null);
+          setHover(null);
+          setTip(null);
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerMove={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        <CellGraphLens cell={graphFocus.cell} patient={graphFocus.patient} wins={wins} width={w} height={280} href={href} onClose={() => setGraphFocus(null)} />
+      </div>
+    );
+  };
   const lensBox = lens ? { left: lens.rect.x * k, top: lens.rect.y * k, width: lens.rect.w * k, height: lens.rect.h * k } : null;
   const groups = selectionGroups(sel);
   // tooltip next to the cursor; flips above it when it would run past the bottom of the window (estimated 170 px tall)
@@ -581,6 +628,9 @@ export default function PaperFigurePage({ label }) {
             if (L && c >= 0) site = { id: h.region.cols.ids[c], ...(snvAt(L, h.id, h.region.cols.ids[c]) || { vaf: null, ref: 0, alt: 0, gene: "" }) };
           }
           setHit(h ? { ...h, position: hitPos(h, x), site } : null);
+          // open the hovered cell's genome graph once its row / track is zoomed past the PDF's detail
+          if (t && lens && lens.s >= 1.6) focusOn({ cell: t.cell, patient: t.patient, trackId: t.id, regionId: t.region.id });
+          else if (h && h.region.axis?.type === "genome" && h.region.patient && (cnZoom[h.region.id] || (lens && lens.s >= 1.6))) focusOn({ cell: h.id, patient: h.region.patient, regionId: h.region.id, trackId: null, row: h.region.rows.indexOf(h.id) });
           setTrackHit(t ? trackInfo(t, x) : null);
           const ph = h || t ? null : plotHitAt(sidecar, x, y);
           setPlotHit(ph && (ph.fields || ph.axis) ? ph : null);
@@ -691,6 +741,7 @@ export default function PaperFigurePage({ label }) {
             </div>
           </>
         )}
+        {graphDock()}
         {hit && tip && (
           <div className="sc-tooltip" style={tooltipStyle}>
             <div style={{ fontWeight: 600 }}>{hit.id}</div>
@@ -700,7 +751,7 @@ export default function PaperFigurePage({ label }) {
             ))}
             {hit.position && <div>{`chr${hit.position.chr}:${hit.position.pos.toLocaleString()}`}</div>}
             {hit.site && <div>{`${hit.site.id}${hit.site.gene ? ` (${hit.site.gene})` : ""} · ${hit.site.vaf == null ? "no reads" : `VAF ${hit.site.vaf.toFixed(2)} (${hit.site.alt}/${hit.site.alt + hit.site.ref})`}`}</div>}
-            <div style={{ opacity: 0.8 }}>{ids.has(hit.id) ? "click to unselect · drag rows · shift adds" : "click to select · drag rows · shift adds"}</div>
+            <div style={{ opacity: 0.8 }}>{`${ids.has(hit.id) ? "click to unselect" : "click to select"} · drag rows · shift adds${hit.region.axis?.type === "genome" ? (cnZoom[hit.region.id] || (lens && lens.s >= 1.6) ? " · its genome graph opens under the row" : " · scroll to zoom, then the cell's genome graph opens") : ""}`}</div>
           </div>
         )}
         {trackHit && tip && (
@@ -713,7 +764,7 @@ export default function PaperFigurePage({ label }) {
             ) : (
               <div style={{ opacity: 0.8 }}>{graphs.current.has(trackHit.track.cell) ? "no junction under the cursor" : "zoom in to load the cell's genome graph"}</div>
             )}
-            <div style={{ opacity: 0.8 }}>click to select (shift adds) · open from the selection bar</div>
+            <div style={{ opacity: 0.8 }}>{lens && lens.s >= 1.6 ? "its genome graph opens above the track · click to select (shift adds)" : "zoom in for its genome graph · click to select (shift adds)"}</div>
           </div>
         )}
         {plotHit && tip && !hit && !trackHit && (
