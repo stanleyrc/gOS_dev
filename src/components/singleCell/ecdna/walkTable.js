@@ -2,17 +2,18 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
 import { Checkbox, InputNumber, Space, Table, Tag, Typography } from "antd";
+import { WalkBadges } from "./walkSetControls";
 import HintLine from "../hintLine";
 
 const { Text } = Typography;
 const fmtBp = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(2)} Mb` : v >= 1e3 ? `${(v / 1e3).toFixed(0)} kb` : `${v} bp`);
 
 /** Filter toolbar + table of walks; ticked rows are the walks shown on the tree, clicking a name focuses its diagram. */
-export default function WalkTable({ walks, total, filters, setFilters, colorOf, selected, onSelect, focus, onFocus, nCells }) {
+export default function WalkTable({ walks, total, filters, setFilters, colorOf, selected, onSelect, focus, onFocus, nCells, recovery = null }) {
   const { t } = useTranslation("common");
   const set = (k) => (v) => setFilters({ ...filters, [k]: v });
   const columns = [
-    { title: t("components.single-cell.ecdna.col-walk"), dataIndex: "label", width: 160, render: (v, w) => <Space size={6}><span style={{ width: 10, height: 10, borderRadius: 5, background: colorOf(w.id), display: "inline-block" }} /><Text strong style={{ cursor: "pointer", color: focus === w.id ? "#fa541c" : undefined }} onClick={() => onFocus(w.id)}>{v}</Text>{w.curated && <Tag color="green" style={{ margin: 0 }}>{t("components.single-cell.ecdna.curated")}</Tag>}</Space> },
+    { title: t("components.single-cell.ecdna.col-walk"), dataIndex: "label", width: 160, render: (v, w) => <Space size={6}><span style={{ width: 10, height: 10, borderRadius: 5, background: colorOf(w.id), display: "inline-block" }} /><Text strong style={{ cursor: "pointer", color: focus === w.id ? "#fa541c" : undefined }} onClick={() => onFocus(w.id)}>{v}</Text>{w.curated && <Tag color="green" style={{ margin: 0 }}>{t("components.single-cell.ecdna.curated")}</Tag>}<WalkBadges walk={w} recovery={recovery} /></Space> },
     { title: t("components.single-cell.ecdna.col-genes"), dataIndex: "genes", render: (g) => (g || []).length ? (g || []).map((x) => <Tag key={x} style={{ margin: 1 }}>{x}</Tag>) : <Text type="secondary">–</Text> },
     { title: t("components.single-cell.ecdna.col-shape"), key: "shape", width: 90, render: (_, w) => (w.circular ? t("components.single-cell.ecdna.circular") : t("components.single-cell.ecdna.linear")) },
     { title: t("components.single-cell.ecdna.col-span"), dataIndex: "span", width: 90, sorter: (a, b) => a.span - b.span, render: fmtBp },

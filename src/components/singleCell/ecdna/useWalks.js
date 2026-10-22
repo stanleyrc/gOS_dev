@@ -13,8 +13,9 @@ const PALETTE = [...d3.schemeTableau10, ...d3.schemeDark2, ...d3.schemeSet1];
  * walks, the walks passing them (with stats over the displayed cells) and a
  * stable colour per walk id.
  */
-export default function useWalks(cellIds) {
-  const walksSource = useSelector((s) => s.SingleCell.walks);
+export default function useWalks(cellIds, sourceOverride = null) {
+  const curatedSource = useSelector((s) => s.SingleCell.walks);
+  const walksSource = sourceOverride || curatedSource;
   const [filters, setFilters] = useState({ ...WALK_FILTER_DEFAULTS });
   // jsonlite unboxes length-1 vectors: genes / driver_genes may arrive as strings
   const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
