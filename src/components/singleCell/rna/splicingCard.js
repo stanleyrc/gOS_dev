@@ -6,7 +6,7 @@ import { resolveChromosome } from "../../../helpers/singleCell/matrix";
 import Violins from "../violins";
 import { useTranslation } from "react-i18next";
 import { Alert, Card, Col, Empty, Input, Row, Segmented, Select, Space, Switch, Table, Tag, Typography } from "antd";
-import { BranchesOutlined } from "@ant-design/icons";
+import { BranchesOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import HintLine from "../hintLine";
 import useTreeView from "../useTreeView";
 import useContainerWidth from "../useContainerWidth";
@@ -551,8 +551,13 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
         <>
           <Space wrap ref={boxRef}>
             <Text strong>
-              {cluster.gene ? <GeneInfo gene={cluster.gene} /> : "?"} · {junctionLabel(chrLabel(cluster.chromosome), { start: clusterStart(cluster), end: clusterEnd(cluster) })}
+              {cluster.gene || "?"} · {junctionLabel(chrLabel(cluster.chromosome), { start: clusterStart(cluster), end: clusterEnd(cluster) })}
             </Text>
+            {cluster.gene && (
+              <GeneInfo gene={cluster.gene} style={{ borderBottom: "none" }}>
+                <InfoCircleOutlined aria-label={`${cluster.gene} function`} />
+              </GeneInfo>
+            )}
             <Segmented
               size="small"
               value={mode}
