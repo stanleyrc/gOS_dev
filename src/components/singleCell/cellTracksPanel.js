@@ -8,6 +8,7 @@ import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
 import MutationsPanel from "../mutationsPanel";
 import PinnedGenesOverlay from "./pinnedGenesOverlay";
+import PinGenesControl from "./pinGenesControl";
 import singleCellActions, { SC_FETCHED_TRACKS, SC_MAX_TRACK_CELLS, SC_TRACKS } from "../../redux/singleCell/actions";
 import datasetsActions from "../../redux/datasets/actions";
 import { dataRanges, dataToGenome } from "../../helpers/utility";
@@ -350,6 +351,7 @@ export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, e
               onChange={setTracks}
               options={SC_TRACKS.map((track) => ({ value: track, label: label(track) }))}
             />
+            {!embedded && <PinGenesControl maxWidth={260} />}
             <Space size={4} className="sc-yaxis-control" data-yaxis-control>
               <Text type="secondary">y-axis</Text>
               <Select
