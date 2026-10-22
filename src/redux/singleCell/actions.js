@@ -49,6 +49,7 @@ export const SC_DEFAULT_LAYOUT = {
   annotationFields: ["state", "Region_Annotation"], // cell metadata strips beside the clone strip
   signatureTrack: DEFAULT_SIGNATURE_TRACK,
   cellSignatureMode: "auto", // per-cell fit when available; otherwise dominant signature of the clone fit
+  keepToolbar: false, // opt-in: keep the heatmap controls header sticky while scrolling
   keepGeneTrack: false, // keep the gene track in the pinned navigation while scrolling
   sideWidth: null, // px of the mutation panel beside the CN heatmap (null = auto)
   geneWidth: null, // px of the gene expression panel (null = auto)

@@ -2,7 +2,7 @@ import { highlightEventJunctions } from "../../helpers/singleCell/complexZoom";
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Checkbox, Col, Empty, InputNumber, Row, Segmented, Select, Space, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Col, Empty, InputNumber, Row, Segmented, Select, Space, Switch, Typography } from "antd";
 import { CloseOutlined, ExportOutlined, MinusOutlined, PlusOutlined, UndoOutlined } from "@ant-design/icons";
 import GenomePanel from "../genomePanel";
 import ScatterPlotPanel from "../scatterPlotPanel";
@@ -352,6 +352,12 @@ export default function CellTracksPanel({ yScaleMode = "cell", cellIds = null, e
               options={SC_TRACKS.map((track) => ({ value: track, label: label(track) }))}
             />
             {!embedded && <PinGenesControl maxWidth={260} />}
+            {!embedded && (
+              <Space size={6} data-keep-genetrack-control>
+                <Switch size="small" checked={Boolean(sc.layout.keepGeneTrack)} onChange={(keepGeneTrack) => dispatch(singleCellActions.updateLayout({ keepGeneTrack }))} />
+                <Text>{t("components.single-cell.toggles.keep-genes")}</Text>
+              </Space>
+            )}
             <Space size={4} className="sc-yaxis-control" data-yaxis-control>
               <Text type="secondary">y-axis</Text>
               <Select

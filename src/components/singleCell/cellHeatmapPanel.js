@@ -1806,7 +1806,7 @@ export default function CellHeatmapPanel() {
       >
         <div ref={focusBody} className={focus ? "sc-focus-body" : undefined}>
         <div ref={focusInner}>
-        <div className={heatmapType === "snv" || focus ? undefined : "sc-toolbar-sticky"}>
+        <div className={heatmapType === "snv" || focus || !layout.keepToolbar ? undefined : "sc-toolbar-sticky"}>
           {!focus && <SavedGroupsBar />}
           {selectionBar}
           {!focus && toolbarNode}
