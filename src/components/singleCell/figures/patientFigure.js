@@ -24,7 +24,7 @@ import GenomeTracks from "./genomeTracks";
 import VariantCopiesBox from "./variantCopiesBox";
 import singleCellActions from "../../../redux/singleCell/actions";
 import filteredEventsActions from "../../../redux/filteredEvents/actions";
-import { annotationColors, binAt, domainExtents, rowMap } from "../../../helpers/singleCell/matrix";
+import { SNV_ALT_TOP, SNV_REF_COLOR, annotationColors, binAt, domainExtents, rowMap } from "../../../helpers/singleCell/matrix";
 import { AMP_LEGEND, ampliconCss, ampliconRGBA, binSnvMatrix, isNormalClone, snvTreeOrder } from "../../../helpers/singleCell/figures";
 import { ancestralBinary, packStoreSnv, walkDomains } from "../../../helpers/singleCell/figureMath";
 import { PAPER_WALK_HEATMAP, ampliconWindows, dominantWalk, mainAmplicons, variantGrouping } from "../../../helpers/singleCell/figureDefaults";
@@ -709,7 +709,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       };
       if (snvImg || ecImg) {
         const rx = snvImg ? L.snvX : L.ecX;
-        ramp(rx, 16, Math.min(120, (snvImg ? L.snvW : L.ecW) - 4), [[0, c.dark ? "#2a2a2a" : "#ffffff"], [1, c.dark ? "#f0f0f0" : "#141414"]], [[0, "0"], [0.5, "0.5"], [1, "1"]], "Variant allele frequency");
+        ramp(rx, 16, Math.min(120, (snvImg ? L.snvW : L.ecW) - 4), c.dark ? [[0, "#2a2a2a"], [1, "#f0f0f0"]] : [[0, SNV_REF_COLOR], [0.04, SNV_REF_COLOR], [0.05, `rgb(${SNV_ALT_TOP},${SNV_ALT_TOP},${SNV_ALT_TOP})`], [1, "#000000"]], [[0, "0"], [0.5, "0.5"], [1, "1"]], c.dark ? "Variant allele frequency" : "VAF (0 = ref reads, blue; no reads = white)");
       }
       if (cnGeo) {
         const stops = AMP_LEGEND.map((v, k) => [k / (AMP_LEGEND.length - 1), cnCss(v)]);

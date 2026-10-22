@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { isDark, isDarkLike, onAppThemeChange } from "../../../helpers/appTheme";
+import { packRGBA, snvWhiteNaRGB } from "../../../helpers/singleCell/matrix";
 
 /** Current app theme as a boolean (true = dark), following theme switches. */
 export function useDarkTheme() {
@@ -8,10 +9,15 @@ export function useDarkTheme() {
   return dark;
 }
 
-/** Packed RGBA grey for a VAF on a 0-250 scale: white -> black (light), dark -> light (dark). */
+/**
+ * Packed RGBA for a covered site's VAF on a 0-250 scale. Light: the patient-view convention with white = no reads
+ * (NO_READS_LIGHT), so reference reads only (0) are light blue and alt VAF runs grey -> black (snvWhiteNaRGB);
+ * dark: dark -> light grey over the dark no-reads background.
+ */
 export const vafGray = (vaf, dark) => {
-  const t = Math.min(250, vaf) / 250;
-  const v = Math.round(dark ? 38 + t * 200 : 255 - t * 235);
+  const t = Math.max(0, Math.min(250, vaf)) / 250;
+  if (!dark) return packRGBA(snvWhiteNaRGB(t));
+  const v = Math.round(38 + t * 200);
   return ((255 << 24) | (v << 16) | (v << 8) | v) >>> 0;
 };
 export const NO_READS_LIGHT = 0xffffffff;

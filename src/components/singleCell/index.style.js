@@ -374,6 +374,22 @@ const Wrapper = styled.div`
     border-color: #1677ff;
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
   }
+  .sc-paperlive {
+    border: 1px solid var(--sc-border, #d9d9d9);
+    border-left: 3px solid #1677ff;
+    border-radius: 4px;
+    padding: 8px 10px 4px;
+    margin: 6px 0 10px;
+    background: var(--sc-card-bg, #fff);
+    scroll-margin-top: 80px;
+  }
+  .sc-paperlive-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
   .sc-paperctl-bar {
     display: flex;
     flex-wrap: wrap;

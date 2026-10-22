@@ -99,7 +99,7 @@ export default function MutationSidePanel({
 }) {
   const { t } = useTranslation("common");
   const layoutState = useSelector((st) => st.SingleCell.layout) || {};
-  const naMode = layoutState.snvNaColor === "white" ? "white" : "grey";
+  const naMode = layoutState.snvNaColor === "grey" ? "grey" : "white"; // white unless the user chose grey
   setSnvNaMode(naMode); // module setting read by the colour functions and the legend
   const labelMode = layoutState.snvLabel || "protein";
   const dispatch = useDispatch();

@@ -24,8 +24,10 @@ import { ringBox } from "../../../helpers/singleCell/paperRing";
 import PanelControls, { controlOverlays } from "./panelControls";
 import { selectCells, selectedIds, selectionGroups, selectionText } from "../../../helpers/singleCell/paperSelection";
 import { colIndexAt, graphInWindow, regionWindows, snvAt } from "../../../helpers/singleCell/paperZoom";
+import { livePanel, livePanels, liveStart } from "../../../helpers/singleCell/paperLiveView";
 
 const InteractiveSlot = React.lazy(() => import("./interactiveSlot"));
+const PatientLiveView = React.lazy(() => import("./patientLiveView"));
 const SelectionDrawer = React.lazy(() => import("./selectionDrawer"));
 const PatientDrawer = React.lazy(() => import("./patientDrawer"));
 
@@ -128,7 +130,9 @@ export default function PaperFigurePage({ label }) {
   const [tip, setTip] = useState(null);
   const [open, setOpen] = useState(null);
   const [zoom, setZoom] = useState(false);
-  const [patientView, setPatientView] = useState(null);
+  // live patient view of a panel (the patient's own gOS components, inline under the controls): { panel, patient } | null
+  const [liveView, setLiveView] = useState(null);
+  const liveRef = useRef(null);
   const anchors = useMemo(() => anchoredPanels(fig), [fig]);
   const regions = useMemo(() => (fig?.widthPt ? panelRegions(anchors, fig.widthPt, fig.heightPt) : []), [anchors, fig]);
   const [imgReady, setImgReady] = useState(false);
@@ -231,6 +235,20 @@ export default function PaperFigurePage({ label }) {
   }, [stateCtl, stateVal, stateEx.status, statePoints, sidecar]);
   const panelBox = useMemo(() => new Map(regions.map((b) => [`${b.letter}`.toLowerCase(), b])), [regions]);
   const sheetRef = useRef(null);
+  const chromoBins = useSelector((s) => s.Settings?.chromoBins);
+  const liveList = useMemo(() => livePanels(sidecar), [sidecar]);
+  useEffect(() => setLiveView(null), [label]);
+  // open a patient's live view for a panel (or the first panel printed from that patient); the panel's switcher shows the choice
+  const openLive = (patient, panel = null) => {
+    if (!patient) return;
+    const p = (panel && livePanel(liveList, panel)) || liveList.find((x) => x.patient === `${patient}`) || liveList[0] || null;
+    const letter = p?.panel || panel || "";
+    setLiveView({ panel: letter, patient: `${patient}` });
+    setCtrlVals((m) => ({ ...m, [`${letter}|patient-view`]: `${patient}` }));
+    setTimeout(() => liveRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  };
+  const liveSpec = liveView ? livePanel(liveList, liveView.panel) : null;
+  const liveOpen = liveView ? liveStart(liveSpec, liveView.patient, chromoBins) : null;
   const kRef = useRef(1);
   const lensRef = useRef(null);
   lensRef.current = lens;
@@ -545,10 +563,38 @@ export default function PaperFigurePage({ label }) {
           live={live}
           optionsOf={optionsOf}
           onFocusPanel={setFocusPanel}
-          onChange={(c, v) => (c.type === "patient-view" ? v && setPatientView(v) : setCtrlVals((m) => ({ ...m, [controlKey(c)]: v })))}
+          onChange={(c, v) => (c.type === "patient-view" ? openLive(v, c.panel) : setCtrlVals((m) => ({ ...m, [controlKey(c)]: v })))}
+          liveOf={(c) => (liveView && `${liveView.panel}`.toLowerCase() === `${c.panel}`.toLowerCase() ? liveView.patient : null)}
+          onCloseLive={() => setLiveView(null)}
           onClear={(c) => setCtrlVals((m) => ({ ...m, [controlKey(c)]: null }))}
           onSelectCells={(cells, patient, lbl) => setSel(selectCells(null, cells.map((c) => c.cell), patient, { label: lbl }))}
         />
+      )}
+      {liveOpen && (
+        <div ref={liveRef} className="sc-paperlive" data-testid="paper-live-view">
+          <div className="sc-paperlive-head">
+            <b>{`${fig.label}${`${liveView.panel}`.toLowerCase()} · ${liveOpen.patient} · live`}</b>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {liveOpen.kind === "ecdna"
+                ? " the patient's ecDNA figure (tree, SNVs, copy number, walk copies) from the same gOS components as the patient pages"
+                : ` the patient's Single-Cell view (same components as its Single-Cell tab): ${liveOpen.printed ? "opened at the printed panel's loci" : "whole genome"}; scroll / drag to zoom and pan, gene track Collapsed / Squished / Expanded, click or drag rows to select cells`}
+            </Text>
+            <span style={{ flex: 1 }} />
+            <Button size="small" icon={<LinkOutlined />} href={cellsUrl(liveOpen.patient, [], "")} target="_blank" rel="noopener noreferrer">
+              {`${liveOpen.patient} patient page`}
+            </Button>
+            <Button size="small" onClick={() => setLiveView(null)}>
+              Back to the printed panel
+            </Button>
+          </div>
+          <React.Suspense fallback={<Text type="secondary">Loading…</Text>}>
+            {liveOpen.kind === "ecdna" ? (
+              tokens === "loading" ? <Text type="secondary">Loading the figure style…</Text> : <InteractiveSlot patient={liveOpen.patient} {...sidecarExtras(sidecar, liveOpen.patient)} />
+            ) : (
+              <PatientLiveView key={`${liveOpen.patient}|${liveView.panel}`} start={liveOpen} />
+            )}
+          </React.Suspense>
+        </div>
       )}
       <div
         ref={sheetRef}
@@ -806,7 +852,7 @@ export default function PaperFigurePage({ label }) {
                 </Button>
               )}
               {p.view?.panel === "patient-figure" && p.view.patient && (
-                <Button type="link" size="small" onClick={() => setPatientView(p.view.patient)}>
+                <Button type="link" size="small" onClick={() => openLive(p.view.patient, p.letter || null)}>
                   {`Open in patient view (${p.view.patient})`}
                 </Button>
               )}
@@ -842,15 +888,8 @@ export default function PaperFigurePage({ label }) {
         initialTab={open?.tab || "panel"}
         tables={open ? panelTables(sidecar, (open.panel || open).letter) : []}
         onClose={() => setOpen(null)}
-        onOpenTarget={(t) => (t.kind === "interactive" && t.panel === "patient-figure" && t.patient ? setPatientView(t.patient) : openPaperTarget(t))}
+        onOpenTarget={(t) => (t.kind === "interactive" && t.panel === "patient-figure" && t.patient ? (setOpen(null), openLive(t.patient, t.letter || null)) : openPaperTarget(t))}
       />
-      <Modal open={!!patientView} onCancel={() => setPatientView(null)} footer={null} width="96vw" title={`${patientView || ""} · patient view (gOS components; the figure stays as in the PDF)`} destroyOnClose>
-        {patientView && (
-          <React.Suspense fallback={<Text type="secondary">Loading…</Text>}>
-            {tokens === "loading" ? <Text type="secondary">Loading the figure style…</Text> : <InteractiveSlot patient={patientView} {...sidecarExtras(sidecar, patientView)} />}
-          </React.Suspense>
-        )}
-      </Modal>
       <Modal open={zoom} onCancel={() => setZoom(false)} footer={null} width="96vw" title={`${fig.label} · ${fig.title}`}>
         {zoom && <ZoomPanImage src={bestImage(fig)} alt={fig.label} width={natW} height={(fig.heightPt || 600) * PT_PX} viewHeight={Math.max(400, (window.innerHeight || 900) - 220)} />}
       </Modal>
