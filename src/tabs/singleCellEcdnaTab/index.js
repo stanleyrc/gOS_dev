@@ -36,7 +36,7 @@ import WalksLegend from "../../components/singleCell/ecdna/walksLegend";
 import HintLine, { Provenance } from "../../components/singleCell/hintLine";
 import { SC_GUTTER } from "../../components/singleCell/density";
 import { linkAppliesTo, readDeepLink, readViewLink, walkIdsForLabels } from "../../helpers/singleCell/deepLink";
-import { parseWalkset, peelSourceWithCopies, recoveryMap, withWalkset } from "../../helpers/singleCell/walkSetCompare";
+import { pairWalkSets, parseWalkset, peelSourceWithCopies, recoveryMap, withWalkset } from "../../helpers/singleCell/walkSetCompare";
 import { subscribeEvidence, takeEvidence } from "../../helpers/singleCell/evidenceFocus";
 
 const { Text } = Typography;
@@ -175,6 +175,24 @@ export default function SingleCellEcdnaTab() {
   // the heatmap takes no props: keep its element stable so hovering chips / lanes never re-renders it
   const heatmap = useMemo(() => <CellHeatmapPanel />, []);
 
+  // Compare draws every walk on the shared genome axis: open it on the footprints of the curated/peel pairs
+  const compareZoom = useRef(null);
+  const compareZoomedFor = useRef(null);
+  useEffect(() => {
+    if (walkset !== "compare") {
+      compareZoomedFor.current = null;
+      return;
+    }
+    const src = compareZoom.current;
+    if (!chromoBins || peelSource?.status !== "ok" || compareZoomedFor.current === patient) return;
+    const rows = pairWalkSets(src?.curated?.data?.walks || [], peelSource.data?.walks || [], [...recoveryMap(peelSource.data).values()]);
+    let ws = rows.filter((r) => r.peel && r.curated).flatMap((r) => [r.peel, r.curated]);
+    if (!ws.length) ws = rows.flatMap((r) => [r.peel, r.curated]).filter(Boolean);
+    const ds = walksDomains(ws, chromoBins, pad);
+    compareZoomedFor.current = patient;
+    if (ds.length) dispatch(settingsActions.updateDomains(ds));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walkset, chromoBins, peelSource, patient]);
   // open on the ticked walks' regions once per patient; afterwards the view is the user's
   const zoomedFor = useRef(null);
   const zoomToShown = (ws = shown) => {
@@ -201,6 +219,7 @@ export default function SingleCellEcdnaTab() {
   );
   const peelBanner = walkset === "peel_v4" && peelRaw.status === "ok" ? <PeelBanner data={peelRaw.data} copies={peelCopies} onCopies={setPeelCopies} hasCplex={(peelRaw.data?.walks || []).some((w) => w.cells_cplex)} /> : null;
   if (walkset === "compare") {
+    compareZoom.current = { curated: curatedSource, peel: peelSource };
     return (
       <SingleCellWrapper>
         <ScErrorBoundary resetKey="compare" title="walk set comparison failed">

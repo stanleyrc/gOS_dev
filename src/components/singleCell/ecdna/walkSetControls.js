@@ -74,8 +74,8 @@ export function PeelBanner({ data, copies, onCopies, hasCplex }) {
 /** Red "not recovered" / orange "partial" badge (reason on hover) for a curated walk, proposal / open chips for a peel walk. */
 export function WalkBadges({ walk, recovery }) {
   if (!walk) return null;
-  const badge = walk.curated && recovery ? recoveryBadge(recovery.get(`${walk.id}`)) : null;
-  const chips = walk.curated ? [] : walkChips(walk);
+  const badge = recovery ? recoveryBadge(recovery.get(`${walk.id}`)) : null;
+  const chips = recovery ? [] : walkChips(walk);
   if (!badge && !chips.length) return null;
   return (
     <>
