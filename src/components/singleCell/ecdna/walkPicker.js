@@ -8,6 +8,7 @@ import { changedWalkFilters } from "../../../helpers/singleCell/walkPanels";
 import RareControl, { useRareMax } from "./rareControl";
 import { familyLabel } from "../../../helpers/singleCell/walkCopies";
 import { shortLabel } from "../../../helpers/singleCell/walkPlotState";
+import { WalkBadges } from "./walkSetControls";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
@@ -23,7 +24,7 @@ const tint = (c, a) => (/^#[0-9a-f]{6}$/i.test(c) ? `${c}${Math.round(a * 255).t
  * highlighted (focused) walk is ringed; hovering a chip marks its lane in
  * the plot below.
  */
-export default function WalkPicker({ families, total, nCells, filters, setFilters, colorOf, selected, onSelect, onShowTable, tableOpen = false, focus = null, onHover }) {
+export default function WalkPicker({ families, total, nCells, filters, setFilters, colorOf, selected, onSelect, onShowTable, tableOpen = false, focus = null, onHover, recovery = null }) {
   const { t } = useTranslation("common");
   const set = (k) => (v) => setFilters({ ...filters, [k]: v });
   const sel = new Set(selected);
@@ -123,6 +124,7 @@ export default function WalkPicker({ families, total, nCells, filters, setFilter
                     <span style={{ width: 8, height: 8, borderRadius: 4, flex: "none", background: on ? c : "transparent", border: `1.5px solid ${c}` }} />
                     <span style={{ fontWeight: on ? 600 : 400 }}>{shortLabel(w.label, 26)}</span>
                     {w.curated && <span style={{ color: INK.ok, fontWeight: 700 }}>✓</span>}
+                    <WalkBadges walk={w} recovery={recovery} />
                     <span style={{ color: INK.muted, fontSize: 11, fontVariantNumeric: "tabular-nums" }}>{carriers(w)}</span>
                   </span>
                 </Tooltip>

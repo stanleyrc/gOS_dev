@@ -1,4 +1,4 @@
-import { pairWalkSets, parseWalkset, withWalkset, peelSourceWithCopies, summarizePairs, fitText } from "./walkSetCompare";
+import { recoveryMap, recoveryBadge, recoverySummary, walkChips, pairWalkSets, parseWalkset, withWalkset, peelSourceWithCopies, summarizePairs, fitText } from "./walkSetCompare";
 
 describe("walkSetCompare", () => {
   const curated = [{ id: "a1" }, { id: "a2" }, { id: "a3" }];
@@ -39,5 +39,29 @@ describe("walkSetCompare", () => {
   test("fit text", () => {
     expect(fitText({ R2_free: 0.931, R2_cplex: null, R2_curated: 0.9 })).toBe("R² free 0.93 / curated 0.90");
     expect(fitText(null)).toBeNull();
+  });
+  const data = { fit: { curated_recovery: { n_curated: 3, n_recovered: 1, n_partial: 1, summary: "1 of 3 curated walks recovered", walks: [
+    { curated_id: "a1", status: "recovered" },
+    { curated_id: "a2", status: "partial", reason: "missing junction", best_unit: "u9", segment_cosine: 0.6 },
+    { curated_id: "a3", status: "not recovered by new approaches", reason: "low coverage" },
+  ] } } };
+  test("recovery badges and summary", () => {
+    const m = recoveryMap(data);
+    expect(recoveryBadge(m.get("a1"))).toBeNull();
+    expect(recoveryBadge(m.get("a2"))).toEqual({ color: "orange", text: "partial", reason: "missing junction" });
+    expect(recoveryBadge(m.get("a3")).color).toBe("red");
+    expect(recoveryBadge(undefined)).toBeNull();
+    expect(recoverySummary(data)).toBe("1 of 3 curated walks recovered (1 partial)");
+    expect(recoverySummary({})).toBeNull();
+    expect(recoveryMap({}).size).toBe(0);
+  });
+  test("chips and pairing through best_unit", () => {
+    expect(walkChips({ proposal: "from EXTEND", evidence: { closed: false } }).map((c) => c.key)).toEqual(["proposal", "open"]);
+    expect(walkChips({ closed: true })).toEqual([]);
+    const rows = pairWalkSets([{ id: "a2" }], [{ id: "u9", curated_match: null }], data.fit.curated_recovery.walks);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].curated.id).toBe("a2");
+    expect(rows[0].status).toBe("partial");
+    expect(rows[0].cosine).toBe(0.6);
   });
 });

@@ -21,7 +21,7 @@ import WalkDiagram from "../../components/singleCell/ecdna/walkDiagram";
 import WalkContainmentCard from "../../components/singleCell/ecdna/walkContainmentCard";
 import WalkTreeBars from "../../components/singleCell/ecdna/walkTreeBars";
 import WalkCooccurrence from "../../components/singleCell/ecdna/walkCooccurrence";
-import { PeelBanner, WalkSetSelector, usePeelSource } from "../../components/singleCell/ecdna/walkSetControls";
+import { PeelBanner, RecoverySummary, WalkSetSelector, usePeelSource } from "../../components/singleCell/ecdna/walkSetControls";
 import WalkSetCompareCard from "../../components/singleCell/ecdna/walkSetCompareCard";
 import CnStateCard from "../../components/singleCell/ecdna/cnStateCard";
 import DisplayMenu from "../../components/singleCell/ecdna/displayMenu";
@@ -36,7 +36,7 @@ import WalksLegend from "../../components/singleCell/ecdna/walksLegend";
 import HintLine, { Provenance } from "../../components/singleCell/hintLine";
 import { SC_GUTTER } from "../../components/singleCell/density";
 import { linkAppliesTo, readDeepLink, readViewLink, walkIdsForLabels } from "../../helpers/singleCell/deepLink";
-import { parseWalkset, peelSourceWithCopies, withWalkset } from "../../helpers/singleCell/walkSetCompare";
+import { parseWalkset, peelSourceWithCopies, recoveryMap, withWalkset } from "../../helpers/singleCell/walkSetCompare";
 import { subscribeEvidence, takeEvidence } from "../../helpers/singleCell/evidenceFocus";
 
 const { Text } = Typography;
@@ -93,8 +93,9 @@ export default function SingleCellEcdnaTab() {
   // walk set: curated walks.json (default), proposed Peel v4 walks (walks_peel_v4.json) or both side by side; kept in ?walkset=
   const [walkset, setWalksetState] = useState(() => parseWalkset(typeof window === "undefined" ? "" : window.location.search));
   const [peelCopies, setPeelCopies] = useState("free");
-  const peelRaw = usePeelSource(walkset !== "curated", patient);
+  const peelRaw = usePeelSource(true, patient);
   const peelSource = useMemo(() => peelSourceWithCopies(peelRaw, peelCopies), [peelRaw, peelCopies]);
+  const recovery = useMemo(() => (peelRaw.status === "ok" ? recoveryMap(peelRaw.data) : null), [peelRaw]);
   const curatedSource = useSelector((s) => s.SingleCell.walks);
   const setWalkset = (v) => {
     setWalksetState(v);
@@ -192,6 +193,7 @@ export default function SingleCellEcdnaTab() {
   const selector = (
     <Space wrap>
       <WalkSetSelector value={walkset} onChange={setWalkset} peelStatus={peelRaw.status} />
+      {walkset !== "peel_v4" && peelRaw.status === "ok" && <RecoverySummary data={peelRaw.data} />}
       {walkset === "peel_v4" && peelRaw.status === "ok" && (
         <Text type="secondary">{(peelRaw.data?.walks || []).length} peel walks</Text>
       )}
@@ -238,10 +240,10 @@ export default function SingleCellEcdnaTab() {
                   message={t("components.single-cell.ecdna.id-mismatch", { count: idMatch.listed, example: idMatch.example, cell: cellIds[0] })}
                 />
               )}
-              <WalkPicker families={families} total={all.length} nCells={cellIds.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} onShowTable={() => setShowTable((v) => !v)} tableOpen={showTable} focus={activeFocus} onHover={setChipHover} />
+              <WalkPicker families={families} total={all.length} nCells={cellIds.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} onShowTable={() => setShowTable((v) => !v)} tableOpen={showTable} focus={activeFocus} onHover={setChipHover} recovery={walkset === "curated" ? recovery : null} />
               {showTable && (
                 <div style={{ marginTop: 10 }}>
-                  <WalkTable walks={filtered} total={all.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} focus={activeFocus} onFocus={(id) => { setSelected((prev) => (prev.includes(id) ? prev : [...prev, id])); setFocus(id); }} nCells={cellIds.length} />
+                  <WalkTable walks={filtered} total={all.length} filters={filters} setFilters={setFilters} colorOf={colorOf} selected={selected} onSelect={setSelected} focus={activeFocus} onFocus={(id) => { setSelected((prev) => (prev.includes(id) ? prev : [...prev, id])); setFocus(id); }} nCells={cellIds.length} recovery={walkset === "curated" ? recovery : null} />
                 </div>
               )}
             </Card>
