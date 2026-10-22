@@ -105,7 +105,7 @@ export default function HeatmapLegend({
     const naMode = snvNaMode();
     let items;
     let note = t("components.single-cell.legend.binned");
-    if (snvMetric === "vaf") items = [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: `${v}` }));
+    if (snvMetric === "vaf") items = [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: v === 0 && naMode === "white" ? "0 (ref reads only)" : `${v}` }));
     else if (snvMetric === "gt") {
       items = [
         { color: GT_COLORS.alt, label: "alt" },
@@ -123,7 +123,7 @@ export default function HeatmapLegend({
     groups.push({
       key: "snv",
       title: t(`components.single-cell.metric.${snvMetric}`),
-      items: [...items, { color: snvMissingColor(), label: `${t("components.single-cell.side.no-reads")} (missing, ${naMode})` }],
+      items: [...items, { color: snvMissingColor(), label: naMode === "white" ? "no reads = white" : `${t("components.single-cell.side.no-reads")} (missing, grey)` }],
       note,
     });
   }

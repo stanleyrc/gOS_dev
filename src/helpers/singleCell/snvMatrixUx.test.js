@@ -1,7 +1,7 @@
-import { ALT_BINS, altBin, countRGBA, setSnvNaMode, snvMetricMax, snvMetricRGBA, snvMissingColor, snvNaMode } from "./matrix";
+import { ALT_BINS, SNV_ALT_TOP, SNV_REF_COLOR, altBin, countRGBA, hexToRgb, setSnvNaMode, snvMetricMax, snvMetricRGBA, snvMissingColor, snvNaMode, snvWhiteNaRGB, vafRGB } from "./matrix";
 import { parseSiteState, serializeSiteState, siteAnnotations, matchesAnnotFilter, setRange, setValues } from "./snvAnnot";
 
-afterEach(() => setSnvNaMode("grey"));
+afterEach(() => setSnvNaMode("white")); // restore the default
 
 describe("ALT read counts", () => {
   test("discrete bins 0 / 1 / 2 / 3-5 / 6+", () => {
@@ -18,23 +18,45 @@ describe("ALT read counts", () => {
 });
 
 describe("missing colour option", () => {
-  test("grey by default, white on request, in every metric", () => {
-    expect(snvNaMode()).toBe("grey");
-    const grey = countRGBA(null, 6, "alt");
-    setSnvNaMode("white");
+  test("white by default, grey on request, in every metric", () => {
+    expect(snvNaMode()).toBe("white");
     expect(snvMissingColor()).toBe("#ffffff");
-    expect(countRGBA(null, 6, "alt")).not.toBe(grey);
-    expect(snvMetricRGBA(null, "gt", 1)).toBe(countRGBA(null, 6, "alt"));
+    const white = countRGBA(null, 6, "alt");
+    expect(snvMetricRGBA(null, "gt", 1)).toBe(white);
+    setSnvNaMode("grey");
+    expect(snvNaMode()).toBe("grey");
+    expect(countRGBA(null, 6, "alt")).not.toBe(white);
+    setSnvNaMode(null);
+    expect(snvNaMode()).toBe("white");
+  });
+  test("white NA: reference reads and every alt VAF stay distinct from no reads", () => {
+    setSnvNaMode("white");
+    const na = vafRGB(null).join(",");
+    expect(na).toBe("255,255,255");
+    expect(vafRGB(0)).toEqual(hexToRgb(SNV_REF_COLOR));
+    expect(vafRGB(0).join(",")).not.toBe(na);
+    [0.01, 0.25, 0.5, 1].forEach((f) => {
+      const [r, g, b] = vafRGB(f);
+      expect(r).toBe(g);
+      expect(g).toBe(b);
+      expect(r).toBeLessThanOrEqual(SNV_ALT_TOP);
+    });
+    expect(vafRGB(1)).toEqual([0, 0, 0]);
+    expect(vafRGB(0.5)[0]).toBeGreaterThan(vafRGB(0.75)[0]);
+    expect(snvWhiteNaRGB(null)).toEqual([255, 255, 255]);
+    setSnvNaMode("grey");
+    expect(vafRGB(0)).toEqual([255, 255, 255]);
+    setSnvNaMode("white");
   });
 });
 
 describe("site state in the URL", () => {
   test("round trip", () => {
-    const layout = { snvAnnotFilter: { signature: { values: ["SBS13"] }, carriers: { min: 2, max: 40 }, gene: { values: ["TP53", "EGFR"] } }, snvCategories: ["subclonal"], snvDriversOnly: true, snvLabel: "gene", snvNaColor: "white", snvIsolate: true, snvMinCladeScore: 0.7 };
+    const layout = { snvAnnotFilter: { signature: { values: ["SBS13"] }, carriers: { min: 2, max: 40 }, gene: { values: ["TP53", "EGFR"] } }, snvCategories: ["subclonal"], snvDriversOnly: true, snvLabel: "gene", snvNaColor: "grey", snvIsolate: true, snvMinCladeScore: 0.7 };
     const q = new URLSearchParams(serializeSiteState(layout)).toString();
     const back = parseSiteState(`?${q}`);
     expect(back.snvAnnotFilter).toEqual(layout.snvAnnotFilter);
-    expect(back).toMatchObject({ snvCategories: ["subclonal"], snvDriversOnly: true, snvLabel: "gene", snvNaColor: "white", snvIsolate: true, snvMinCladeScore: 0.7 });
+    expect(back).toMatchObject({ snvCategories: ["subclonal"], snvDriversOnly: true, snvLabel: "gene", snvNaColor: "grey", snvIsolate: true, snvMinCladeScore: 0.7 });
   });
   test("defaults add nothing", () => expect(serializeSiteState({})).toEqual({}));
 });
