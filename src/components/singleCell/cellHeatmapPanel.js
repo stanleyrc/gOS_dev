@@ -37,6 +37,7 @@ import PaletteEditor from "./paletteEditor";
 import HeightHandle from "./heightHandle";
 import ExpressionSidePanel, { GENE_COLUMN_WIDTH } from "./expressionSidePanel";
 import PinnedGenesOverlay from "./pinnedGenesOverlay";
+import PinGenesControl from "./pinGenesControl";
 import useContainerWidth from "./useContainerWidth";
 import usePixelRatio from "./usePixelRatio";
 import singleCellActions from "../../redux/singleCell/actions";
@@ -157,7 +158,6 @@ export default function CellHeatmapPanel() {
   const { domains, chromoBins, defaultDomain, genomeLength, zoomedByCmd } = useSelector((state) => state.Settings);
   const expression = useSelector((state) => state.ScAnalysis.expression);
   const geneList = useSelector((state) => state.ScAnalysis.geneList);
-  const geneOptions = useSelector((state) => state.Genes.optionsList);
   const showExpression = expression.status === "ok" && Boolean(expression.values);
   const [containerRef, containerWidth] = useContainerWidth();
   const pixelRatio = usePixelRatio();
@@ -1349,22 +1349,7 @@ export default function CellHeatmapPanel() {
               onChange={(cellSignatureMode) => dispatch(singleCellActions.updateLayout({ cellSignatureMode }))}
               options={[{ value: "dominant", label: "Dominant (clone fit)" }, { value: "stacked", label: "Stacked (clone fit)" }, ...(cellSignatureSource ? [{ value: "cell", label: "Per-cell fit" }] : [])]} />
           </Space>}
-          <Space size={4}>
-            <Text type="secondary">{t("components.single-cell.toolbar.pin")}</Text>
-            <Select
-              size="small"
-              mode="multiple"
-              allowClear
-              showSearch
-              maxTagCount="responsive"
-              style={{ minWidth: 150, maxWidth: 340 }}
-              placeholder={t("components.single-cell.toolbar.pin-placeholder")}
-              value={layout.pinnedGenes || []}
-              onChange={(value) => dispatch(singleCellActions.updateLayout({ pinnedGenes: value }))}
-              options={(geneOptions || []).map((o) => ({ value: o.label, label: o.label }))}
-              filterOption={(input, option) => option.value.toUpperCase().startsWith(input.toUpperCase())}
-            />
-          </Space>
+          <PinGenesControl />
           <HideLowQcControl />
           {cloneNames.length > 1 && (
             <Space size={4}>
