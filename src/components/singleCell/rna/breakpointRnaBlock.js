@@ -13,9 +13,11 @@ export function LocusLinks({ transcript }) {
     <Space size={6} wrap>
       {[a, b].map((l, i) =>
         l ? (
-          <a key={i} href={igvUrl(l)} target="_blank" rel="noopener noreferrer" data-locus-link>
-            {l}
-          </a>
+          <Tooltip key={i} title={`IGV at ${l}`}>
+            <a href={igvUrl(l)} target="_blank" rel="noopener noreferrer" data-locus-link>
+              {`IGV ${i === 0 ? "A" : "B"}`}
+            </a>
+          </Tooltip>
         ) : (
           <Text key={i} type="secondary">not available (no locus)</Text>
         )
