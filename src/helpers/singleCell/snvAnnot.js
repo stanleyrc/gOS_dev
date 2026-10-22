@@ -491,7 +491,7 @@ export function serializeSiteState(layout) {
   if (l.snvCellphyOnly) params.sncp = "1";
   if (l.snvMinCladeScore > 0) params.snf1 = `${l.snvMinCladeScore}`;
   if (l.snvLabel && l.snvLabel !== "protein") params.snlabel = l.snvLabel;
-  if (l.snvNaColor === "white") params.snna = "white";
+  if (l.snvNaColor === "grey") params.snna = "grey"; // white is the default
   if (l.snvIsolate) params.snisolate = "1";
   if (l.snvFiltersHidden) params.snhide = "1";
   if (l.snvLegendHidden) params.snleg = "0";
@@ -514,7 +514,8 @@ export function parseSiteState(search) {
   const f1 = Number(params.get("snf1"));
   if (f1 > 0) patch.snvMinCladeScore = f1;
   if (LABEL_VALUES.includes(params.get("snlabel"))) patch.snvLabel = params.get("snlabel");
-  if (params.get("snna") === "white") patch.snvNaColor = "white";
+  if (params.get("snna") === "grey") patch.snvNaColor = "grey";
+  else if (params.get("snna") === "white") patch.snvNaColor = null; // older links: white, now the default
   if (params.get("snisolate") === "1") patch.snvIsolate = true;
   if (params.get("snhide") === "1") patch.snvFiltersHidden = true;
   if (params.get("snleg") === "0") patch.snvLegendHidden = true;

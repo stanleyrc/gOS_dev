@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import { snvAt, snvLookup } from "../../../helpers/singleCell/paperZoom";
+import { snvWhiteNaRGB } from "../../../helpers/singleCell/matrix";
 
 const cache = new Map();
 /** A patient's per-cell SNV reads (snv_matrix.json) as a lookup, fetched once per page. */
@@ -16,7 +17,8 @@ export function loadSnvLookup(dataset, patient) {
 
 /**
  * A figure SNV / VAF heatmap redrawn from the patient's reads for the part visible in a zoomed panel: one rectangle
- * per cell x site (the figure's site order), white -> black by VAF, white without reads. box: display px inside the
+ * per cell x site (the figure's site order), the patient-view colours: light blue = reference reads only, grey -> black
+ * by VAF, white without reads. box: display px inside the
  * lens; r0..r1 / c0..c1: the visible row / column ranges.
  */
 export default function SnvLensLayer({ region, lookup, box, r0, r1, c0, c1 }) {
@@ -42,8 +44,7 @@ export default function SnvLensLayer({ region, lookup, box, r0, r1, c0, c1 }) {
       for (let c = c0; c < c1; c += 1) {
         const v = snvAt(lookup, cell, region.cols.ids[c]);
         if (!v || v.vaf == null) continue;
-        const g = Math.round(255 * (1 - v.vaf));
-        ctx.fillStyle = `rgb(${g},${g},${g})`;
+        ctx.fillStyle = `rgb(${snvWhiteNaRGB(v.vaf).join(",")})`;
         ctx.fillRect((c - c0) * cw, (r - r0) * ch, Math.max(0.6, cw - (cw > 4 ? 0.5 : 0)), Math.max(0.6, ch - (ch > 4 ? 0.5 : 0)));
       }
     }

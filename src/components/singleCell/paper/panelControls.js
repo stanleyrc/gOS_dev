@@ -11,8 +11,11 @@ const { Text } = Typography;
  * panel letter (Fig 1e: patient; a panel of one patient's rows: open any patient in the patient view; plots with patient /
  * gene / clade marks: highlight). controls: figureControls output; values: control key -> chosen value; label: figure label ("Fig 3").
  * live: { status, patients: [{ patient, count }], matched, cells } of the state-score controls for the chosen value.
+ * Patient-view controls ("Live view"): picking a patient — including the printed one, which an antd onChange would
+ * swallow — opens that patient's live gOS view under the toolbar (onChange); liveOf(c) is the patient shown live for
+ * the control's panel (null = the printed panel is shown), onCloseLive returns to the print.
  */
-export default function PanelControls({ controls, values, onChange, label, live, optionsOf, onSelectCells, onClear, onFocusPanel }) {
+export default function PanelControls({ controls, values, onChange, label, live, optionsOf, onSelectCells, onClear, onFocusPanel, liveOf = () => null, onCloseLive = () => {} }) {
   const byPanel = new Map();
   controls.forEach((c) => byPanel.set(c.panel.toLowerCase(), [...(byPanel.get(c.panel.toLowerCase()) || []), c]));
   return (
@@ -27,7 +30,7 @@ export default function PanelControls({ controls, values, onChange, label, live,
             const isLive = c.source === "state_scores";
             return (
               <div key={key} className="sc-paperctl-row">
-                <Text style={{ fontSize: 11 }}>{c.label || (c.type === "patient-view" ? "Open patient" : c.type === "gene" ? "Gene" : c.type === "clade" ? "Clade" : "Patient")}</Text>
+                <Text style={{ fontSize: 11 }}>{c.type === "patient-view" ? "Live view" : c.label || (c.type === "gene" ? "Gene" : c.type === "clade" ? "Clade" : "Patient")}</Text>
                 <Select
                   size="small"
                   showSearch
@@ -36,7 +39,8 @@ export default function PanelControls({ controls, values, onChange, label, live,
                   placeholder={c.type === "patient-view" ? "patient view" : "all"}
                   style={{ width: 128 }}
                   options={opts.map((o) => ({ value: o.value, label: o.label }))}
-                  onChange={(v) => onChange(c, v ?? null)}
+                  onChange={(v) => c.type !== "patient-view" && onChange(c, v ?? null)}
+                  onSelect={(v) => c.type === "patient-view" && onChange(c, v)}
                   getPopupContainer={() => document.body}
                 />
                 {isLive && value && live && live.status === "ok" && (
@@ -44,6 +48,16 @@ export default function PanelControls({ controls, values, onChange, label, live,
                     {`Select ${live.cells.length}`}
                   </Button>
                 )}
+                {c.type === "patient-view" &&
+                  (liveOf(c) ? (
+                    <Button size="small" onClick={onCloseLive} data-testid="paper-live-close">
+                      printed
+                    </Button>
+                  ) : (
+                    <Button size="small" type="primary" ghost onClick={() => onChange(c, value)} data-testid="paper-live-open">
+                      live
+                    </Button>
+                  ))}
                 {value && c.type !== "patient-view" && (
                   <Button size="small" type="text" onClick={() => onClear(c)}>
                     reset

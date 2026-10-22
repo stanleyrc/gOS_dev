@@ -13,6 +13,8 @@ import {
   treeColumnOrder,
   calledVariants,
   vafRGBA,
+  setSnvNaMode,
+  SNV_REF_COLOR,
 } from "./matrix";
 import { allelicRowFromAllelic, parseVariantId, snvFromSparse } from "./cellFiles";
 import { expressionByCell, parseRnaSummary, readMatrixBuffers, searchGeneNames } from "./staticRna";
@@ -117,9 +119,20 @@ describe("patient SNV matrix (pgv sparse format)", () => {
 });
 
 describe("mutation colours and bins", () => {
-  it("draws VAF white to black", () => {
-    expect(vafRGBA(0)).toBe(rgba("#FFFFFF"));
+  it("draws VAF white to black with grey no-reads (the grey setting)", () => {
+    setSnvNaMode("grey");
+    try {
+      expect(vafRGBA(0)).toBe(rgba("#FFFFFF"));
+      expect(vafRGBA(1)).toBe(rgba("#000000"));
+    } finally {
+      setSnvNaMode("white");
+    }
+  });
+  it("default: no reads white, reference reads light blue, alt VAF grey to black", () => {
+    expect(vafRGBA(null)).toBe(rgba("#FFFFFF"));
+    expect(vafRGBA(0)).toBe(rgba(SNV_REF_COLOR));
     expect(vafRGBA(1)).toBe(rgba("#000000"));
+    expect(vafRGBA(0.01)).not.toBe(rgba("#FFFFFF"));
   });
 
   it("draws VAF dark grey to light grey in the dark theme, no reads darkest", () => {
