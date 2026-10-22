@@ -36,7 +36,7 @@ export default function WalkSetCompareCard({ curatedSource, peelSource, cellIds 
           <Space size={8} wrap style={{ marginBottom: 2 }}>
             <Tag color={COLOR[r.status]}>{r.status}</Tag>
             {r.curated && <WalkBadges walk={r.curated} recovery={recovery} />}
-            {r.peel && <WalkBadges walk={r.peel} recovery={recovery} />}
+            {r.peel && <WalkBadges walk={r.peel} recovery={null} />}
             {r.peel && r.curated && <Text type="secondary">cosine {f2(r.cosine)} / junction Jaccard {f2(r.jaccard)} / rho free {f2(r.rho)}{r.rhoCplex != null ? ` / rho CPLEX ${f2(r.rhoCplex)}` : ""}</Text>}
             {r.curatedShared && <Text type="secondary">(curated walk also matched by an earlier peel walk)</Text>}
             {r.missingCurated && <Text type="warning">matched curated walk id not in walks.json</Text>}
