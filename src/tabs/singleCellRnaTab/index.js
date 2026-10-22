@@ -21,6 +21,7 @@ import RnaFusionsCard from "../../components/singleCell/rna/rnaFusionsCard";
 import SplicingCard from "../../components/singleCell/rna/splicingCard";
 import RnaFindingsStrip from "../../components/singleCell/rna/rnaFindingsStrip";
 import { rnaFindingCounts } from "../../helpers/singleCell/rnaHeadlineFindings";
+import { useFindingConfidence } from "../../components/singleCell/confidenceToggle";
 import scaActions from "../../redux/scAnalysis/actions";
 import singleCellActions from "../../redux/singleCell/actions";
 import Wrapper from "./index.style";
@@ -51,7 +52,9 @@ export default function SingleCellRnaTab() {
   // notable splicing findings + tier 1–2 fusion pairs, on the sub-tab label
   const splicingFindings = useSelector((state) => (state.SingleCell.rnaSplicing?.status === "ok" ? state.SingleCell.rnaSplicing.data.findings : null));
   const fusionList = useSelector((state) => (state.SingleCell.rnaFusions?.status === "ok" ? state.SingleCell.rnaFusions.data.fusions : null));
-  const findingCount = useMemo(() => rnaFindingCounts({ splicing: splicingFindings || [], fusions: fusionList || [] }).total, [splicingFindings, fusionList]);
+  // splicing findings of the confidence tiers shown (spliceconf; default consistent only)
+  const [spliceLevel] = useFindingConfidence();
+  const findingCount = useMemo(() => rnaFindingCounts({ splicing: splicingFindings || [], fusions: fusionList || [], level: spliceLevel }).total, [splicingFindings, fusionList, spliceLevel]);
   // a splicing finding picked in the strip: open the sub-tab and the finding in the splicing card
   const [spliceFocus, setSpliceFocus] = useState(null);
   // Violins follow the genes picked in the volcano or table.

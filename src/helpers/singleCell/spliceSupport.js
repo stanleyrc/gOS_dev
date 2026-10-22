@@ -2,9 +2,21 @@
 // DNA (splice-site SNV in the filtered events), RNA (aberrant splicing in rna/splicing.json) or DNA+RNA (RNA junction
 // within the exporter's distance of the DNA site).
 
-/** { support, dna, rna } for a patient and gene, or null (no splice alteration, or no file). */
-export function spliceSupportOf(doc, patient, gene) {
-  return doc?.patients?.[patient]?.[gene] || null;
+import { passesConfidence, tierOf } from "./findingConfidence";
+
+/**
+ * { support, dna, rna } for a patient and gene, or null (no splice alteration, or no file). With `level` (splicing
+ * confidence toggle), RNA entries below the level are dropped (tiered files only): RNA-only genes without a shown entry
+ * give null, DNA+RNA genes without one fall back to DNA.
+ */
+export function spliceSupportOf(doc, patient, gene, level = null) {
+  const entry = doc?.patients?.[patient]?.[gene] || null;
+  if (!entry || !level || !Array.isArray(entry.rna) || !entry.rna.some((r) => tierOf(r?.confidence))) return entry;
+  const rna = entry.rna.filter((r) => passesConfidence(r, level));
+  if (rna.length === entry.rna.length) return entry;
+  const dna = entry.dna || [];
+  if (!rna.length) return dna.length ? { ...entry, rna, support: "DNA" } : null;
+  return { ...entry, rna };
 }
 
 export const SPLICE_SHORT = { DNA: "DNA", RNA: "RNA", "DNA+RNA": "DNA+RNA" };

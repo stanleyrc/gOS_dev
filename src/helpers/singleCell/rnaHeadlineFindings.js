@@ -4,6 +4,10 @@
 // clusters; skilift sc_export_rna_splicing) and tier 1–2 fusions
 // (rna/fusions.json). Used by the RNA tab's findings strip, the splicing
 // cards, the patient overview / report cards and the cohort cards. d3-free.
+// Confidence tiers (findingConfidence.js; skilift gos_sc_splice_confidence.py): `level` limits the splicing findings
+// counted / headlined to the tiers shown (default consistent only); untiered files are unaffected.
+
+import { DEFAULT_CONFIDENCE_LEVEL, filterByConfidence, readConfidence } from "./findingConfidence";
 
 export const SPLICE_FINDING_KINDS = ["known_variant", "patient_specific", "clone_differential"];
 export const SEVERITIES = ["high", "moderate", "low", "artefact"];
@@ -48,6 +52,7 @@ export function normalizeSpliceFindings(list) {
         exonKnown: "n_exons" in f,
         nExons: f.n_exons == null ? null : Number(f.n_exons),
         intronOverlap: f.intron_overlap == null ? null : !!f.intron_overlap,
+        ...readConfidence(f),
         loci: arr(f.loci)
           .map((l) => ({ chromosome: `${l?.chromosome ?? ""}`.replace(/^chr/, ""), position: num(l?.position) }))
           .filter((l) => l.chromosome && Number.isFinite(l.position)),
@@ -92,8 +97,8 @@ export function fusionText(h, nCellsRna = null) {
 }
 
 /** Counts for the sub-tab label: notable splicing findings + tier 1–2 fusion pairs. */
-export function rnaFindingCounts({ splicing = [], fusions = [] } = {}) {
-  const s = arr(splicing).filter(isNotable).length;
+export function rnaFindingCounts({ splicing = [], fusions = [], level = DEFAULT_CONFIDENCE_LEVEL } = {}) {
+  const s = filterByConfidence(arr(splicing), level).filter(isNotable).length;
   const f = fusionHeadlines(fusions).length;
   return { splicing: s, fusions: f, total: s + f };
 }
@@ -103,10 +108,10 @@ export function rnaFindingCounts({ splicing = [], fusions = [] } = {}) {
  * the notable splicing findings (strongest first) then tier 1–2 fusions,
  * at most `max`. Items: { kind: "splice-finding" | "fusion", severity, text, ... }.
  */
-export function rnaHeadlineItems({ splicing = [], fusions = [], nCellsRna = null, max = 4 } = {}) {
-  const s = arr(splicing)
+export function rnaHeadlineItems({ splicing = [], fusions = [], nCellsRna = null, max = 4, level = DEFAULT_CONFIDENCE_LEVEL } = {}) {
+  const s = filterByConfidence(arr(splicing), level)
     .filter(isNotable)
-    .map((f) => ({ kind: "splice-finding", id: f.id, findingKind: f.kind, gene: f.gene, severity: f.severity, score: f.score, text: f.text, finding: f }));
+    .map((f) => ({ kind: "splice-finding", id: f.id, findingKind: f.kind, gene: f.gene, severity: f.severity, score: f.score, text: f.text, confidence: f.confidence, confidenceReason: f.confidenceReason, finding: f }));
   const fu = fusionHeadlines(fusions).map((h) => ({ kind: "fusion", id: h.id, gene: h.label, severity: h.tier === 1 ? "high" : "moderate", tier: h.tier, text: fusionText(h, nCellsRna), fusion: h.fusion }));
   // strongest splicing finding, then the best fusion, then the rest by severity
   const rank = { high: 0, moderate: 1, low: 2, artefact: 3 };
