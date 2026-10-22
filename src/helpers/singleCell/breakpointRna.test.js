@@ -1,4 +1,5 @@
 import {
+  inframeReadthrough,
   normalizeBreakpointTranscripts, normalizeDnaSupport, visibleTranscripts, transcriptsByJid, transcriptsForJunctionIds, parseJunctionCoords, dnaSupportOfFusion,
   igvLocus, transcriptLoci, igvUrl, contrastText, readsText, headlineCounts, emptyMessage, NOT_EXPORTED, NONE_FOUND,
 } from "./breakpointRna";
@@ -36,12 +37,17 @@ describe("breakpoint transcripts", () => {
     expect(transcriptsByJid(bt.transcripts, "99")).toEqual([]);
     expect(transcriptsForJunctionIds(bt.transcripts, [12, "13", "x"]).map((t) => t.jid)).toEqual(["12", "13"]);
   });
-  it("matches event junction strings by breakpoint coordinates, either orientation, within tolerance", () => {
-    expect(parseJunctionCoords("7:1000-|chr7:5003+")).toEqual({ a: ["7", 1000], b: ["7", 5003] });
+  it("matches event junction strings by breakends within 1 kb, strand-aware, either orientation", () => {
+    expect(parseJunctionCoords("7:1000-|chr7:5003+")).toEqual({ a: ["7", 1000, "-"], b: ["7", 5003, "+"] });
     expect(parseJunctionCoords("nonsense")).toBeNull();
     expect(transcriptsForJunctionIds(bt.transcripts, ["7:5005+|7:998-"]).map((t) => t.jid)).toEqual(["11"]);
-    expect(transcriptsForJunctionIds(bt.transcripts, ["7:1000-|7:5500+"])).toEqual([]);
+    expect(transcriptsForJunctionIds(bt.transcripts, ["7:1900-|7:5900+"]).map((t) => t.jid)).toEqual(["11"]);
+    expect(transcriptsForJunctionIds(bt.transcripts, ["7:1000-|7:7500+"])).toEqual([]);
     expect(transcriptsForJunctionIds(bt.transcripts, ["8:1000-|8:5000+"])).toEqual([]);
+    const ends = [{ jid: "z", breakends: [{ chr: "1", pos: 100, strand: "+" }, { chr: "2", pos: 200, strand: "-" }] }];
+    expect(transcriptsForJunctionIds(ends, ["2:150-|1:120+"])).toHaveLength(1);
+    expect(transcriptsForJunctionIds(ends, ["2:150+|1:120+"])).toHaveLength(0);
+    expect(transcriptsForJunctionIds([{ jid: "q" }], ["5:10+|6:20-"], { q: { chrA: "5", posA: 12, strA: "+", chrB: "6", posB: 25, strB: "-" } })).toHaveLength(1);
   });
   it("builds loci and links", () => {
     expect(igvLocus("7:5-9")).toBe("chr7:5-9");
@@ -106,4 +112,9 @@ describe("fusion isoforms", () => {
     expect(nearbySvText({ nearby_genomic_sv: [{ cls: "DEL-like", chrA: "7", posA: 1, chrB: "7", posB: 9, n_cells: 189 }, "plain"] })).toEqual(["DEL-like 7:1-7:9 189 cells", "plain"]);
     expect(nearbySvText({})).toEqual([]);
   });
+});
+
+it("lists in-frame read-through pairs", () => {
+  const iso = normalizeFusionIsoforms({ pairs: [{ pair: "A::B", readthrough: "TRUE", any_inframe: "TRUE" }, { pair: "C::D", readthrough: true }, { pair: "E::F", any_inframe: true }] });
+  expect(inframeReadthrough(iso).map((p) => p.pair)).toEqual(["A::B"]);
 });

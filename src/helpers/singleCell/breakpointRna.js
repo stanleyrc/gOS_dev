@@ -41,7 +41,7 @@ export function normalizeBreakpointTranscripts(json) {
     confidence: tierOf(t.confidence),
     confidence_reasons: list(t.confidence_reasons),
   }));
-  return { patient: json.patient || null, rule: json.rule || null, source: json.source || null, nSv: num(json.n_sv) ?? transcripts.length, transcripts };
+  return { patient: json.patient || null, rule: json.rule || null, source: json.source || null, jidCoords: json.jid_coords && typeof json.jid_coords === "object" ? json.jid_coords : null, nSv: num(json.n_sv) ?? transcripts.length, transcripts };
 }
 
 /** Normalised fusions_dna_support.json: { patient, rule, entries, byFusionId }. Throws on a different format. */
@@ -78,29 +78,39 @@ export function transcriptsByJid(transcripts, jid) {
   return j ? list(transcripts).filter((t) => t.jid === j) : [];
 }
 
-/** "6:32491325-|8:102096422+" -> { a: [chr, pos], b: [chr, pos] } or null (event junction ids of filtered.events.json). */
+/** "6:32491325-|8:102096422+" -> { a: [chr, pos, strand], b: [chr, pos, strand] } or null (event junction ids of filtered.events.json). */
 export function parseJunctionCoords(id) {
-  const m = `${id ?? ""}`.match(/^(?:chr)?([^:|\s]+):(\d+)[+-]?\|(?:chr)?([^:|\s]+):(\d+)[+-]?$/i);
-  return m ? { a: [m[1], Number(m[2])], b: [m[3], Number(m[4])] } : null;
+  const m = `${id ?? ""}`.match(/^(?:chr)?([^:|\s]+):(\d+)([+-])?\|(?:chr)?([^:|\s]+):(\d+)([+-])?$/i);
+  return m ? { a: [m[1], Number(m[2]), m[3] || null], b: [m[4], Number(m[5]), m[6] || null] } : null;
 }
 
-export const COORD_TOLERANCE_BP = 10;
+export const COORD_TOLERANCE_BP = 1000;
 
-/** Whether a transcript's breakpoints equal a parsed junction's (either orientation, each end within `tol` bp). */
-export function sameBreakpoints(t, c, tol = COORD_TOLERANCE_BP) {
-  if (!c || t?.posA == null || t?.posB == null) return false;
-  const near = (chr, pos, [c2, p2]) => strip(chr) === strip(c2) && Math.abs(pos - p2) <= tol;
-  return (near(t.chrA, t.posA, c.a) && near(t.chrB, t.posB, c.b)) || (near(t.chrA, t.posA, c.b) && near(t.chrB, t.posB, c.a));
+/** [[chr, pos, strand], [chr, pos, strand]] of a transcript: `breakends` (exporter), else jid_coords entry, else chrA/posA (no strand). */
+export function breakendsOf(t, jidCoords = null) {
+  if (Array.isArray(t?.breakends) && t.breakends.length === 2) return t.breakends.map((e) => [e.chr, num(e.pos), e.strand || null]);
+  const c = jidCoords?.[t?.jid];
+  if (c) return [[c.chrA, num(c.posA), c.strA || null], [c.chrB, num(c.posB), c.strB || null]];
+  return [[t?.chrA, num(t?.posA), null], [t?.chrB, num(t?.posB), null]];
+}
+
+/** Whether a transcript's breakends equal a parsed junction's: both ends within `tol` bp, same chromosome and strand (when both known), either pair orientation. */
+export function sameBreakpoints(t, c, tol = COORD_TOLERANCE_BP, jidCoords = null) {
+  if (!c) return false;
+  const [x, y] = breakendsOf(t, jidCoords);
+  if (x[1] == null || y[1] == null) return false;
+  const near = (e, f) => strip(e[0]) === strip(f[0]) && Math.abs(e[1] - f[1]) <= tol && (!e[2] || !f[2] || e[2] === f[2]);
+  return (near(x, c.a) && near(y, c.b)) || (near(x, c.b) && near(y, c.a));
 }
 
 /**
  * Transcripts for an event's junction ids (event.junction_ids), duplicates removed. An id matches by SV id (jid) or, because the
- * event ids are "chrA:posA+|chrB:posB-" strings, by both breakpoint coordinates within COORD_TOLERANCE_BP.
+ * event ids are "chrA:posA+|chrB:posB-" strings, by both breakends within COORD_TOLERANCE_BP (1 kb), strand-aware, either orientation.
  */
-export function transcriptsForJunctionIds(transcripts, ids) {
+export function transcriptsForJunctionIds(transcripts, ids, jidCoords = null) {
   const want = new Set(list(ids).map((i) => `${i}`));
   const coords = list(ids).map(parseJunctionCoords).filter(Boolean);
-  return list(transcripts).filter((t) => want.has(t.jid) || coords.some((c) => sameBreakpoints(t, c)));
+  return list(transcripts).filter((t) => want.has(t.jid) || coords.some((c) => sameBreakpoints(t, c, COORD_TOLERANCE_BP, jidCoords)));
 }
 
 /** The DNA-support entry of a fusion (by fusions.json id), or null. */
@@ -209,3 +219,6 @@ export function isoformBadges(pair) {
 export function nearbySvText(t) {
   return list(t?.nearby_genomic_sv).map((s) => (typeof s === "string" ? s : [s.cls, s.label || (s.chrA != null ? `${s.chrA}:${s.posA}-${s.chrB}:${s.posB}` : s.jid), s.n_cells != null ? `${s.n_cells} cells` : null].filter(Boolean).join(" ")));
 }
+
+/** In-frame read-through pairs (adjacent genes) of the isoform file: the ones hidden by "Hide read-through" but worth showing. */
+export const inframeReadthrough = (iso) => list(iso?.pairs).filter((p) => p.readthrough && p.any_inframe);

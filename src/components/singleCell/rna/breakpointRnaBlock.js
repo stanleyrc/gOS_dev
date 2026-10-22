@@ -65,7 +65,7 @@ export function TranscriptLine({ t }) {
 export default function BreakpointRnaBlock({ junctionIds }) {
   const source = useSelector((s) => s.SingleCell.rnaBreakpoint);
   const [level] = useFindingConfidence();
-  const all = source?.status === "ok" ? transcriptsForJunctionIds(source.data.transcripts, junctionIds) : [];
+  const all = source?.status === "ok" ? transcriptsForJunctionIds(source.data.transcripts, junctionIds, source.data.jidCoords) : [];
   const shown = visibleTranscripts(all, level);
   const msg = emptyMessage(source, shown.length, all.length);
   return (
