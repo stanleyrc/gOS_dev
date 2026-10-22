@@ -13,6 +13,7 @@ import singleCellActions from "../../redux/singleCell/actions";
 import { casePath, tryGet } from "../../redux/singleCell/loaders";
 import { cnColorer } from "../../helpers/singleCell/matrix";
 import { medianCnRow } from "../../helpers/singleCell/cellFiles";
+import { maskChrXRows } from "../../helpers/singleCell/chrxMask";
 import HintLine, { Provenance } from "./hintLine";
 import usePlotTheme from "./usePlotTheme";
 import { INK, TYPE, isDarkLike } from "../../helpers/singleCell/plotTheme";
@@ -81,10 +82,10 @@ export default function CircosPanel() {
   const chromosomes = useMemo(() => Object.keys(chromoBins || {}), [chromoBins]);
   const toPlace = (chr, pos) => (chromoBins[chr] ? chromoBins[chr].startPlace + pos - chromoBins[chr].startPoint : null);
   const cnRowOf = useMemo(() => {
-    const m = new Map();
-    if (cn.status === "ok" && cn.data) cn.data.cells.forEach((id, k) => m.set(id, cn.data.rows[k]));
-    return m;
-  }, [cn]);
+    // mask the dryclean chrX CN-0 artefact per cell before rings / clone medians
+    if (cn.status === "ok" && cn.data) return maskChrXRows(cn.data.cells, cn.data.rows, chromoBins).rowOf;
+    return new Map();
+  }, [cn, chromoBins]);
 
   // ring sources
   const sources = useMemo(() => {
