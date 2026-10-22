@@ -1,3 +1,4 @@
+import { ResultNote } from "./rnaLoadStatus";
 import React, { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -32,7 +33,7 @@ const valuesFor = (matrix, summary, gene) => {
  * cohort UMAP through `onScores`. Dot plot: fraction of cells expressing and
  * mean expression of the genes per level, pooled or split by patient.
  */
-export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, cellsOf, field, sharedMarkers, onScores }) {
+export default function CohortGeneSetPanel({ rnaLoad = null, summaries, datasets, rna, loaded, cellsOf, field, sharedMarkers, onScores }) {
   const { t } = useTranslation("common");
   const theme = useSelector((s) => s.SingleCell.layout.theme);
   const [ref, width] = useContainerWidth(1000);
@@ -41,6 +42,7 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
   const [text, setText] = useState(GENE_SETS[Object.keys(GENE_SETS)[0]].join(", "));
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [ran, setRan] = useState(null);
   const [dots, setDots] = useState(null);
   const [split, setSplit] = useState(false);
   const datasetOf = (s) => datasets.find((d) => `${d.id}` === `${s.record.datasetId}`);
@@ -49,6 +51,7 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
   const run = async () => {
     setBusy(true);
     const out = [];
+    const failedMatrices = [];
     for (const s of loaded) {
       const ds = datasetOf(s);
       const summary = rna[s.caseReportId].summary;
@@ -60,10 +63,11 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
         const keep = cellsOf(s).map((c) => summary.cells.indexOf(c));
         out.push({ patient: s.caseReportId, k: summaries.indexOf(s), used, missing, cells: keep.map((i) => ({ rna_id: summary.cells[i].rna_id, level: field ? `${summary.cells[i][field] ?? "NA"}` : null, score: scores[i] })) });
       } catch (error) {
-        // matrix missing: skip the patient
+        failedMatrices.push(s.caseReportId);
       }
     }
-    setResult({ genes, out });
+    setResult({ genes, out, failedMatrices });
+    setRan({ ranWith: loaded.length, ranPartial: !!rnaLoad?.partial });
     if (onScores) onScores({ label: preset && GENE_SETS[preset]?.join(", ") === text ? preset : t("components.single-cell.cohort.gs-custom"), values: new Map(out.flatMap((p) => p.cells.map((c) => [`${p.patient}::${c.rna_id}`, c.score]))) });
     setBusy(false);
   };
@@ -143,6 +147,9 @@ export default function CohortGeneSetPanel({ summaries, datasets, rna, loaded, c
                 <Input.TextArea rows={5} value={text} onChange={(e) => setText(e.target.value)} placeholder={t("components.single-cell.cohort.gs-placeholder")} />
                 <Space>
                   <Button size="small" type="primary" loading={busy} disabled={!genes.length || !loaded.length} onClick={run}>{t("components.single-cell.cohort.gs-run", { count: genes.length })}</Button>
+                  {rnaLoad?.partial && <Text type="warning" style={{ fontSize: 12 }}>{`only ${loaded.length} of ${summaries.length} patients loaded: scores are provisional`}</Text>}
+                  {result && <ResultNote ran={ran} usableNow={loaded.length} total={summaries.length} />}
+                  {result?.failedMatrices?.length > 0 && <Text type="danger" style={{ fontSize: 12 }}>{`expression matrix failed to load for ${result.failedMatrices.join(", ")}: not scored`}</Text>}
                   {result && <Text type="secondary">{t("components.single-cell.cohort.gs-used", { used: d3.max(result.out, (p) => p.used.length) || 0, total: result.genes.length })}</Text>}
                 </Space>
                 {result && result.out.some((p) => p.missing.length) && (

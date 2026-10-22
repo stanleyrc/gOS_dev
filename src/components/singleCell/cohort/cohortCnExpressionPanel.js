@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import * as d3 from "d3";
 import { stoufferDotLines } from "../../../helpers/singleCell/plotHover";
-import { Card, Col, Empty, Progress, Row, Segmented, Select, Space, Switch, Table, Typography } from "antd";
+import { Card, Col, Empty, Row, Segmented, Select, Space, Switch, Table, Typography } from "antd";
 import { BoxPlotOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
@@ -16,6 +16,9 @@ import { formatP } from "../../../helpers/singleCell/tests";
 import { isNormalClone } from "../../../helpers/singleCell/figures";
 import { FONT, YAxis } from "./charts";
 import { loadRna } from "./cohortRnaPanel";
+import RnaLoadStatus, { ProvisionalTag } from "./rnaLoadStatus";
+import useEnsureGeneList from "./useEnsureGeneList";
+import { loadProgress, notAvailable } from "../../../helpers/singleCell/loadingState";
 import { loadGmt } from "../rna/geneSets";
 import HintLine from "../hintLine";
 import GeneQuickLook, { GeneQuickLookText } from "./geneQuickLook";
@@ -75,7 +78,7 @@ export function patientsWithEcdna(summaries, files, gene) {
 }
 
 /** Box plots of 0-1 scaled expression per copy-number bin, one box per gene, medians joined (deck slide 23, left). */
-function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380, own = false }) {
+function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380, own = false, provisional = false }) {
   const bins = useMemo(() => (own ? intCnBins() : cnBins()), [own]);
   const M = { top: 24, right: 92, bottom: 70, left: 58 };
   const x = d3.scaleBand().domain(bins.map((b) => b.label)).range([M.left, width - M.right]).padding(0.18);
@@ -106,6 +109,7 @@ function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380, own =
             fill="none"
             stroke={GENE_INK[gi % GENE_INK.length]}
             strokeWidth={2.5}
+            strokeDasharray={provisional ? "6 4" : undefined}
           />
           {boxes[gi].map((s, k) => s && <circle key={k} cx={x(bins[k].label) + x.bandwidth() / 2} cy={y(s.median)} r={4} fill={GENE_INK[gi % GENE_INK.length]} />)}
           {(() => {
@@ -117,7 +121,7 @@ function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380, own =
                 <GeneQuickLookText gene={g} x={width - M.right + 8} y={y(last.median)} dy="0.35em" fontSize={TYPE.label + 2} fill={GENE_INK[gi % GENE_INK.length]} />
                 {t && (
                   <text x={width - M.right - 4} y={M.top + 14 + gi * 34} textAnchor="end" fontSize={TYPE.label} fontWeight={600} fill={GENE_INK[gi % GENE_INK.length]}>
-                    <tspan x={width - M.right - 4}>{`rho = ${fmtRho(t.rho)}`}</tspan>
+                    <tspan x={width - M.right - 4}>{`${provisional ? "provisional " : ""}rho = ${fmtRho(t.rho)}`}</tspan>
                     <tspan x={width - M.right - 4} dy="1.15em">{formatP(t.p)}</tspan>
                   </text>
                 )}
@@ -130,13 +134,14 @@ function BinnedBoxes({ records, genes, stats, cnGene, width, height = 380, own =
         <text key={b.label} transform={`translate(${x(b.label) + x.bandwidth() / 2},${height - M.bottom + 12}) rotate(-45)`} textAnchor="end" fontSize={FONT.axis + 1} fill={INK.text}>{b.label}</text>
       ))}
       <line x1={M.left} x2={width - M.right} y1={height - M.bottom} y2={height - M.bottom} stroke={INK.axis} />
+      {provisional && <text x={M.left + 6} y={M.top - 8} fontSize={TYPE.label} fontWeight={700} fill="#D46B08">provisional (partial data): medians and rho will change as more patients load</text>}
       <text x={(M.left + width - M.right) / 2} y={height - 8} textAnchor="middle" fontSize={TYPE.label + 1} fill={INK.text}>{own ? "Copy number at each gene's own locus (rounded; total, each cell's genome graph)" : `${cnGene} copy number (total, each cell's genome graph)`}</text>
     </svg>
   );
 }
 
 /** -log10(Stouffer p) x sign(rho) per gene / cell state, dot size = weighted rho (deck slide 23, right). */
-function StoufferDots({ rows, width, title }) {
+function StoufferDots({ rows, width, title, provisional = false }) {
   const ROW = 24;
   const groups = [...new Set(rows.map((r) => r.group))];
   const M = { top: 48, right: 90, bottom: 78, left: 330 };
@@ -156,7 +161,7 @@ function StoufferDots({ rows, width, title }) {
   const sig = -Math.log10(0.05);
   return (
     <svg width={width} height={height} role="img" aria-label={title}>
-      {title.split("; ").map((part, i) => (
+      {(provisional ? [`${title.split("; ")[0]} · PROVISIONAL (partial data)`, ...title.split("; ").slice(1)] : title.split("; ")).map((part, i) => (
         <text key={i} x={8} y={16 + i * 16} fontSize={i ? TYPE.label : TYPE.title} fontWeight={i ? 400 : 700} fill={i ? INK.textSecondary : INK.text}>{part}</text>
       ))}
       {[-sig, sig].map((v) => <line key={v} x1={x(v)} x2={x(v)} y1={M.top} y2={yy} stroke="#D7262B" strokeDasharray="4 3" />)}
@@ -207,6 +212,7 @@ function StoufferDots({ rows, width, title }) {
  */
 export default function CohortCnExpressionPanel({ summaries, files, datasets, cnRows = {}, focusGene = null }) {
   const genesState = useSelector((s) => s.Genes);
+  const geneList = useEnsureGeneList();
   const link = useMemo(() => readViewLink(), []);
   const [ref, width] = useContainerWidth(1100);
   const [cnGene, setCnGene] = useState(link.cnGene || "EGFR");
@@ -233,7 +239,6 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
   const [tumorOnly, setTumorOnly] = useState(true);
   const [shown, setShown] = useState("pooled");
   const [data, setData] = useState({});
-  const [progress, setProgress] = useState(null);
   const [moduleSets, setModuleSets] = useState({});
   useEffect(() => {
     let active = true;
@@ -257,14 +262,28 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
   const locus = geneLocus(genesState, cnGene);
   const loci = useMemo(() => Object.fromEntries(genes.map((g) => [g, geneLocus(genesState, g)])), [genes, genesState]);
   const ready = patients.filter((p) => cnRows[p]?.cellRows?.length);
-  const waiting = patients.length - ready.length;
+  // loading state per patient: CN rows (cohort loader) and RNA (this panel); nothing is "empty" until it has finished loading
+  const loadState = useMemo(() => {
+    const cnEntries = {};
+    const rnaEntries = {};
+    patients.forEach((p) => {
+      const c = cnRows[p];
+      if (c === undefined) cnEntries[p] = undefined;
+      else if (c.error) cnEntries[p] = { error: c.error, file: "per-cell copy-number files (cells/*)" };
+      else if (!c.cellRows?.length) cnEntries[p] = { missing: true, reason: notAvailable("per-cell copy number", "no cells with copy number for this patient") };
+      else cnEntries[p] = c;
+      rnaEntries[p] = c && (c.error || !c.cellRows?.length) ? { skipped: true } : data[p];
+    });
+    const weights = Object.fromEntries(summaries.map((s) => [s.caseReportId, Object.values(s.cloneCounts || {}).reduce((a, b) => a + (Number(b) || 0), 0)]));
+    return loadProgress(patients, { cn: { entries: cnEntries, file: "per-cell copy number" }, rna: { entries: rnaEntries, file: "rna/cells.json" } }, weights);
+  }, [patients.join(","), cnRows, data, summaries]); // eslint-disable-line react-hooks/exhaustive-deps
+  const provisional = loadState.partial;
 
   // RNA summary + matrix per patient (cached by the loaders)
   useEffect(() => {
     let active = true;
     const todo = ready.filter((p) => !data[p]);
     if (!todo.length) return undefined;
-    setProgress(0);
     (async () => {
       const out = {};
       for (let i = 0; i < todo.length; i += 1) {
@@ -274,17 +293,16 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
           try {
             // eslint-disable-next-line no-await-in-loop
             const [rna, matrix] = await Promise.all([loadRna(ds, todo[i]), loadRnaMatrix(ds, todo[i])]);
-            out[todo[i]] = rna?.summary ? { summary: rna.summary, matrix } : { missing: true };
+            out[todo[i]] = rna?.summary ? { summary: rna.summary, matrix } : { missing: true, file: "rna/cells.json", reason: notAvailable("rna/cells.json", rna?.cellsStatus || "no RNA for this patient") };
           } catch (error) {
-            out[todo[i]] = { missing: true };
+            out[todo[i]] = { error, file: "rna matrix (rna/genes.tsv + matrix files)" };
           }
+        } else {
+          out[todo[i]] = { missing: true, file: "datasets", reason: "dataset record not found for this patient" };
         }
         if (!active) return;
-        setProgress(Math.round((100 * (i + 1)) / todo.length));
-      }
-      if (active) {
-        setData((prev) => ({ ...prev, ...out }));
-        setProgress(null);
+        // publish each patient as soon as it is in, so the status line and plots follow the load
+        setData((prev) => ({ ...prev, [todo[i]]: out[todo[i]] }));
       }
     })();
     return () => {
@@ -343,10 +361,11 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
 
   const tableRows = [
     ...withData.map((p) => ({ key: p, patient: p, n: records.filter((r) => r.patient === p).length, medianCn: d3.median(records.filter((r) => r.patient === p), (r) => r.cn), res: stats.perPatient[p] || {} })),
-    { key: "_pooled", patient: "Pooled (all cells)", n: records.length, medianCn: d3.median(records, (r) => r.cn), res: stats.pooled },
-    { key: "_stouffer", patient: "Stouffer across patients", n: records.length, res: Object.fromEntries(keys.map((k) => [k, stats.combined[k]])), combined: true },
+    { key: "_pooled", patient: provisional ? "Pooled (loaded cells, provisional)" : "Pooled (all cells)", n: records.length, medianCn: d3.median(records, (r) => r.cn), res: stats.pooled },
+    // a combination across patients from a subset of patients is hidden until every patient has loaded
+    ...(provisional ? [] : [{ key: "_stouffer", patient: "Stouffer across patients", n: records.length, res: Object.fromEntries(keys.map((k) => [k, stats.combined[k]])), combined: true }]),
   ];
-  const cell = (t) => (t && Number.isFinite(t.rho) ? <span style={{ color: t.p < 0.05 ? INK.text : INK.muted, fontWeight: t.p < 0.05 ? 600 : 400 }}>{`${fmtRho(t.rho)} (${formatP(t.p)})`}</span> : "–");
+  const cell = (t) => (t && Number.isFinite(t.rho) ? <span style={{ color: t.p < 0.05 ? INK.text : INK.muted, fontWeight: t.p < 0.05 ? 600 : 400, fontStyle: provisional ? "italic" : "normal" }} title={provisional ? "provisional (partial data)" : undefined}>{`${fmtRho(t.rho)} (${formatP(t.p)})`}</span> : "–");
   const half = width >= 1100 ? Math.floor((width - 40) / 2) : width - 24;
 
   return (
@@ -367,28 +386,33 @@ export default function CohortCnExpressionPanel({ summaries, files, datasets, cn
       }
     >
       <div ref={ref}>
-        {(waiting > 0 || progress != null) && (
-          <Space style={{ marginBottom: 8 }}>
-            <Text type="secondary">{waiting > 0 ? `Reading copy number of ${waiting} patient(s)…` : "Loading expression…"}</Text>
-            {progress != null && <Progress percent={progress} size="small" style={{ width: 200 }} />}
-          </Space>
+        <RnaLoadStatus progress={loadState} />
+        {provisional && records.length > 0 && (
+          <div style={{ marginBottom: 6 }} data-testid="cnexpr-provisional">
+            <ProvisionalTag progress={loadState} />
+            <Text type="secondary">box medians, rho, Stouffer and the pooled row are recomputed as each patient finishes; the Stouffer-across-patients table row stays hidden until all patients have loaded, and the dot plot is marked provisional.</Text>
+          </div>
         )}
         {!locus ? (
-          <Empty description={`${cnGene} not found in the gene list`} />
+          (genesState?.optionsList || []).length ? (
+            <Empty description={`Not available (${cnGene} is not in the gene list)`} />
+          ) : (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={geneList.loading ? "Loading the gene list (about 40 MB, needed to place genes on the genome)…" : "Not available (the gene list has not loaded: gene coordinates are missing)"} />
+          )
         ) : !records.length ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={patients.length ? "Linking DNA and RNA cells…" : `No patient has a ${cnGene} ecDNA walk`} />
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={!patients.length ? `No patient has a ${cnGene} ecDNA walk` : provisional ? `Waiting for data: ${loadState.done} of ${loadState.total} patients loaded, none matched DNA to RNA cells yet` : `Not available (all ${loadState.total} patients loaded, but no tumor cell has both copy number at ${cnGene} and expression${loadState.none.length ? `; ${loadState.none.length} patient(s) lack data, see above` : ""})`} />
         ) : (
           <>
             <Space wrap style={{ marginBottom: 6 }} className="sc-cnexpr-patients">
               <Text type="secondary">{own ? "Patients:" : `Patients with ${cnGene} ecDNA:`}</Text>
-              <Segmented size="small" value={shown} onChange={setShown} options={[{ value: "pooled", label: `Pooled (${records.length} cells)` }, ...withData.map((p) => ({ value: p, label: `${p} (${records.filter((r) => r.patient === p).length})` }))]} />
+              <Segmented size="small" value={shown} onChange={setShown} options={[{ value: "pooled", label: `Pooled (${records.length} cells${provisional ? ", provisional" : ""})` }, ...withData.map((p) => ({ value: p, label: `${p} (${records.filter((r) => r.patient === p).length})` }))]} />
             </Space>
             <Row gutter={16}>
               <Col xs={24} xl={12}>
-                <BinnedBoxes records={shownRecords} genes={boxGenes} stats={shownStats} cnGene={cnGene} own={own} width={half} />
+                <BinnedBoxes records={shownRecords} genes={boxGenes} stats={shownStats} cnGene={cnGene} own={own} width={half} provisional={provisional} />
               </Col>
               <Col xs={24} xl={12}>
-                <StoufferDots rows={dotRows} width={half} title={own ? `Own-locus CN for genes; ${cnGene} CN for states and modules (${withData.length} patients)` : `${cnGene} copy number (${withData.length} patients)`} />
+                <StoufferDots provisional={provisional} rows={dotRows} width={half} title={own ? `Own-locus CN for genes; ${cnGene} CN for states and modules (${withData.length} patients)` : `${cnGene} copy number (${withData.length} patients)`} />
               </Col>
             </Row>
             <Table
