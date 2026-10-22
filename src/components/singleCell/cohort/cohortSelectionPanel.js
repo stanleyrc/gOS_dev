@@ -8,6 +8,7 @@ import { loadRnaMatrix } from "../../../redux/singleCell/loaders";
 import { crossStratumDE, selectionComposition } from "../../../helpers/singleCell/cohortContrast";
 import { formatP } from "../../../helpers/singleCell/tests";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
+import { GeneChip } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const pct = (x) => (Number.isFinite(x) ? `${Math.round(x * 100)}%` : "–");
@@ -88,9 +89,11 @@ export default function CohortSelectionPanel({ selection, loaded, rna, cellsOf, 
   const geneTags = (rows, color) =>
     rows.length ? (
       rows.map((r) => (
-        <Tag key={r.gene} color={color} style={{ cursor: "pointer", marginBottom: 3 }} onClick={() => onGene(r.gene)} title={`log2FC ${r.avg_log2FC.toFixed(2)}, ${pct(r.pct_1)} vs ${pct(r.pct_2)}, q ${r.q_val.toExponential(1)}, ${r.nStrata} patients`}>
-          {r.gene}
-        </Tag>
+        <GeneChip key={r.gene} gene={r.gene}>
+          <Tag color={color} style={{ cursor: "pointer", marginBottom: 3 }} onClick={() => onGene(r.gene)} title={`log2FC ${r.avg_log2FC.toFixed(2)}, ${pct(r.pct_1)} vs ${pct(r.pct_2)}, q ${r.q_val.toExponential(1)}, ${r.nStrata} patients`}>
+            {r.gene}
+          </Tag>
+        </GeneChip>
       ))
     ) : (
       <Text type="secondary">{t("components.single-cell.cohort.sel-none")}</Text>

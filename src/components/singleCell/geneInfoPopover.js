@@ -142,4 +142,16 @@ export function GeneWithFunction({ gene, strong = false, n = 120, onClick, nameS
   );
 }
 
+/**
+ * A compact gene chip (antd Tag / NeutralTag ...) with the gene's function on hover / click.
+ * The chip keeps its own onClick; no underline, no inline function line.
+ */
+export function GeneChip({ gene, children }) {
+  return (
+    <GeneInfo gene={gene} stopClick={false} style={{ borderBottom: "none", cursor: "inherit", display: "inline-block" }}>
+      {children}
+    </GeneInfo>
+  );
+}
+
 export default GeneInfo;
