@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Empty, Input, InputNumber, Popover, Select, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Collapse, Empty, Input, InputNumber, Popover, Select, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import { NodeIndexOutlined } from "@ant-design/icons";
 import HintLine from "../hintLine";
 import useTreeView from "../useTreeView";
@@ -13,7 +13,7 @@ import { compareFusions, filterFusions, fusionStrip, fusionTier, groupFusions, i
 import FusionSupportCell from "./fusionSupportCell";
 import { compareSupport, fusionPairKeys, fusionSupport, indexDnaEvents } from "../../../helpers/singleCell/fusionSupport";
 import { NO_READS_COLOR, NO_RNA_COLOR, readsColor } from "../../../helpers/singleCell/rnaColors";
-import { dnaSupportOfFusion, isoformBadges, isoformsOfFusion } from "../../../helpers/singleCell/breakpointRna";
+import { dnaSupportOfFusion, isoformBadges, inframeReadthrough, isoformsOfFusion } from "../../../helpers/singleCell/breakpointRna";
 import { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
 import { passesConfidence } from "../../../helpers/singleCell/findingConfidence";
 import { tierColor } from "../../../helpers/utility";
@@ -327,6 +327,20 @@ export default function RnaFusionsCard({ summary }) {
             ))}
           </Space>
         </Space>
+        {hideReadThrough && inframeReadthrough(isoforms).length > 0 && (
+          <Collapse
+            size="small"
+            ghost
+            data-readthrough-line
+            items={[
+              {
+                key: "rt",
+                label: <Text type="secondary">{`read-through (${inframeReadthrough(isoforms).length}): in-frame isoforms of adjacent genes, hidden above`}</Text>,
+                children: inframeReadthrough(isoforms).map((p) => <IsoformList key={p.pair} pair={p} />),
+              },
+            ]}
+          />
+        )}
         <Table
           size="small"
           rowKey="id"
