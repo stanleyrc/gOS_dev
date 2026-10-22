@@ -8,6 +8,7 @@ import HintLine from "../hintLine";
 import useContainerWidth from "../useContainerWidth";
 import { cellsInRect, keysByPatient, patientCellTables, spliceGroupName, stripLayout } from "../../../helpers/singleCell/spliceCells";
 import { groupsOf, makeDef, upsertGroup, withGroups } from "../../../helpers/singleCell/cohortGroups";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text } = Typography;
 export const USING = "#d4380d";
@@ -72,6 +73,7 @@ export default function CohortSpliceCells({ dataset, summaries = [], patients, c
   const [ref, width] = useContainerWidth(900);
   const [selection, setSelection] = useState(() => new Set());
   const [hover, setHover] = useState(null);
+  const tipRef = useTooltipGuard(hover, () => setHover(null));
   const [name, setName] = useState("");
   const [drag, setDrag] = useState(null);
   const svgRef = useRef(null);
@@ -201,7 +203,7 @@ export default function CohortSpliceCells({ dataset, summaries = [], patients, c
             {drag && <circle cx={drag[0]} cy={drag[1]} r={0} />}
           </svg>
           {hr && (
-            <div style={{ position: "absolute", right: 0, top: 0, background: "var(--sc-plot-bg, #fff)", border: "1px solid rgba(128,128,128,0.4)", padding: "4px 8px", fontSize: 12, pointerEvents: "none", zIndex: 2 }} data-testid="splice-cell-tip">
+            <div ref={tipRef} style={{ position: "absolute", right: 0, top: 0, background: "var(--sc-plot-bg, #fff)", border: "1px solid rgba(128,128,128,0.4)", padding: "4px 8px", fontSize: 12, pointerEvents: "none", zIndex: 2 }} data-testid="splice-cell-tip">
               <div><b>{hr.id}</b></div>
               <div>{`${hr.focus} reads on ${label}, ${hr.other} on the other junction(s); PSI ${Number.isFinite(hr.frac) ? hr.frac.toFixed(2) : "–"}`}</div>
               <div>{`state ${hm?.state ?? "–"} · clone ${hm?.Clone_Annotation ?? "–"} · ${hr.using ? "using" : "covered, not using"}`}</div>

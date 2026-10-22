@@ -29,6 +29,7 @@ import HintLine from "../hintLine";
 import RareControl, { useRareMax } from "./rareControl";
 import DisplayMenu from "./displayMenu";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const TREE_WIDTH = 200;
 const STRIP_W = 6; // clone strip, flush against the tree
@@ -66,6 +67,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
   const rareMax = useRareMax();
   const [hoverRange, setHoverRange] = useState(null);
   const [tip, setTip] = useState(null); // { x, y, row }
+  const tipRef = useTooltipGuard(tip, () => setTip(null));
   const height = layout.walkTreeHeight || 440;
   const nRows = order.length;
   const rowH = nRows ? height / nRows : 0;
@@ -404,7 +406,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
           </div>
         )}
         {tip && (
-          <div className="sc-tooltip" style={{ left: Math.min(tip.x, width - 260), top: tip.y }}>
+          <div ref={tipRef} className="sc-tooltip" style={{ left: Math.min(tip.x, width - 260), top: tip.y }}>
             {tipLines().map((l, i) =>
               typeof l === "string" ? (
                 <div key={i} style={{ fontWeight: i === 0 ? 600 : 400 }}>{l}</div>

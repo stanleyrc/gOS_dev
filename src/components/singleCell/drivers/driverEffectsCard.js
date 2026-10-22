@@ -11,6 +11,7 @@ import { driverGenes, expressionEffect, scoreEffect, stateShift } from "../../..
 import { balanceTable } from "../../../helpers/singleCell/driverContrast";
 import { useProgramScores } from "./useDriverSummaries";
 import { CARRIER_COLOR, COMPARATOR_COLOR } from "./useDriverEvidence";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text } = Typography;
 const ROW = 22;
@@ -24,6 +25,7 @@ function Forest({ rows }) {
   const [ref, width] = useContainerWidth(600);
   const theme = usePlotTheme();
   const [hover, setHover] = useState(null);
+  const tipRef = useTooltipGuard(hover, () => setHover(null));
   const M = { left: 210, right: 150, top: 22, bottom: 24 };
   const H = M.top + rows.length * ROW + M.bottom;
   const plotW = Math.max(width - M.left - M.right, 60);
@@ -68,7 +70,7 @@ function Forest({ rows }) {
         })}
       </svg>
       {hover != null && rows[hover] && (
-        <div style={{ position: "absolute", left: M.left, top: M.top + (hover + 1) * ROW + 2, zIndex: 2, pointerEvents: "none", background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, padding: "2px 8px", fontSize: TYPE.tick }}>
+        <div ref={tipRef} style={{ position: "absolute", left: M.left, top: M.top + (hover + 1) * ROW + 2, zIndex: 2, pointerEvents: "none", background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, padding: "2px 8px", fontSize: TYPE.tick }}>
           {rows[hover].tip}
         </div>
       )}

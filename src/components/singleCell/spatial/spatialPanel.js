@@ -31,6 +31,7 @@ import useSpatial from "./useSpatial";
 import { SpatialSection, useSpatialLayout } from "./spatialLayoutContext";
 import { useHiddenCellIds } from "../useCovQc";
 import useCellLabels from "../useCellLabels";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text } = Typography;
 const LEGEND_WIDTH = 240;
@@ -126,6 +127,7 @@ export default function SpatialPanel({ bare = false }) {
   const [cnGene, setCnGene] = useState("EGFR");
   const [cnGeneOptions, setCnGeneOptions] = useState([]);
   const [tip, setTip] = useState(null);
+  const tipRef = useTooltipGuard(tip, () => setTip(null));
   const [lasso, setLasso] = useState(null);
   const dragRef = useRef(null);
   const hoveredRef = useRef(null);
@@ -495,7 +497,7 @@ export default function SpatialPanel({ bare = false }) {
                 onMouseLeave={onLeave}
               />
               {tip && (
-                <div className="sc-tooltip" style={{ left: tip.left, top: tip.top }}>
+                <div ref={tipRef} className="sc-tooltip" style={{ left: tip.left, top: tip.top }}>
                   {tip.lines.map(([key, v]) => (
                     <div key={key}>
                       <span className="sc-tooltip-key">{key}</span> {`${v}`}
