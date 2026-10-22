@@ -26,6 +26,7 @@ import { BoxStrips, Swatches, patientColor } from "./charts";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER_INNER } from "../density";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { GeneInfo, GeneWithFunction } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const OTHERS = "__others__";
@@ -319,7 +320,7 @@ export default function CohortDePanel({ rnaLoad = null, summaries, datasets, rna
   };
 
   const columns = [
-    { title: t("components.single-cell.results.gene"), dataIndex: "gene", width: 110, render: (g) => <Text strong style={{ cursor: "pointer", color: selectedGene === g ? "#fa541c" : undefined }} onClick={() => { setSelectedGene(g); setSelectedGenes([g]); }}>{g}</Text> },
+    { title: t("components.single-cell.results.gene"), dataIndex: "gene", width: 260, render: (g) => <GeneWithFunction gene={g} strong n={90} nameStyle={{ cursor: "pointer", color: selectedGene === g ? "#fa541c" : undefined }} onClick={() => { setSelectedGene(g); setSelectedGenes([g]); }} /> },
     { title: "log2FC", dataIndex: "avg_log2FC", width: 90, sorter: (a, b) => a.avg_log2FC - b.avg_log2FC, render: (v) => <span style={{ color: v > 0 ? COLOR_UP : COLOR_DOWN }}>{fmt(v)}</span> },
     { title: "pct A", dataIndex: "pct_1", width: 70, render: (v) => d3.format(".0%")(v) },
     { title: "pct B", dataIndex: "pct_2", width: 70, render: (v) => d3.format(".0%")(v) },
@@ -500,8 +501,8 @@ export default function CohortDePanel({ rnaLoad = null, summaries, datasets, rna
                         <Col span={12} key={p}>
                           <Text strong>{`PC${p + 1} ${t("components.single-cell.cohort.de-loadings")}`}</Text>
                           <div style={{ fontSize: 13 }}>
-                            <div>{pcaState.loadings[p].top.map((g) => <Tag key={g.gene} color="volcano" style={{ margin: 1, cursor: "pointer" }} onClick={() => onGene && onGene(g.gene)}>{g.gene}</Tag>)}</div>
-                            <div>{pcaState.loadings[p].bottom.map((g) => <Tag key={g.gene} color="geekblue" style={{ margin: 1, cursor: "pointer" }} onClick={() => onGene && onGene(g.gene)}>{g.gene}</Tag>)}</div>
+                            <div>{pcaState.loadings[p].top.map((g) => <GeneInfo key={g.gene} gene={g.gene} trigger={["hover"]} style={{ borderBottom: "none" }}><Tag color="volcano" style={{ margin: 1, cursor: "pointer" }} onClick={() => onGene && onGene(g.gene)}>{g.gene}</Tag></GeneInfo>)}</div>
+                            <div>{pcaState.loadings[p].bottom.map((g) => <GeneInfo key={g.gene} gene={g.gene} trigger={["hover"]} style={{ borderBottom: "none" }}><Tag color="geekblue" style={{ margin: 1, cursor: "pointer" }} onClick={() => onGene && onGene(g.gene)}>{g.gene}</Tag></GeneInfo>)}</div>
                           </div>
                         </Col>
                       ))}

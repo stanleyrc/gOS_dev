@@ -10,6 +10,7 @@ import { cellEventPsi, eventPsi } from "../../../helpers/singleCell/spliceEvents
 import { useGeneModels } from "../../genes/useGeneModels";
 import { mergeSpliceModels } from "../../../helpers/singleCell/spliceModels";
 import { compareGroups, formatP } from "../../../helpers/singleCell/tests";
+import { GeneWithFunction } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const exonCache = new Map();
@@ -144,6 +145,7 @@ export default function CohortSpliceEvent({ dataset, patients, cluster, event })
           <Segmented size="small" value={split} onChange={setSplit} options={[{ value: "none", label: t("components.single-cell.splicing.split-none") }, ...splitFields.map((f) => ({ value: f, label: t("components.single-cell.splicing.split-by", { field: f }) }))]} />
         )}
       </Space>
+      {cluster.gene && <GeneWithFunction gene={cluster.gene} strong n={200} />}
       <HintLine text={t("components.single-cell.splicing.event-help")} />
       {event ? (
         <>
