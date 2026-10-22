@@ -13,6 +13,7 @@ import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import CnZoomLayer from "./cnZoomLayer";
 import GenomeTrackLayer from "./genomeTrackLayer";
 import CellGraphLens from "./cellGraphLens";
+import { createPopupController } from "../../../helpers/singleCell/hoverPopup";
 import { focusWindows } from "../../../helpers/singleCell/paperCellGraph";
 import SnvLensLayer, { loadSnvLookup } from "./snvLensLayer";
 import { highlightRects, hitAt, markPositions, panelTables, parseSidecar, plotHitAt, rowBand, rowsBetween, selectionTable, sidecarExtras, tableTsv, toPage } from "../../../helpers/singleCell/paperSidecar";
@@ -176,7 +177,45 @@ export default function PaperFigurePage({ label }) {
   const graphs = useRef(new Map()); // cell -> JaBbA graph (hover junctions)
   // the cell whose full genome graph is open under its row / track: { cell, patient, regionId, trackId, row }
   const [graphFocus, setGraphFocus] = useState(null);
-  const focusOn = (f) => setGraphFocus((cur) => (cur && cur.cell === f.cell && cur.regionId === f.regionId && cur.trackId === f.trackId ? cur : f));
+  // hover lifecycle (shared helper): opens on hover, closes on leaving row + dock (grace delay), Escape, scroll, click elsewhere; pinned only by the pin button
+  const popupCtl = useRef(null);
+  if (!popupCtl.current) popupCtl.current = createPopupController({ onChange: (st) => setGraphFocus(st ? { ...st.data, pinned: st.pinned } : null) });
+  const focusOn = (f) => popupCtl.current.hoverRegion(`${f.cell}|${f.regionId}|${f.trackId || ""}`, f);
+  const clearHover = () => {
+    setHit(null);
+    setTrackHit(null);
+    setPlotHit(null);
+    setHover(null);
+    setTip(null);
+  };
+  const clearHoverRef = useRef(clearHover);
+  clearHoverRef.current = clearHover;
+  useEffect(() => {
+    const ctl = popupCtl.current;
+    const inDock = (t) => !!(t && t.closest && t.closest(".sc-cellgraph-dock"));
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      ctl.escape();
+      clearHoverRef.current();
+    };
+    const onScroll = (e) => {
+      if (inDock(e.target)) return;
+      ctl.scroll();
+      clearHoverRef.current();
+    };
+    const onDown = (e) => {
+      if (!inDock(e.target)) ctl.clickOutside();
+    };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("scroll", onScroll, true);
+    document.addEventListener("pointerdown", onDown, true);
+    return () => {
+      ctl.dispose();
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("scroll", onScroll, true);
+      document.removeEventListener("pointerdown", onDown, true);
+    };
+  }, []);
   const [snv, setSnv] = useState({}); // patient -> SNV lookup (SNV heatmaps with site ids), loaded on first zoom / hover
   const wantSnv = (patient) => {
     if (!patient || snv[patient] !== undefined) return;
@@ -189,7 +228,7 @@ export default function PaperFigurePage({ label }) {
     setCnZoom({});
     setLens(null);
     setPatientOpen(null);
-    setGraphFocus(null);
+    popupCtl.current.close();
   }, [label]);
   const extras = useMemo(() => (sidecar ? sidecarExtras(sidecar, sidecar.data?.walk_names?.patient || sidecar.data?.ecdna_snvs?.patient) : {}), [sidecar]);
   const walkPatient = sidecar?.data?.walk_names?.patient || null;
@@ -494,19 +533,17 @@ export default function PaperFigurePage({ label }) {
         className="sc-cellgraph-dock"
         style={{ position: "absolute", left, top: top + 2, zIndex: 9 }}
         onPointerEnter={() => {
-          setHit(null);
-          setTrackHit(null);
-          setPlotHit(null);
-          setHover(null);
-          setTip(null);
+          popupCtl.current.enterPopup();
+          clearHover();
         }}
+        onPointerLeave={() => popupCtl.current.leavePopup()}
         onPointerDown={(e) => e.stopPropagation()}
         onPointerMove={(e) => e.stopPropagation()}
         onPointerUp={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}
       >
-        <CellGraphLens cell={graphFocus.cell} patient={graphFocus.patient} wins={wins} width={w} height={280} href={href} onClose={() => setGraphFocus(null)} />
+        <CellGraphLens cell={graphFocus.cell} patient={graphFocus.patient} wins={wins} width={w} height={280} href={href} pinned={!!graphFocus.pinned} onPin={() => (graphFocus.pinned ? popupCtl.current.unpin() : popupCtl.current.pin())} onClose={() => popupCtl.current.close()} />
       </div>
     );
   };
@@ -728,6 +765,7 @@ export default function PaperFigurePage({ label }) {
           // open the hovered cell's genome graph once its row / track is zoomed past the PDF's detail
           if (t && lens && lens.s >= 1.6) focusOn({ cell: t.cell, patient: t.patient, trackId: t.id, regionId: t.region.id });
           else if (h && h.region.axis?.type === "genome" && h.region.patient && (cnZoom[h.region.id] || (lens && lens.s >= 1.6))) focusOn({ cell: h.id, patient: h.region.patient, regionId: h.region.id, trackId: null, row: h.region.rows.indexOf(h.id) });
+          else popupCtl.current.leaveRegion();
           setTrackHit(t ? trackInfo(t, x) : null);
           const ph = h || t ? null : plotHitAt(sidecar, x, y);
           setPlotHit(ph && (ph.fields || ph.axis) ? ph : null);
@@ -771,11 +809,8 @@ export default function PaperFigurePage({ label }) {
           sheetRef.current.dataset.dragged = d.moved || d.kind === "rows" ? "1" : "";
         }}
         onMouseLeave={() => {
-          setHover(null);
-          setTip(null);
-          setHit(null);
-          setPlotHit(null);
-          setTrackHit(null);
+          clearHover();
+          popupCtl.current.leaveRegion();
         }}
         onDoubleClick={() => setLens(null)}
         onClick={(e) => {
