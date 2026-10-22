@@ -1,4 +1,4 @@
-import { maskChrX, CHRX_MASK_NOTE } from "./chrxMask";
+import { maskChrX, maskChrXRows, CHRX_MASK_NOTE } from "./chrxMask";
 import { medianCnRow } from "./cellFiles";
 import { buildBinIndex } from "./matrix";
 
@@ -50,6 +50,16 @@ describe("maskChrX", () => {
       (r) => maskChrX(r, chromoBins).row
     );
     const med = medianCnRow(rows, chromoBins, 10);
+    const k = [...med.binIndex.chromosome.keys()].find((i) => med.binIndex.chromosome[i] === "X");
+    expect(med.values[k]).toBe(2);
+  });
+  it("maskChrXRows masks per cell and reports masked ids (circos path)", () => {
+    const rows = [mk([2, 2, 2, 2, 0, 0, 0, 0, 0]), mk([2, 2, 2, 2, 2, 2, 2, 2, 0])];
+    const { rowOf, maskedIds } = maskChrXRows(["a", "b"], rows, chromoBins);
+    expect([...maskedIds]).toEqual(["a"]);
+    expect(Number.isNaN(rowOf.get("a").values[4])).toBe(true);
+    expect(rowOf.get("b")).toBe(rows[1]);
+    const med = medianCnRow([...rowOf.values()], chromoBins, 10);
     const k = [...med.binIndex.chromosome.keys()].find((i) => med.binIndex.chromosome[i] === "X");
     expect(med.values[k]).toBe(2);
   });
