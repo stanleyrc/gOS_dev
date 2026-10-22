@@ -35,7 +35,7 @@ const fmtWin = (w) => `chr${w.chr}:${(w.from / 1e6).toFixed(3)}–${(w.to / 1e6)
  * lens window(s), with the cell's coverage (CN units) behind it, and a link to the same cell and locus in the
  * Single-Cell genome view. wins: [{ chr, from, to }] (several for broken axes); href: that link.
  */
-export default function CellGraphLens({ cell, patient, wins, width, height = 260, href, onClose }) {
+export default function CellGraphLens({ cell, patient, wins, width, height = 260, href, onClose, onPin, pinned }) {
   const dataset = useSelector((s) => s.Settings?.dataset);
   const chromoBins = useSelector((s) => s.Settings?.chromoBins);
   const [data, setData] = useState(null);
@@ -114,6 +114,7 @@ export default function CellGraphLens({ cell, patient, wins, width, height = 260
             <ExportOutlined /> Open this cell at this locus in the genome view
           </a>
         )}
+        {onPin && <Button size="small" type="text" onClick={onPin} aria-label={pinned ? "unpin" : "pin"} title={pinned ? "Unpin (it then closes when the pointer leaves)" : "Pin this graph open"}>{pinned ? "Unpin" : "Pin"}</Button>}
         {onClose && <Button size="small" type="text" icon={<CloseOutlined />} onClick={onClose} aria-label="close" />}
       </div>
       <div style={{ position: "relative", width, height: plotH }}>
