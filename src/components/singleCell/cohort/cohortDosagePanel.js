@@ -1,3 +1,5 @@
+import { ResultNote } from "./rnaLoadStatus";
+import useEnsureGeneList from "./useEnsureGeneList";
 import React, { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -27,12 +29,15 @@ const TOP = 70;
  * the chosen genes (default: the cohort's amplified / deleted drivers). One
  * heatmap cell per gene x patient; dot = significant.
  */
-export default function CohortDosagePanel({ summaries, files, rna, cnRows, datasets }) {
+export default function CohortDosagePanel({ rnaLoad = null, summaries, files, rna, cnRows, datasets }) {
   const { t } = useTranslation("common");
   const genesState = useSelector((s) => s.Genes);
+  useEnsureGeneList();
   const [ref, width] = useContainerWidth(900);
   const [picked, setPicked] = useState(null);
   const [result, setResult] = useState(null);
+  const [ran, setRan] = useState(null);
+  const [failed, setFailed] = useState([]);
   const [progress, setProgress] = useState(null);
   const driverGenes = useMemo(() => {
     const counts = new Map();
@@ -53,6 +58,9 @@ export default function CohortDosagePanel({ summaries, files, rna, cnRows, datas
   const run = async () => {
     setProgress(0);
     const out = {};
+    const failedIds = [];
+    const cnPending = summaries.filter((s) => cnRows[s.caseReportId] === undefined).length;
+    setRan({ ranWith: patients.length, ranPartial: !!rnaLoad?.partial || cnPending > 0 });
     for (let i = 0; i < patients.length; i += 1) {
       const s = patients[i];
       const ds = datasets.find((d) => `${d.id}` === `${s.record.datasetId}`);
@@ -84,11 +92,12 @@ export default function CohortDosagePanel({ summaries, files, rna, cnRows, datas
           out[`${gene}|${s.caseReportId}`] = { rho, p: correlationP(rho, x.length), n: x.length, meanCn: d3.mean(x) };
         });
       } catch (error) {
-        // matrix missing for this patient
+        failedIds.push(s.caseReportId);
       }
       setProgress(Math.round((100 * (i + 1)) / patients.length));
     }
     setResult(out);
+    setFailed(failedIds);
     setProgress(null);
   };
 
@@ -111,6 +120,11 @@ export default function CohortDosagePanel({ summaries, files, rna, cnRows, datas
     >
       <div ref={ref}>
         {progress != null && <Progress percent={progress} size="small" style={{ width: 240 }} />}
+        {(rnaLoad?.partial || summaries.some((s) => cnRows[s.caseReportId] === undefined)) && (
+          <Text type="warning" style={{ display: "block", fontSize: 12 }}>{`${patients.length} of ${summaries.length} patients have both RNA and copy number loaded so far; the dosage correlations are provisional until all have loaded.`}</Text>
+        )}
+        {result && <ResultNote ran={ran} usableNow={patients.length} total={summaries.length} />}
+        {failed.length > 0 && <Text type="danger" style={{ display: "block", fontSize: 12 }}>{`expression matrix failed to load for ${failed.join(", ")}: not included`}</Text>}
         {!result ? (
           <Text type="secondary">{t("components.single-cell.cohort.dosage-intro")}</Text>
         ) : (

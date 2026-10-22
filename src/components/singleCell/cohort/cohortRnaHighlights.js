@@ -29,6 +29,7 @@ export default function CohortRnaHighlights({ cohortRna }) {
       {cohortRna.done < cohortRna.total && (
         <div style={{ marginBottom: 8 }}>
           <Text type="secondary" style={{ fontSize: TYPE.label }}>{k("cohort-progress", { done: cohortRna.done, total: cohortRna.total })}</Text>
+          <Text type="warning" style={{ fontSize: TYPE.label, marginLeft: 8 }}>{`provisional (partial data: ${cohortRna.done} of ${cohortRna.total} patients): the findings below change as more patients load`}</Text>
           <Progress percent={Math.round((100 * cohortRna.done) / Math.max(1, cohortRna.total))} size="small" showInfo={false} />
         </div>
       )}
