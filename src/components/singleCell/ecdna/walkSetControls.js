@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { Alert, Segmented, Space, Tooltip } from "antd";
+import { Alert, Segmented, Space, Tag, Tooltip } from "antd";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
-import { fitText } from "../../../helpers/singleCell/walkSetCompare";
+import { fitText, recoveryBadge, recoverySummary, walkChips } from "../../../helpers/singleCell/walkSetCompare";
 
 /** walks_peel_v4.json of the open patient, fetched on first use: { status: idle | loading | ok | missing | error, data }. */
 export function usePeelSource(active, patient) {
@@ -69,4 +69,24 @@ export function PeelBanner({ data, copies, onCopies, hasCplex }) {
       description={data?.notes ? `${data.notes}` : undefined}
     />
   );
+}
+
+/** Red "not recovered" / orange "partial" badge (reason on hover) for a curated walk, proposal / open chips for a peel walk. */
+export function WalkBadges({ walk, recovery }) {
+  if (!walk) return null;
+  const badge = walk.curated && recovery ? recoveryBadge(recovery.get(`${walk.id}`)) : null;
+  const chips = walk.curated ? [] : walkChips(walk);
+  if (!badge && !chips.length) return null;
+  return (
+    <>
+      {badge && <Tooltip title={badge.reason}><Tag color={badge.color} style={{ margin: 0, marginLeft: 3 }}>{badge.text}</Tag></Tooltip>}
+      {chips.map((c) => <Tooltip key={c.key} title={c.title}><Tag color={c.color} style={{ margin: 0, marginLeft: 3 }}>{c.text}</Tag></Tooltip>)}
+    </>
+  );
+}
+
+/** One-line recovery summary of the patient's curated walks ("k of n curated walks recovered"). */
+export function RecoverySummary({ data }) {
+  const text = recoverySummary(data);
+  return text ? <Tag color="blue" style={{ margin: 0 }}>{text}</Tag> : null;
 }

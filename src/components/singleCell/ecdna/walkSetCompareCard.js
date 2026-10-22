@@ -4,7 +4,8 @@ import { SwapOutlined } from "@ant-design/icons";
 import useWalks from "./useWalks";
 import WalksPlot from "./walksPlot";
 import { walkFamilies } from "../../../helpers/singleCell/walks";
-import { pairWalkSets, summarizePairs } from "../../../helpers/singleCell/walkSetCompare";
+import { WalkBadges, RecoverySummary } from "./walkSetControls";
+import { pairWalkSets, recoveryMap, summarizePairs } from "../../../helpers/singleCell/walkSetCompare";
 
 const { Text } = Typography;
 const COLOR = { reproduces: "green", partial: "gold", new: "magenta", unpaired: "default" };
@@ -20,19 +21,22 @@ function OneWalk({ walk, colorOf, nCells, lane, empty }) {
 export default function WalkSetCompareCard({ curatedSource, peelSource, cellIds }) {
   const cur = useWalks(cellIds, curatedSource);
   const peel = useWalks(cellIds, peelSource);
-  const rows = useMemo(() => pairWalkSets(cur.all, peel.all), [cur.all, peel.all]);
+  const recovery = useMemo(() => recoveryMap(peelSource?.data), [peelSource]);
+  const rows = useMemo(() => pairWalkSets(cur.all, peel.all, [...recovery.values()]), [cur.all, peel.all, recovery]);
   const sum = summarizePairs(rows);
   if (peel.status !== "ok") return <Card size="small" title="Compare walk sets"><Empty description="not available (no peel v4 walks for this patient)" /></Card>;
   return (
     <Card
       size="small"
       title={<Space><SwapOutlined />Compare: curated (left) vs Peel v4 (right)</Space>}
-      extra={<Space size={4} wrap>{Object.entries(sum).map(([k, n]) => <Tag key={k} color={COLOR[k]}>{n} {k}</Tag>)}</Space>}
+      extra={<Space size={4} wrap><RecoverySummary data={peelSource?.data} />{Object.entries(sum).map(([k, n]) => <Tag key={k} color={COLOR[k]}>{n} {k}</Tag>)}</Space>}
     >
       {rows.map((r) => (
         <div key={r.key} style={{ borderTop: "1px solid #eee", padding: "6px 0" }}>
           <Space size={8} wrap style={{ marginBottom: 2 }}>
             <Tag color={COLOR[r.status]}>{r.status}</Tag>
+            {r.curated && <WalkBadges walk={r.curated} recovery={recovery} />}
+            {r.peel && <WalkBadges walk={r.peel} recovery={recovery} />}
             {r.peel && r.curated && <Text type="secondary">cosine {f2(r.cosine)} / junction Jaccard {f2(r.jaccard)} / rho free {f2(r.rho)}{r.rhoCplex != null ? ` / rho CPLEX ${f2(r.rhoCplex)}` : ""}</Text>}
             {r.curatedShared && <Text type="secondary">(curated walk also matched by an earlier peel walk)</Text>}
             {r.missingCurated && <Text type="warning">matched curated walk id not in walks.json</Text>}
