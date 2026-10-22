@@ -2,7 +2,7 @@ import React from "react";
 import { useSelector } from "react-redux";
 import { Alert, Space, Tag, Tooltip, Typography } from "antd";
 import { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
-import { contrastText, emptyMessage, readsText, transcriptLoci, igvUrl, transcriptsForJunctionIds, visibleTranscripts } from "../../../helpers/singleCell/breakpointRna";
+import { nearbySvText, contrastText, emptyMessage, readsText, transcriptLoci, igvUrl, transcriptsForJunctionIds, visibleTranscripts } from "../../../helpers/singleCell/breakpointRna";
 
 const { Text } = Typography;
 
@@ -41,6 +41,7 @@ export function TranscriptLine({ t }) {
         <Text>{contrastText(t)}</Text>
         <Text type="secondary">{` · reads carriers / non-carriers: ${readsText(t)}`}</Text>
       </div>
+      {nearbySvText(t).length > 0 && <div><Text type="secondary">Nearby genomic SV (DNA evidence): </Text>{nearbySvText(t).map((x, i) => <Tag key={i} color="blue">{x}</Tag>)}</div>}
       {t.consequence && <div><Text type="secondary">{t.consequence}</Text></div>}
       {t.rna_junctions?.length > 0 && (
         <div>

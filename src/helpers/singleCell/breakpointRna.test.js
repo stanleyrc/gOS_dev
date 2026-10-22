@@ -75,3 +75,35 @@ describe("emptyMessage", () => {
     expect(emptyMessage({ status: "ok" }, 2, 5)).toBeNull();
   });
 });
+
+import { normalizeFusionIsoforms, isoformsOfFusion, isoformBadges, nearbySvText } from "./breakpointRna";
+
+describe("fusion isoforms", () => {
+  const iso = normalizeFusionIsoforms({
+    format: "fusion_isoforms_v1",
+    pairs: [
+      { pair: "A::B", fusion_ids: ["f1", "f2"], n_isoforms: 3, n_isoforms_2cells: 2, any_inframe: "TRUE", readthrough: "FALSE", isoforms: [{ label: "x", n_cells: 2 }, { label: "y", n_cells: 9, reading_frame: "in-frame" }] },
+      { pair: "C::D", fusion_ids: ["f3"], n_isoforms: 1, readthrough: true, isoforms: [] },
+    ],
+  });
+  it("sorts isoforms by cells and reads logical flags", () => {
+    expect(iso.pairs[0].isoforms.map((i) => i.label)).toEqual(["y", "x"]);
+    expect(iso.pairs[0].any_inframe).toBe(true);
+    expect(iso.pairs[0].readthrough).toBe(false);
+  });
+  it("finds a pair by fusion id or grouped variant", () => {
+    expect(isoformsOfFusion(iso, { id: "f2" }).pair).toBe("A::B");
+    expect(isoformsOfFusion(iso, { id: "g", variants: [{ id: "f3" }] }).pair).toBe("C::D");
+    expect(isoformsOfFusion(iso, { id: "none" })).toBeNull();
+  });
+  it("builds the badges", () => {
+    expect(isoformBadges(iso.pairs[0]).map((b) => b.text)).toEqual(["in-frame isoform", "2 isoforms"]);
+    expect(isoformBadges(iso.pairs[1]).map((b) => b.text)).toEqual(["read-through (adjacent genes)"]);
+    expect(isoformBadges(null)).toEqual([]);
+  });
+  it("rejects other formats", () => expect(() => normalizeFusionIsoforms({ pairs: [], format: "q" })).toThrow());
+  it("formats nearby genomic SVs", () => {
+    expect(nearbySvText({ nearby_genomic_sv: [{ cls: "DEL-like", chrA: "7", posA: 1, chrB: "7", posB: 9, n_cells: 189 }, "plain"] })).toEqual(["DEL-like 7:1-7:9 189 cells", "plain"]);
+    expect(nearbySvText({})).toEqual([]);
+  });
+});

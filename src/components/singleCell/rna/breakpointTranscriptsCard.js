@@ -5,7 +5,7 @@ import { BranchesOutlined } from "@ant-design/icons";
 import HintLine from "../hintLine";
 import ConfidenceToggle, { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
 import { LocusLinks } from "./breakpointRnaBlock";
-import { contrastText, crossText, emptyMessage, headlineCounts, readsText, visibleTranscripts } from "../../../helpers/singleCell/breakpointRna";
+import { nearbySvText, contrastText, crossText, emptyMessage, headlineCounts, readsText, visibleTranscripts } from "../../../helpers/singleCell/breakpointRna";
 
 const { Text } = Typography;
 const TIER_RANK = { consistent: 0, suggestive: 1, low: 2 };
@@ -71,7 +71,7 @@ export default function BreakpointTranscriptsCard() {
           dataSource={shown}
           columns={columns}
           pagination={{ pageSize: 10, size: "small", showSizeChanger: true, pageSizeOptions: [10, 25, 50] }}
-          expandable={{ expandedRowRender: (t) => <Text type="secondary">{`${contrastText(t)}${t.consequence ? `; ${t.consequence}` : ""}${t.confidence_reasons?.length ? `; ${t.confidence_reasons.join("; ")}` : ""}`}</Text> }}
+          expandable={{ expandedRowRender: (t) => <Text type="secondary">{`${contrastText(t)}${t.consequence ? `; ${t.consequence}` : ""}${t.confidence_reasons?.length ? `; ${t.confidence_reasons.join("; ")}` : ""}${nearbySvText(t).length ? `; nearby genomic SV (DNA evidence): ${nearbySvText(t).join(", ")}` : ""}${t.added_reason ? `; ${t.added_reason}` : ""}`}</Text> }}
           scroll={{ x: "max-content" }}
         />
       )}
