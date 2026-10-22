@@ -1,5 +1,5 @@
 import {
-  normalizeBreakpointTranscripts, normalizeDnaSupport, visibleTranscripts, transcriptsByJid, transcriptsForJunctionIds, dnaSupportOfFusion,
+  normalizeBreakpointTranscripts, normalizeDnaSupport, visibleTranscripts, transcriptsByJid, transcriptsForJunctionIds, parseJunctionCoords, dnaSupportOfFusion,
   igvLocus, transcriptLoci, igvUrl, contrastText, readsText, headlineCounts, emptyMessage, NOT_EXPORTED, NONE_FOUND,
 } from "./breakpointRna";
 
@@ -35,6 +35,13 @@ describe("breakpoint transcripts", () => {
     expect(transcriptsByJid(bt.transcripts, 11)).toHaveLength(1);
     expect(transcriptsByJid(bt.transcripts, "99")).toEqual([]);
     expect(transcriptsForJunctionIds(bt.transcripts, [12, "13", "x"]).map((t) => t.jid)).toEqual(["12", "13"]);
+  });
+  it("matches event junction strings by breakpoint coordinates, either orientation, within tolerance", () => {
+    expect(parseJunctionCoords("7:1000-|chr7:5003+")).toEqual({ a: ["7", 1000], b: ["7", 5003] });
+    expect(parseJunctionCoords("nonsense")).toBeNull();
+    expect(transcriptsForJunctionIds(bt.transcripts, ["7:5005+|7:998-"]).map((t) => t.jid)).toEqual(["11"]);
+    expect(transcriptsForJunctionIds(bt.transcripts, ["7:1000-|7:5500+"])).toEqual([]);
+    expect(transcriptsForJunctionIds(bt.transcripts, ["8:1000-|8:5000+"])).toEqual([]);
   });
   it("builds loci and links", () => {
     expect(igvLocus("7:5-9")).toBe("chr7:5-9");
