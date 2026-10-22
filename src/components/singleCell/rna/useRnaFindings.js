@@ -5,6 +5,8 @@ import { cellsForPatient } from "../../../helpers/singleCell/cellFiles";
 import { rnaExpressionFindings, rnaHeadlines, rnaMetaFindings } from "../../../helpers/singleCell/rnaFindings";
 import { normalizeSpliceFindings, rnaFindingCounts, rnaHeadlineItems } from "../../../helpers/singleCell/rnaHeadlineFindings";
 import { normalizeFusions } from "../../../helpers/singleCell/rnaFusions";
+import { CONFIDENCE_TIERS, DEFAULT_CONFIDENCE_LEVEL } from "../../../helpers/singleCell/findingConfidence";
+import { useFindingConfidence } from "../confidenceToggle";
 
 // RNA key findings of a patient ({ meta, expr, headlines, top, counts }),
 // computed once per dataset / patient / driver set and shared by the report,
@@ -13,7 +15,10 @@ import { normalizeFusions } from "../../../helpers/singleCell/rnaFusions";
 // fusions (rna/splicing.json, rna/fusions.json; empty when missing).
 const cache = new Map();
 
-/** Splicing findings and tier 1–2 fusions of a patient: { top, counts }. */
+/**
+ * Splicing findings and tier 1–2 fusions of a patient: { top, counts } at the default confidence level, plus byLevel
+ * ({ consistent | suggestive | low: { top, counts } }) so the views can follow the "show less confident findings" toggle.
+ */
 export async function loadRnaExtraFindings(dataset, patientId) {
   const [spl, fus] = await Promise.all([
     tryGet(casePath(dataset, patientId, "rna/splicing.json")).catch(() => ({ status: "error" })),
@@ -29,7 +34,16 @@ export async function loadRnaExtraFindings(dataset, patientId) {
       fusions = [];
     }
   }
-  return { top: rnaHeadlineItems({ splicing, fusions, nCellsRna, max: 6 }), counts: rnaFindingCounts({ splicing, fusions }) };
+  const byLevel = Object.fromEntries(
+    CONFIDENCE_TIERS.map((level) => [level, { top: rnaHeadlineItems({ splicing, fusions, nCellsRna, max: 6, level }), counts: rnaFindingCounts({ splicing, fusions, level }) }])
+  );
+  return { ...byLevel[DEFAULT_CONFIDENCE_LEVEL], byLevel };
+}
+
+/** RNA findings data with top / counts of the confidence level shown (data without byLevel is returned as is). */
+export function atConfidence(data, level) {
+  const at = data?.byLevel?.[level];
+  return at ? { ...data, top: at.top, counts: at.counts } : data;
 }
 
 const driversOf = (report) => (report ? [...report.clonal, ...report.subclonal, ...report.rare] : []);
@@ -49,8 +63,8 @@ export function computeRnaFindings(dataset, patientId, cells, report) {
       } catch (error) {
         expr = null; // metadata findings still stand without the matrix
       }
-      const { top, counts } = await extras;
-      return { meta, expr, headlines: rnaHeadlines(meta, expr), top, counts };
+      const { top, counts, byLevel } = await extras;
+      return { meta, expr, headlines: rnaHeadlines(meta, expr), top, counts, byLevel };
     });
     promise.catch(() => cache.delete(key));
     cache.set(key, promise);
@@ -61,6 +75,7 @@ export function computeRnaFindings(dataset, patientId, cells, report) {
 /** { status: "loading" | "ok" | "none", data } for one patient. */
 export default function useRnaFindings({ dataset, patientId, cells, report }) {
   const [state, setState] = useState({ status: "loading", data: null });
+  const [level] = useFindingConfidence();
   const driverKey = driversOf(report).map((d) => d.label).join(",");
   useEffect(() => {
     if (!dataset || !patientId || !cells?.length) {
@@ -77,13 +92,14 @@ export default function useRnaFindings({ dataset, patientId, cells, report }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataset, patientId, cells, driverKey]);
-  return state;
+  return useMemo(() => (state.data ? { ...state, data: atConfidence(state.data, level) } : state), [state, level]);
 }
 
 /** RNA findings of every cohort patient, one at a time: { byPatient: { id: findings }, done, total }. */
 export function useCohortRnaFindings({ summaries, files, datafiles, datasets, enabled = true }) {
   const [byPatient, setByPatient] = useState({});
   const [done, setDone] = useState(0);
+  const [level] = useFindingConfidence();
   const inputs = useMemo(
     () =>
       summaries.map((s) => {
@@ -122,6 +138,6 @@ export function useCohortRnaFindings({ summaries, files, datafiles, datasets, en
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled]);
   /** { status, data } of one patient, as PatientReportCard / PatientCardBody take it. */
-  const of = (id) => (byPatient[id] ? { status: "ok", data: byPatient[id] } : { status: enabled && done < inputs.length ? "loading" : "none", data: null });
+  const of = (id) => (byPatient[id] ? { status: "ok", data: atConfidence(byPatient[id], level) } : { status: enabled && done < inputs.length ? "loading" : "none", data: null });
   return { byPatient, done, total: inputs.length, of };
 }

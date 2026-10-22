@@ -9,6 +9,7 @@ import CellIgvPanel from "../cellIgvPanel";
 import HintLine from "../hintLine";
 import SpliceReadsPanel from "./spliceReadsPanel";
 import SpliceGeneFilter, { useSpliceGeneFilter } from "./spliceGeneFilter";
+import { ConfidenceBadge } from "../confidenceToggle";
 import { EXON_CONTEXT_LABEL, exonContext } from "../../../helpers/singleCell/spliceGeneFilter";
 import {
   EVENT_TYPES,
@@ -125,6 +126,7 @@ export default function SpliceEventsTable({ events = [], onSashimi, cellMap = {}
       width: 380,
       render: (_, e) => (
         <div style={{ whiteSpace: "normal" }}>
+          <ConfidenceBadge item={e} />
           {e.clusterId ? (
             <Typography.Link onClick={() => onSashimi(e)} style={{ fontSize: 13 }}>
               {e.summary}

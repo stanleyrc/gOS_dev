@@ -34,6 +34,8 @@ import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 import { byNotability, clusterNotability, pageOf } from "../../../helpers/singleCell/rnaHeadlineFindings";
 import SpliceFindingsList from "./spliceFindingsList";
 import SpliceEventsTable from "./spliceEventsTable";
+import ConfidenceToggle, { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
+import { confidenceCounts, filterByConfidence, hasConfidence } from "../../../helpers/singleCell/findingConfidence";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -491,6 +493,7 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
             render: (g, r) => (
               <Space size={4}>
                 <Text strong>{g || "?"}</Text>
+                <ConfidenceBadge item={r.cluster} />
                 {(r.cluster.selected_by || (r.cluster.cohort ? ["cohort"] : []))
                   .filter((x) => x !== "dispersion")
                   .map((x) => (
@@ -667,7 +670,15 @@ export default function SplicingCard({ summary, focus = null }) {
   const [variantRequest, setVariantRequest] = useState(null);
   const [clusterRequest, setClusterRequest] = useState(null);
   const patientId = useSelector((s) => s.SingleCell.patient?.caseReportId);
-  const data = source?.status === "ok" ? source.data : null;
+  const raw = source?.status === "ok" ? source.data : null;
+  // confidence tiers (gos_sc_splice_confidence.py): default consistent only; "show less confident findings" adds the rest
+  const [level, setLevel] = useFindingConfidence();
+  const tiered = useMemo(() => Boolean(raw) && (hasConfidence(raw.findings) || hasConfidence(raw.events) || hasConfidence(raw.clusters)), [raw]);
+  const data = useMemo(
+    () => (raw && tiered ? { ...raw, findings: filterByConfidence(raw.findings, level), events: filterByConfidence(raw.events, level), clusters: filterByConfidence(raw.clusters, level) } : raw),
+    [raw, tiered, level]
+  );
+  const eventCounts = useMemo(() => (tiered ? confidenceCounts(raw.events) : null), [raw, tiered]);
   const findings = useMemo(() => data?.findings || [], [data]);
   const openEvent = (e) => setClusterRequest({ id: e.clusterId, junction: { start: e.start, end: e.end }, at: Date.now() });
   const pickFinding = (f) => {
@@ -735,6 +746,14 @@ export default function SplicingCard({ summary, focus = null }) {
     >
       <div ref={ref}>
         <Row gutter={[16, 16]}>
+          {tiered && (
+            <Col span={24}>
+              <ConfidenceToggle level={level} onChange={setLevel} counts={eventCounts} />
+              <Text type="secondary" style={{ fontSize: 12, marginInlineStart: 8 }}>
+                {`(splice events; findings ${data.findings.length} of ${raw.findings.length}, clusters ${data.clusters.length} of ${raw.clusters.length} shown)`}
+              </Text>
+            </Col>
+          )}
           <Col span={24}>
             <SpliceFindingsList findings={findings} onPick={pickFinding} spliceReads={data.spliceReads} patientId={patientId} />
           </Col>

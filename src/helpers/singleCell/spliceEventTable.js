@@ -2,6 +2,7 @@
 // spliced junction with a plain-language summary, explicit units and links to nearby SNVs.
 // d3-free so it can be tested without a DOM.
 import { passesGeneFilter } from "./spliceGeneFilter";
+import { tierOf } from "./findingConfidence";
 
 export const EVENT_TYPES = ["exon_skip", "alt_5", "alt_3", "novel_junction", "annotated_alt", "intron_retention"];
 export const EVENT_TYPE_LABEL = {
@@ -111,6 +112,9 @@ export function normalizeSpliceEvents(list) {
       exonKnown: "n_exons" in e,
       nExons: num(e.n_exons),
       intronOverlap: e.intron_overlap == null ? null : !!e.intron_overlap,
+      // confidence tier of the event's cluster (skilift gos_sc_splice_confidence.py); null in older files
+      confidence: tierOf(e.confidence),
+      confidenceReason: e.confidence_reason ? `${e.confidence_reason}` : null,
     }));
 }
 
