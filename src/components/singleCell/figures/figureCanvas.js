@@ -166,6 +166,19 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
   const hide = () => {
     if (tipRef.current) tipRef.current.style.display = "none";
   };
+  // a stuck tooltip: Escape or any scroll dismisses it (the canvas moves under a still pointer, so mouseleave never fires)
+  useEffect(() => {
+    const off = (e) => {
+      if (e.type === "keydown" && e.key !== "Escape") return;
+      if (tipRef.current) tipRef.current.style.display = "none";
+    };
+    window.addEventListener("keydown", off);
+    document.addEventListener("scroll", off, true);
+    return () => {
+      window.removeEventListener("keydown", off);
+      document.removeEventListener("scroll", off, true);
+    };
+  }, []);
   const move = (event) => {
     const g = dragRef.current;
     if (g) {
@@ -225,6 +238,10 @@ export default function FigureCanvas({ width, height, draw, tooltip, onClick, on
           event.currentTarget.setPointerCapture?.(event.pointerId);
         }}
         onPointerMove={move}
+        onPointerCancel={() => {
+          hide();
+          onHover?.(null);
+        }}
         onPointerUp={(event) => {
           const g = dragRef.current;
           if (!g) return;
