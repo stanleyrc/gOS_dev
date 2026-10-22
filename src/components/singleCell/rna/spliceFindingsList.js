@@ -6,11 +6,12 @@ import HintLine from "../hintLine";
 import CellIgvPanel from "../cellIgvPanel";
 import { KIND_COLOR, SEVERITY_COLOR, findingIgvView, findingSliceCount, isNotable } from "../../../helpers/singleCell/rnaHeadlineFindings";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
+import { ConfidenceBadge } from "../confidenceToggle";
 
 const { Text, Link } = Typography;
 const k = "components.single-cell.splicing";
 
-/** Severity and kind tags of a splicing finding. */
+/** Severity, kind and confidence-tier tags of a splicing finding (the tier's reason on hover). */
 export function SpliceFindingTags({ finding, showPatient = false }) {
   const { t } = useTranslation("common");
   return (
@@ -21,6 +22,7 @@ export function SpliceFindingTags({ finding, showPatient = false }) {
       <Tag color={KIND_COLOR[finding.kind]} bordered={false} style={{ fontSize: TYPE.tick, marginInlineEnd: 4 }}>
         {t(`components.single-cell.rna-findings.kind-${finding.kind}`)}
       </Tag>
+      <ConfidenceBadge item={finding} />
       {showPatient && finding.patient && (
         <Tag bordered={false} style={{ fontSize: TYPE.tick, marginInlineEnd: 4 }}>
           {finding.patient}

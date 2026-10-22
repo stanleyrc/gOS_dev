@@ -4,6 +4,8 @@
 // (format gos-sc-vignettes/1). Pure helpers (no d3, no React) so jest can
 // test them; the components map the action descriptors to redux dispatches.
 
+import { passesConfidence, tierOf } from "./findingConfidence";
+
 export const VIGNETTES_FORMAT = "gos-sc-vignettes/1";
 
 export const EVIDENCE_KINDS = ["cn", "cells", "walk", "igv", "driver", "event", "expr", "splice", "tab"];
@@ -37,7 +39,26 @@ function normalizeFinding(f, i) {
     stats: f.stats && typeof f.stats === "object" ? f.stats : {},
     plot: f.plot && typeof f.plot === "object" ? f.plot : null,
     evidence: asArray(f.evidence).map(normalizeEvidence).filter(Boolean),
+    // splice items: confidence tier of their splicing finding (gos_sc_splice_confidence.py); null otherwise / older files
+    confidence: tierOf(f.confidence),
+    confidenceReason: f.confidence_reason ? `${f.confidence_reason}` : null,
   };
+}
+
+/**
+ * Vignettes with the splice items below the confidence level dropped (the "show less confident findings" toggle);
+ * other kinds and untiered items are kept. Same object when nothing is dropped.
+ */
+export function vignettesAtConfidence(vignettes, level) {
+  if (!vignettes?.patients) return vignettes;
+  let changed = false;
+  const patients = {};
+  Object.entries(vignettes.patients).forEach(([id, v]) => {
+    const findings = v.findings.filter((f) => f.kind !== "splice" || passesConfidence(f, level));
+    if (findings.length !== v.findings.length) changed = true;
+    patients[id] = findings.length === v.findings.length ? v : { ...v, findings };
+  });
+  return changed ? { ...vignettes, patients } : vignettes;
 }
 
 /** Validated vignettes file: { generated, patients: { id: vignette } }, null when not a vignettes file. */

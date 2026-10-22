@@ -8,6 +8,7 @@ import SvgExportButton from "../svgExportButton";
 import { EVENT_CLASS_ORDER, TIER_OPTIONS, eventClass, isRescued, passesTier, rescueSourceText, driverGeneOf } from "../../../helpers/singleCell/cohortStats";
 import { isStrongEvent } from "../../../helpers/singleCell/strongEvents";
 import { SPLICE_SHORT, spliceSourceText, spliceSupportOf } from "../../../helpers/singleCell/spliceSupport";
+import { useFindingConfidence } from "../confidenceToggle";
 import useCohortExport from "./useCohortExport";
 import { useSelector } from "react-redux";
 import { FONT, Swatches, YAxis } from "./charts";
@@ -39,6 +40,8 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
   const dataset = useSelector((st) => st.Settings?.dataset);
   const { data: spliceDoc } = useCohortExport(dataset?.dataPath ? dataset : null, "splice_support.json");
   const isFlagged = (g) => !!qcMap.get(g)?.allFlagged;
+  // RNA splicing entries of the confidence tiers shown (spliceconf; default consistent only)
+  const [spliceLevel] = useFindingConfidence();
 
   // gene -> patient -> class -> { cells, fraction } (strongest event per class)
   const agg = useMemo(() => {
@@ -107,7 +110,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
       width: 150,
       render: (_, r) => {
         const byClass = agg.get(r.gene)?.get(p);
-        const sp = spliceSupportOf(spliceDoc, p, r.gene);
+        const sp = spliceSupportOf(spliceDoc, p, r.gene, spliceLevel);
         // RNA-only aberrant splicing of a shown gene: not a DNA event (no bar), listed here so splicing evidence is not missed
         const rnaOnly = sp?.support === "RNA" && !byClass?.splice ? (
           <Tooltip title={spliceSourceText(spliceDoc, sp)}>
@@ -191,7 +194,7 @@ export default function CohortGenePanel({ summaries, files, onOpen, onEvent = nu
                       acc += v;
                       return (
                         <rect key={cls} x={x1(p)} y={yTop} width={x1.bandwidth()} height={Math.max(0, h)} fill={CLASS_COLORS[cls]} stroke={INK.panel} strokeWidth={0.5}>
-                          <title>{`${g} · ${p} · ${t(`components.single-cell.cohort.class-${cls}`)}: ${byClass[cls].cells} cells (${pct(byClass[cls].fraction)})${byClass[cls].rescued ? ` - rescued from site evidence: carriers of ${byClass[cls].event.covered_tumour_cells} covered tumour cells (${byClass[cls].event.tumour_cells} total)` : ""}${cls === "splice" ? ` - ${spliceSourceText(spliceDoc, spliceSupportOf(spliceDoc, p, g))}` : ""}`}</title>
+                          <title>{`${g} · ${p} · ${t(`components.single-cell.cohort.class-${cls}`)}: ${byClass[cls].cells} cells (${pct(byClass[cls].fraction)})${byClass[cls].rescued ? ` - rescued from site evidence: carriers of ${byClass[cls].event.covered_tumour_cells} covered tumour cells (${byClass[cls].event.tumour_cells} total)` : ""}${cls === "splice" ? ` - ${spliceSourceText(spliceDoc, spliceSupportOf(spliceDoc, p, g, spliceLevel))}` : ""}`}</title>
                         </rect>
                       );
                     })}
