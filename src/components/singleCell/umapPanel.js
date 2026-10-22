@@ -30,6 +30,7 @@ import { toScreen, zoomRadius } from "../../helpers/singleCell/umapZoom";
 import { loadUmap3d } from "../../redux/singleCell/loaders";
 import { ZERO_STYLE, themeKey, expressionModel, exprColor, exprDrawOrder, rampGradient } from "../../helpers/singleCell/exprColour";
 import { readPref as vsReadPref, writePref as vsWritePref } from "../../helpers/singleCell/viewSettingsStore";
+import { useTooltipGuard } from "./useTooltipGuard";
 
 
 const readPref = (key, fallback) => {
@@ -110,6 +111,7 @@ export default function UmapPanel() {
   const [view, setView] = useState("all");
   const [geneOptions, setGeneOptions] = useState([]);
   const [tip, setTip] = useState(null);
+  const tipRef = useTooltipGuard(tip, () => setTip(null));
   const [lasso, setLasso] = useState(null);
   const { matrix, summary } = useRnaData();
   const [k, setK] = useState(4);
@@ -160,6 +162,7 @@ export default function UmapPanel() {
   const [dim, setDim] = useState("2d");
   const [view3d, setView3d] = useState(defaultView3d);
   const [hover3d, setHover3d] = useState({ index: -1, x: 0, y: 0 });
+  const tip3dRef = useTooltipGuard(hover3d.index >= 0, () => setHover3d({ index: -1, x: 0, y: 0 }));
   const dataset = useSelector((s) => s.Settings.dataset);
   const [umap3d, setUmap3d] = useState({ status: "loading" });
   useEffect(() => {
@@ -708,7 +711,7 @@ export default function UmapPanel() {
               )}
               {!is3d && <div style={{ position: "absolute", left: 6, bottom: 4, fontSize: 11.5, color: "rgba(0,0,0,0.55)", pointerEvents: "none" }}>{view === "dna-umap" ? "DNA-cell UMAP 1 → · UMAP 2 ↑ (arbitrary units)" : "UMAP 1 → · UMAP 2 ↑ (arbitrary units)"}</div>}
               {is3d && tip3d && (
-                <div className="sc-tooltip" style={{ left: tip3d.left, top: tip3d.top }}>
+                <div ref={tip3dRef} className="sc-tooltip" style={{ left: tip3d.left, top: tip3d.top }}>
                   {tip3d.lines.map(([k, v]) => (
                     <div key={k}>
                       <span className="sc-tooltip-key">{k}</span> {`${v}`}
@@ -717,7 +720,7 @@ export default function UmapPanel() {
                 </div>
               )}
               {!is3d && tip && (
-                <div className="sc-tooltip" style={{ left: tip.left, top: tip.top }}>
+                <div ref={tipRef} className="sc-tooltip" style={{ left: tip.left, top: tip.top }}>
                   {tip.lines.map(([k, v]) => (
                     <div key={k}>
                       <span className="sc-tooltip-key">{k}</span> {`${v}`}

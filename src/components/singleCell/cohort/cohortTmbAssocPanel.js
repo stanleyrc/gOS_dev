@@ -12,19 +12,21 @@ import { loadRna } from "./cohortRnaPanel";
 import { loadRnaMatrix } from "../../../redux/singleCell/loaders";
 import { geneValues } from "../../../helpers/singleCell/staticRna";
 import GeneQuickLook from "./geneQuickLook";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text, Paragraph } = Typography;
 
 // instant hover label over an svg (native <title> tooltips are slow and hard to hit on small dots)
 function useHoverTip() {
   const [tip, setTip] = useState(null);
+  const tipRef = useTooltipGuard(tip, () => setTip(null));
   const bind = (text) => ({
     onMouseEnter: (e) => setTip({ text, x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY }),
     onMouseMove: (e) => setTip({ text, x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY }),
     onMouseLeave: () => setTip(null),
   });
   const node = tip ? (
-    <div style={{ position: "absolute", left: tip.x + 12, top: tip.y + 12, background: "rgba(0,0,0,0.8)", color: "#fff", padding: "2px 6px", borderRadius: 3, fontSize: 12, pointerEvents: "none", whiteSpace: "nowrap", zIndex: 5 }}>{tip.text}</div>
+    <div ref={tipRef} style={{ position: "absolute", left: tip.x + 12, top: tip.y + 12, background: "rgba(0,0,0,0.8)", color: "#fff", padding: "2px 6px", borderRadius: 3, fontSize: 12, pointerEvents: "none", whiteSpace: "nowrap", zIndex: 5 }}>{tip.text}</div>
   ) : null;
   return [bind, node];
 }
