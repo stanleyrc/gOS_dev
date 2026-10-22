@@ -24,6 +24,7 @@ import {
   rnaCellMaps,
 } from "../../../helpers/singleCell/rnaFusions";
 import { SC_MAX_TRACK_CELLS } from "../../../redux/singleCell/actions";
+import { GeneInfo } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const k = "components.single-cell.rna-fusions";
@@ -34,11 +35,19 @@ const PLOT_PAD = 2.5e5; // genome plots: ±250 kb around each breakpoint (amplic
 /** Gene of an Arriba field with the other listed genes in a tooltip. */
 export function GeneName({ gene }) {
   const g = geneDisplay(gene);
-  if (!g.rest.length && !g.intergenic) return <span>{g.name}</span>;
+  // gene function on hover (hover only: fusion rows open the fusion modal on click)
+  if (!g.rest.length && !g.intergenic) return <GeneInfo gene={g.name} trigger={["hover"]} />;
+  if (g.intergenic) {
+    return (
+      <Tooltip title={g.full}>
+        <span style={{ borderBottom: "1px dotted currentColor" }}>{g.name}</span>
+      </Tooltip>
+    );
+  }
   return (
-    <Tooltip title={g.full}>
-      <span style={{ borderBottom: "1px dotted currentColor" }}>{g.name}</span>
-    </Tooltip>
+    <GeneInfo gene={g.name} trigger={["hover"]}>
+      <span title={g.full}>{g.name}</span>
+    </GeneInfo>
   );
 }
 

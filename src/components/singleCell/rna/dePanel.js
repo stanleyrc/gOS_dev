@@ -40,6 +40,7 @@ import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { RefLine, XAxis, useChartText } from "../cohort/charts";
 import { Provenance } from "../hintLine";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
+import { GeneFunctionLine, GeneInfo } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3));
@@ -527,10 +528,13 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
       key: "gene",
       render: (gene) => (
         <span style={{ whiteSpace: "nowrap" }}>
-          <Button type="link" size="small" style={{ padding: 0 }} onClick={() => onGene(gene)}>
-            {gene}
-          </Button>
+          <GeneInfo gene={gene} stopClick={false}>
+            <Button type="link" size="small" style={{ padding: 0 }} onClick={() => onGene(gene)}>
+              {gene}
+            </Button>
+          </GeneInfo>
           <GeneQuickLook gene={gene} icon standalone />
+          <GeneFunctionLine gene={gene} n={90} style={{ whiteSpace: "normal", maxWidth: 260 }} />
         </span>
       ),
     },
