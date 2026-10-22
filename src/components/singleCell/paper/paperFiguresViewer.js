@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Empty, Modal, Segmented, Space, Tag, Tooltip, Typography } from "antd";
 import { CompressOutlined, DownloadOutlined, LinkOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
+import { navAction, neighbourKey } from "../../../helpers/singleCell/figureNav";
 import PanelDataTable from "./panelDataTable";
 import { bestImage, fitView, formatBuilt, panelTarget, zoomAt } from "../../../helpers/singleCell/paperManifest";
 
@@ -109,6 +110,25 @@ export default function PaperFiguresViewer({ manifest, initialFigure = null, onO
   const [figId, setFigId] = useState(initialFigure && manifest?.figures.some((f) => f.id === initialFigure) ? initialFigure : manifest?.figures[0]?.id || null);
   const fig = manifest?.figures.find((f) => f.id === figId) || manifest?.figures[0] || null;
   const [panel, setPanel] = useState(null);
+  const figIds = useMemo(() => (manifest?.figures || []).map((f) => f.id), [manifest]);
+  const navRef = useRef({});
+  navRef.current = { figIds, id: fig?.id, blocked: !!panel };
+  useEffect(() => {
+    // left / right arrows cycle through the figures (wrapping) unless a panel is open or a field has focus
+    const onKey = (e) => {
+      const a = navAction(e, { blocked: navRef.current.blocked });
+      if (a !== "prev" && a !== "next") return;
+      const next = neighbourKey(navRef.current.figIds, navRef.current.id, a === "next" ? 1 : -1);
+      if (!next) return;
+      e.preventDefault();
+      setFigId(next);
+      const q = new URLSearchParams(window.location.search);
+      q.set("figure", next);
+      window.history.replaceState(null, "", `${window.location.pathname}?${q.toString()}`);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   if (!manifest || !fig) return <Empty description="not available (paper figures not synced: srctools inst/paper_figures/sync_gos.sh)" />;
   const w = (fig.widthPt || 600) * PT_PX;
   const h = (fig.heightPt || 600) * PT_PX;

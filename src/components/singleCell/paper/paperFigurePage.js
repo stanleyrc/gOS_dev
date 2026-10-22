@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Button, Empty, Modal, Space, Tag, Tooltip, Typography } from "antd";
-import { CompressOutlined, DownloadOutlined, ExpandOutlined, LinkOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
+import { CompressOutlined, DownloadOutlined, ExpandOutlined, LeftOutlined, LinkOutlined, RightOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import useCohortExport from "../cohort/useCohortExport";
 import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, formatBuilt, panelAt, panelRegions, panelTarget, parsePaperManifest, targetSearch } from "../../../helpers/singleCell/paperManifest";
 import { announceCohortView, requestHelpTarget } from "../../../helpers/singleCell/helpNav";
+import { PAPER_FIGURE_TABS } from "../../../helpers/singleCell/cohortViews";
+import { counterText, navAction, neighbourKey } from "../../../helpers/singleCell/figureNav";
 import { PanelModal, STATUS_TAG_COLOR, ZoomPanImage, targetLabel } from "./paperFiguresViewer";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import CnZoomLayer from "./cnZoomLayer";
@@ -252,6 +254,46 @@ export default function PaperFigurePage({ label }) {
   const kRef = useRef(1);
   const lensRef = useRef(null);
   lensRef.current = lens;
+  // left / right arrows (and the < > buttons) cycle through the paper figures in manifest order, wrapping; the URL follows (scview)
+  const navKeys = useMemo(() => PAPER_FIGURE_TABS.map((n) => `paperfig${n}`), []);
+  const curKey = label ? `paperfig${`${label}`.replace(/^Fig /, "")}` : null;
+  const blocked = !!(lens || liveView || open || zoom);
+  const goFigure = useCallback(
+    (delta) => {
+      const next = neighbourKey(navKeys, curKey, delta);
+      if (!next) return;
+      const p = new URLSearchParams(window.location.search);
+      p.set("scview", next);
+      window.history.pushState(null, "", `${window.location.pathname}?${p.toString()}`);
+      announceCohortView(next);
+      requestHelpTarget({ scope: "cohort", view: next });
+    },
+    [navKeys, curKey]
+  );
+  const navRef = useRef({});
+  navRef.current = { goFigure, blocked };
+  useEffect(() => {
+    const onKey = (e) => {
+      const a = navAction(e, { blocked: navRef.current.blocked });
+      if (a === "prev" || a === "next") {
+        e.preventDefault();
+        navRef.current.goFigure(a === "next" ? 1 : -1);
+      }
+    };
+    const onPop = () => {
+      const v = new URLSearchParams(window.location.search).get("scview");
+      if (v && /^paperfig/.test(v)) {
+        announceCohortView(v);
+        requestHelpTarget({ scope: "cohort", view: v });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("popstate", onPop);
+    };
+  }, []);
   // display px (sheet-relative) -> page pt, through the lens when the pointer is inside it
   const toPt = useCallback((px, py) => {
     const l = lensRef.current;
@@ -484,6 +526,15 @@ export default function PaperFigurePage({ label }) {
           <Text type="secondary" style={{ fontSize: 12 }}>
             {`Built ${formatBuilt(fig.built)} · synced ${formatBuilt(manifest.synced)}${manifest.srctools?.sha ? ` · srctools ${manifest.srctools.sha}` : ""} · scroll over a panel to zoom it`}
           </Text>
+          <Space.Compact size="small">
+            <Tooltip title="Previous figure (left arrow)">
+              <Button size="small" icon={<LeftOutlined />} aria-label="Previous figure" onClick={() => goFigure(-1)} />
+            </Tooltip>
+            <Button size="small" disabled style={{ color: "inherit", cursor: "default" }}>{counterText(navKeys, curKey)}</Button>
+            <Tooltip title="Next figure (right arrow)">
+              <Button size="small" icon={<RightOutlined />} aria-label="Next figure" onClick={() => goFigure(1)} />
+            </Tooltip>
+          </Space.Compact>
           <Button size="small" icon={<ExpandOutlined />} onClick={() => setZoom(true)}>
             Zoom
           </Button>
