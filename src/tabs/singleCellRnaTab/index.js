@@ -18,8 +18,10 @@ import useRnaData from "../../components/singleCell/rna/useRnaData";
 import CompareGroupsPanel from "../../components/singleCell/compareGroupsPanel";
 import AnalysisResultsPanel from "../../components/singleCell/analysisResultsPanel";
 import RnaFusionsCard from "../../components/singleCell/rna/rnaFusionsCard";
+import BreakpointTranscriptsCard from "../../components/singleCell/rna/breakpointTranscriptsCard";
 import SplicingCard from "../../components/singleCell/rna/splicingCard";
 import RnaFindingsStrip from "../../components/singleCell/rna/rnaFindingsStrip";
+import { visibleTranscripts } from "../../helpers/singleCell/breakpointRna";
 import { rnaFindingCounts } from "../../helpers/singleCell/rnaHeadlineFindings";
 import { useFindingConfidence } from "../../components/singleCell/confidenceToggle";
 import scaActions from "../../redux/scAnalysis/actions";
@@ -47,6 +49,7 @@ export default function SingleCellRnaTab() {
   const [section, setSection] = useState("overview");
   const geneList = useSelector((state) => state.ScAnalysis.geneList);
   // fusions / splicing tab only when the back end wrote either file (or it failed to parse)
+  const hasBreakpointRna = useSelector((state) => ["ok", "error"].includes(state.SingleCell.rnaBreakpoint?.status));
   const hasFusions = useSelector((state) => ["ok", "error"].includes(state.SingleCell.rnaFusions?.status));
   const hasSplicing = useSelector((state) => ["ok", "error"].includes(state.SingleCell.rnaSplicing?.status));
   // notable splicing findings + tier 1–2 fusion pairs, on the sub-tab label
@@ -55,6 +58,8 @@ export default function SingleCellRnaTab() {
   // splicing findings of the confidence tiers shown (spliceconf; default consistent only)
   const [spliceLevel] = useFindingConfidence();
   const findingCount = useMemo(() => rnaFindingCounts({ splicing: splicingFindings || [], fusions: fusionList || [], level: spliceLevel }).total, [splicingFindings, fusionList, spliceLevel]);
+  const bpTranscripts = useSelector((state) => (state.SingleCell.rnaBreakpoint?.status === "ok" ? state.SingleCell.rnaBreakpoint.data.transcripts : null));
+  const bpCount = useMemo(() => visibleTranscripts(bpTranscripts || [], spliceLevel).length, [bpTranscripts, spliceLevel]);
   // a splicing finding picked in the strip: open the sub-tab and the finding in the splicing card
   const [spliceFocus, setSpliceFocus] = useState(null);
   // Violins follow the genes picked in the volcano or table.
@@ -166,7 +171,7 @@ export default function SingleCellRnaTab() {
                   </Row>
                 ),
               },
-              ...(hasFusions || hasSplicing
+              ...(hasFusions || hasSplicing || hasBreakpointRna
                 ? [
                     {
                       key: "fusions",
@@ -174,6 +179,7 @@ export default function SingleCellRnaTab() {
                         <span>
                           {t("components.single-cell.rna.section-fusions")}
                           {findingCount > 0 && <Text type="danger"> · {t("components.single-cell.rna.section-fusions-count", { count: findingCount })}</Text>}
+                          {bpCount > 0 && <Text type="danger"> · {`${bpCount} breakpoint transcript${bpCount === 1 ? "" : "s"}`}</Text>}
                         </span>
                       ),
                       children: (
@@ -181,6 +187,11 @@ export default function SingleCellRnaTab() {
                           {hasFusions && (
                             <Col span={24}>
                               <RnaFusionsCard summary={summary} />
+                            </Col>
+                          )}
+                          {hasBreakpointRna && (
+                            <Col span={24}>
+                              <BreakpointTranscriptsCard />
                             </Col>
                           )}
                           {hasSplicing && (

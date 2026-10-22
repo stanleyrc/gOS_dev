@@ -31,6 +31,7 @@ import {
 } from "../../helpers/singleCell/cellFiles";
 import { parseRnaSummary } from "../../helpers/singleCell/staticRna";
 import { normalizeFusions } from "../../helpers/singleCell/rnaFusions";
+import { normalizeBreakpointTranscripts, normalizeDnaSupport, normalizeFusionIsoforms } from "../../helpers/singleCell/breakpointRna";
 import { normalizeSplicing } from "../../helpers/singleCell/splicing";
 import {
   cnDistances,
@@ -120,7 +121,7 @@ function* fetchSingleCellData(action = {}) {
     // Per-cell complex.json + mutations.json, a few cells at a time.
     // Patient-level files: tree, optional SNV matrix (reads at every site,
     // pgv sparse format) and the static RNA summary from export_seurat.R.
-    const [treeFile, snvTableFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, altTreesFile, siteQcFile, signaturesJointFile, signatureVersionsFile] = yield all([
+    const [treeFile, snvTableFile, rnaCellsFile, rnaGenesFile, signaturesFile, walksFile, rnaFusionsFile, rnaSplicingFile, bpTranscriptsFile, dnaSupportFile, isoformsFile, altTreesFile, siteQcFile, signaturesJointFile, signatureVersionsFile] = yield all([
       call(tryGet, casePath(dataset, id, "tree.nwk"), { cancelToken, responseType: "text" }),
       // SNV matrix: the columnar site table first (snv_matrix.sites.json; its .cells.bin is decoded in a Web Worker while the
       // cell files load), else snv_matrix.json (skilift gos_sc_snv_columnar.py writes both from the same content)
@@ -134,6 +135,10 @@ function* fetchSingleCellData(action = {}) {
       // per-cell RNA fusions (STAR chimeric + Arriba) and splicing (regtools junctions, intron clusters); optional
       call(tryGet, casePath(dataset, id, "rna/fusions.json"), { cancelToken }),
       call(tryGet, casePath(dataset, id, "rna/splicing.json"), { cancelToken }),
+      // RNA across DNA breakpoints + DNA support of RNA-only fusions (skilift breakpoint-RNA exporter); optional
+      call(tryGet, casePath(dataset, id, "rna/breakpoint_transcripts.json"), { cancelToken }),
+      call(tryGet, casePath(dataset, id, "rna/fusions_dna_support.json"), { cancelToken }),
+      call(tryGet, casePath(dataset, id, "rna/fusion_isoforms.json"), { cancelToken }),
       // alternative phylogenies to compare with the current tree (srctools gos_sc_alt_trees.R); optional
       call(tryGet, casePath(dataset, id, "trees/index.json"), { cancelToken }),
       // per-site QC scores for the SNV Site QC track (srctools gos_sc_site_qc.py); optional
@@ -257,6 +262,9 @@ function* fetchSingleCellData(action = {}) {
       walks: walksFile.status === "ok" ? walksFile : missing(),
       rnaFusions: rnaFusionsFile.status === "ok" ? attempt(() => normalizeFusions(rnaFusionsFile.data)) : missing(),
       rnaSplicing: rnaSplicingFile.status === "ok" ? attempt(() => normalizeSplicing(rnaSplicingFile.data)) : missing(),
+      rnaBreakpoint: bpTranscriptsFile.status === "ok" ? attempt(() => normalizeBreakpointTranscripts(bpTranscriptsFile.data)) : missing(),
+      rnaIsoforms: isoformsFile.status === "ok" ? attempt(() => normalizeFusionIsoforms(isoformsFile.data)) : missing(),
+      rnaDnaSupport: dnaSupportFile.status === "ok" ? attempt(() => normalizeDnaSupport(dnaSupportFile.data)) : missing(),
       altTrees: altTreesFile.status === "ok" ? altTreesFile : missing(),
       cellFiles,
       selectedCellIds: [],

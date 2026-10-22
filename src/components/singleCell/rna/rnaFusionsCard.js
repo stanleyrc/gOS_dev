@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Empty, Input, InputNumber, Select, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Collapse, Empty, Input, InputNumber, Popover, Select, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import { NodeIndexOutlined } from "@ant-design/icons";
 import HintLine from "../hintLine";
 import useTreeView from "../useTreeView";
@@ -13,6 +13,9 @@ import { compareFusions, filterFusions, fusionStrip, fusionTier, groupFusions, i
 import FusionSupportCell from "./fusionSupportCell";
 import { compareSupport, fusionPairKeys, fusionSupport, indexDnaEvents } from "../../../helpers/singleCell/fusionSupport";
 import { NO_READS_COLOR, NO_RNA_COLOR, readsColor } from "../../../helpers/singleCell/rnaColors";
+import { dnaSupportOfFusion, isoformBadges, inframeReadthrough, isoformsOfFusion } from "../../../helpers/singleCell/breakpointRna";
+import { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
+import { passesConfidence } from "../../../helpers/singleCell/findingConfidence";
 import { tierColor } from "../../../helpers/utility";
 
 const { Text } = Typography;
@@ -21,6 +24,30 @@ const STRIP_H = 14;
 const CONFIDENCES = ["low", "medium", "high"];
 const confColor = { high: "green", medium: "gold", low: "default" };
 const TIER_FILTERS = [1, 2, 3];
+
+/** Isoforms of a gene pair (rna/fusion_isoforms.json): exon junction, frame, cells, reads. */
+function IsoformList({ pair }) {
+  return (
+    <div data-isoform-list>
+      <Text strong>{`${pair.pair || "isoforms"}: ${pair.n_isoforms} isoform${pair.n_isoforms === 1 ? "" : "s"}${pair.total_cells != null ? `, ${pair.total_cells} cells` : ""}`}</Text>
+      {pair.readthrough && <Tag color="orange" style={{ marginLeft: 6 }}>read-through (adjacent genes)</Tag>}
+      <Table
+        size="small"
+        pagination={false}
+        rowKey={(i) => `${i.label}|${i.pos1}|${i.pos2}`}
+        dataSource={pair.isoforms}
+        columns={[
+          { title: "Isoform", dataIndex: "label" },
+          { title: "Frame", dataIndex: "reading_frame", render: (v) => v || "n.a." },
+          { title: "Cells", dataIndex: "n_cells", align: "right" },
+          { title: "Cells with DNA", dataIndex: "n_cells_dnalinked", align: "right", render: (v) => v ?? "n.a." },
+          { title: "Reads", dataIndex: "total_reads", align: "right", render: (v) => v ?? "n.a." },
+          { title: "Retained domains", dataIndex: "retained_domains", render: (v) => v || "n.a." },
+        ]}
+      />
+    </div>
+  );
+}
 
 /** Carrier cells of one fusion on the tree order (canvas, one column per cell). */
 function FusionStrip({ fusion, order, rnaOfCell, width }) {
@@ -77,6 +104,9 @@ export default function RnaFusionsCard({ summary }) {
     shown.forEach((f) => (c[fusionTier(f)] += 1));
     return c;
   }, [shown]);
+  const dnaSupport = useSelector((s) => (s.SingleCell.rnaDnaSupport?.status === "ok" ? s.SingleCell.rnaDnaSupport.data : null));
+  const isoforms = useSelector((s) => (s.SingleCell.rnaIsoforms?.status === "ok" ? s.SingleCell.rnaIsoforms.data : null));
+  const [confLevel] = useFindingConfidence();
   const dnaIndex = useMemo(() => indexDnaEvents(events), [events]);
   const supportCache = useMemo(() => new WeakMap(), [dnaIndex]);
   const hasCohort = useMemo(() => (data?.fusions || []).some((f) => f.n_patients != null), [data]);
@@ -148,6 +178,35 @@ export default function RnaFusionsCard({ summary }) {
               <Tag color="volcano">{t(`${k}.cancer-gene`)}</Tag>
             </Tooltip>
           )}
+          {(() => {
+            const pair = isoformsOfFusion(isoforms, f);
+            const badges = isoformBadges(pair);
+            if (!badges.length) return null;
+            return (
+              <Popover trigger="click" placement="bottomLeft" overlayStyle={{ maxWidth: 900 }} content={<IsoformList pair={pair} />}>
+                <span data-isoform-badges style={{ cursor: "pointer" }}>
+                  {badges.map((b) => (
+                    <Tooltip key={b.key} title={`${b.tip} Click for the isoform list.`}>
+                      <Tag color={b.color} data-isoform-badge>{b.text}</Tag>
+                    </Tooltip>
+                  ))}
+                </span>
+              </Popover>
+            );
+          })()}
+          {(() => {
+            const sup = dnaSupportOfFusion(dnaSupport, f);
+            if (!sup || !passesConfidence(sup, confLevel)) return null;
+            const tip = `${sup.class_label || sup.class}; SV ${sup.sv_jid}${sup.distance_bp != null ? `, ${sup.distance_bp} bp from the breakpoint` : ""}; carrier cells ${sup.carrier_cells ?? "n.a."}, non-carrier cells ${sup.noncarrier_cells ?? "n.a."}`;
+            return (
+              <Space size={2} data-dna-backed>
+                <Tooltip title={tip}>
+                  <Tag color="cyan">{`DNA-backed: ${sup.class === "cryptic_end" ? "cryptic end" : "canonical splice"}`}</Tag>
+                </Tooltip>
+                <ConfidenceBadge item={sup} />
+              </Space>
+            );
+          })()}
           {f.group && (
             <Tooltip title={t(`${k}.variants-tip`, { count: f.variants.length })}>
               <Tag>{t(`${k}.variants-tag`, { count: f.variants.length })}</Tag>
@@ -255,6 +314,9 @@ export default function RnaFusionsCard({ summary }) {
           <Text type="secondary">
             {grouped ? t(`${k}.shown-grouped`, { count: shown.length, variants: nVariants, total: data.fusions.length }) : t(`${k}.shown`, { count: shown.length, total: data.fusions.length })}
           </Text>
+          {dnaSupport && (
+            <Tag color="cyan" data-dna-backed-count>{`${dnaSupport.entries.filter((e) => e.fusion_id && passesConfidence(e, confLevel)).length} DNA-backed`}</Tag>
+          )}
           <Space size={2}>
             {TIER_FILTERS.map((v) => (
               <Tooltip key={v} title={t(`${k}.tier-${v}`)}>
@@ -265,6 +327,20 @@ export default function RnaFusionsCard({ summary }) {
             ))}
           </Space>
         </Space>
+        {hideReadThrough && inframeReadthrough(isoforms).length > 0 && (
+          <Collapse
+            size="small"
+            ghost
+            data-readthrough-line
+            items={[
+              {
+                key: "rt",
+                label: <Text type="secondary">{`read-through (${inframeReadthrough(isoforms).length}): in-frame isoforms of adjacent genes, hidden above`}</Text>,
+                children: inframeReadthrough(isoforms).map((p) => <IsoformList key={p.pair} pair={p} />),
+              },
+            ]}
+          />
+        )}
         <Table
           size="small"
           rowKey="id"
