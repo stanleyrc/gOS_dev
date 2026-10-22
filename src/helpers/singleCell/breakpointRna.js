@@ -78,10 +78,29 @@ export function transcriptsByJid(transcripts, jid) {
   return j ? list(transcripts).filter((t) => t.jid === j) : [];
 }
 
-/** Transcripts for any of an event's junction ids (event.junction_ids), duplicates removed. */
+/** "6:32491325-|8:102096422+" -> { a: [chr, pos], b: [chr, pos] } or null (event junction ids of filtered.events.json). */
+export function parseJunctionCoords(id) {
+  const m = `${id ?? ""}`.match(/^(?:chr)?([^:|\s]+):(\d+)[+-]?\|(?:chr)?([^:|\s]+):(\d+)[+-]?$/i);
+  return m ? { a: [m[1], Number(m[2])], b: [m[3], Number(m[4])] } : null;
+}
+
+export const COORD_TOLERANCE_BP = 10;
+
+/** Whether a transcript's breakpoints equal a parsed junction's (either orientation, each end within `tol` bp). */
+export function sameBreakpoints(t, c, tol = COORD_TOLERANCE_BP) {
+  if (!c || t?.posA == null || t?.posB == null) return false;
+  const near = (chr, pos, [c2, p2]) => strip(chr) === strip(c2) && Math.abs(pos - p2) <= tol;
+  return (near(t.chrA, t.posA, c.a) && near(t.chrB, t.posB, c.b)) || (near(t.chrA, t.posA, c.b) && near(t.chrB, t.posB, c.a));
+}
+
+/**
+ * Transcripts for an event's junction ids (event.junction_ids), duplicates removed. An id matches by SV id (jid) or, because the
+ * event ids are "chrA:posA+|chrB:posB-" strings, by both breakpoint coordinates within COORD_TOLERANCE_BP.
+ */
 export function transcriptsForJunctionIds(transcripts, ids) {
   const want = new Set(list(ids).map((i) => `${i}`));
-  return list(transcripts).filter((t) => want.has(t.jid));
+  const coords = list(ids).map(parseJunctionCoords).filter(Boolean);
+  return list(transcripts).filter((t) => want.has(t.jid) || coords.some((c) => sameBreakpoints(t, c)));
 }
 
 /** The DNA-support entry of a fusion (by fusions.json id), or null. */
