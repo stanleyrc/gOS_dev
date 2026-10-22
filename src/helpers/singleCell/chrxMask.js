@@ -50,3 +50,18 @@ export function maskChrX(row, chromoBins, minFraction = 0.5) {
   });
   return { row: { ...row, values: out }, masked: true };
 }
+
+/**
+ * Mask every row of a cohort CN matrix ({ cells: [...ids], rows: [...] }).
+ * Returns { rowOf: Map(cellId -> row), maskedIds: Set }. Inputs are not mutated.
+ */
+export function maskChrXRows(cells, rows, chromoBins) {
+  const rowOf = new Map();
+  const maskedIds = new Set();
+  (cells || []).forEach((id, k) => {
+    const { row, masked } = maskChrX(rows[k], chromoBins);
+    rowOf.set(id, row);
+    if (masked) maskedIds.add(id);
+  });
+  return { rowOf, maskedIds };
+}
