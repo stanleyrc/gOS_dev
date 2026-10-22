@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import * as d3 from "d3";
-import { AutoComplete, Button, Card, Col, Empty, Progress, Row, Segmented, Select, Space, Table, Typography } from "antd";
+import { AutoComplete, Button, Card, Col, Empty, Row, Segmented, Select, Space, Table, Typography } from "antd";
 import NeutralTag from "../neutralTag";
 import { DotChartOutlined, ExperimentOutlined, PieChartOutlined, TagsOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
@@ -28,6 +28,8 @@ import { INK } from "../../../helpers/singleCell/plotTheme";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
 import { mergeCovariates } from "../../../helpers/singleCell/rnaCovariates";
 
+import RnaLoadStatus from "./rnaLoadStatus";
+import { loadProgress, notAvailable } from "../../../helpers/singleCell/loadingState";
 const { Text } = Typography;
 const rnaCache = new Map();
 
@@ -39,6 +41,7 @@ export async function loadRna(dataset, id) {
       Promise.all([tryGet(casePath(dataset, id, "rna/cells.json")), tryGet(casePath(dataset, id, "rna/genes.tsv"), { responseType: "text" }), tryGet(casePath(dataset, id, "rna/markers.json")), tryGet(casePath(dataset, id, "rna/covariates.json"))]).then(([cells, genes, markers, cov]) => ({
         summary: cells.status === "ok" ? mergeCovariates(parseRnaSummary(cells.data, genes.status === "ok" ? genes.data : ""), cov.status === "ok" ? cov.data : null) : null,
         markers: markers.status === "ok" ? markers.data : null,
+        cellsStatus: cells.status,
       }))
     );
   }
@@ -57,7 +60,6 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
   const layout = useSelector((s) => s.SingleCell.layout);
   const [ref, width] = useContainerWidth(1000);
   const [rna, setRna] = useState({});
-  const [progress, setProgress] = useState(0);
   const [field, setField] = useState("state");
   const [tumorOnly, setTumorOnly] = useState(true);
   const [gene, setGene] = useState("");
@@ -80,10 +82,11 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
         const s = summaries[i];
         const ds = datasetOf(s);
         // eslint-disable-next-line no-await-in-loop
-        out[s.caseReportId] = ds ? await loadRna(ds, s.caseReportId).catch(() => null) : null;
+        out[s.caseReportId] = ds
+          ? await loadRna(ds, s.caseReportId).catch((error) => ({ error, file: "rna/cells.json, genes.tsv, markers.json" }))
+          : { missing: true, reason: "dataset record not found for this patient" };
         if (!active) return;
         setRna({ ...out });
-        setProgress(Math.round((100 * (i + 1)) / Math.max(1, summaries.length)));
       }
     })();
     return () => {
@@ -93,6 +96,15 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
   }, [summaries.map((s) => s.caseReportId).join("|"), datasets]);
 
   const loaded = summaries.filter((s) => rna[s.caseReportId]?.summary);
+  // loaded vs still loading vs no data: an absent entry is pending, a loaded entry without a summary is "not available"
+  const rnaLoad = useMemo(() => {
+    const entries = {};
+    summaries.forEach((s) => {
+      const e = rna[s.caseReportId];
+      entries[s.caseReportId] = e === undefined ? undefined : e?.summary || e?.error || e?.missing ? e : { missing: true, reason: notAvailable("rna/cells.json", e?.cellsStatus || "no RNA for this patient") };
+    });
+    return loadProgress(summaries.map((s) => s.caseReportId), { rna: { entries, hasData: (e) => !!e.summary, file: "rna/cells.json" } });
+  }, [summaries, rna]);
   const cellsOf = (s) => (rna[s.caseReportId]?.summary?.cells || []).filter((c) => !tumorOnly || !c.Cell_Type || /malignant|tumou?r/i.test(`${c.Cell_Type}`));
   const fields = useMemo(() => {
     const names = new Map();
@@ -177,7 +189,16 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusGene, loaded.length]);
 
-  if (!loaded.length) return progress < 100 ? <Progress percent={progress} size="small" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.rna-empty")} />;
+  if (!loaded.length) {
+    return rnaLoad.partial || rnaLoad.failed.length || rnaLoad.none.length ? (
+      <div>
+        <RnaLoadStatus progress={rnaLoad} />
+        {rnaLoad.complete && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`${t("components.single-cell.cohort.rna-empty")} (none of the ${rnaLoad.total} patients has RNA data, see above)`} />}
+      </div>
+    ) : (
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.rna-empty")} />
+    );
+  }
   const levelColors = composition ? annotationColors(composition.levels, themePalette(layout.theme)) : {};
   const qcMetrics = [["nCount_RNA", t("components.single-cell.cohort.rna-counts"), true], ["nFeature_RNA", t("components.single-cell.cohort.rna-genes"), true], ["percent_mt", t("components.single-cell.cohort.rna-mt"), false]].filter(([k]) => loaded.some((s) => cellsOf(s).some((c) => Number.isFinite(Number(c[k])))));
   const qcGroups = (k) => loaded.map((s, i) => ({ key: s.caseReportId, label: s.caseReportId, color: patientColor(i), values: cellsOf(s).map((c) => Number(c[k])), ids: cellsOf(s).map((c) => c.displayId) }));
@@ -209,9 +230,14 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
   return (
     <div ref={ref}>
       <Row gutter={SC_GUTTER}>
+        {(rnaLoad.partial || rnaLoad.failed.length > 0 || rnaLoad.none.length > 0) && (
+          <Col span={24}>
+            <RnaLoadStatus progress={rnaLoad} />
+            {rnaLoad.partial && <Text type="secondary" style={{ fontSize: 12 }}>Composition tests, QC, shared markers, gene scores and DE below use only the patients loaded so far and are provisional until all {rnaLoad.total} have loaded.</Text>}
+          </Col>
+        )}
         <Col span={24}>
           <Space wrap>
-            {progress < 100 && <Progress percent={progress} size="small" style={{ width: 160 }} />}
             <Text type="secondary">{t("components.single-cell.cohort.rna-field")}</Text>
             <Select showSearch optionFilterProp="label" size="small" style={{ width: 180 }} value={chosenField} onChange={setField} options={fields.map((f) => ({ value: f, label: fieldLabel(f) }))} />
             <Select size="small" style={{ width: 170 }} value={tumorOnly ? "tumor" : "all"} onChange={(v) => setTumorOnly(v === "tumor")} options={[{ value: "tumor", label: t("components.single-cell.rna.tumor-only") }, { value: "all", label: t("components.single-cell.cohort.rna-all-cells") }]} />
@@ -248,7 +274,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
               extra={
                 <Space>
                   {Number.isFinite(composition.p) && (
-                    <Text type={composition.p < 0.05 ? "danger" : "secondary"} style={{ fontSize: 13 }}>{`chi-square ${composition.p < 1e-4 ? "p < 1e-4" : `p = ${composition.p.toFixed(3)}`}`}</Text>
+                    <Text type={composition.p < 0.05 ? "danger" : "secondary"} style={{ fontSize: 13 }}>{`chi-square ${composition.p < 1e-4 ? "p < 1e-4" : `p = ${composition.p.toFixed(3)}`}${rnaLoad.partial ? " (provisional, partial data)" : ""}`}</Text>
                   )}
                   <SvgExportButton containerRef={ref} name="cohort-rna-composition" />
                 </Space>
@@ -301,7 +327,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
                     <div style={{ marginTop: 4 }}>
                       {lv.genes.slice(0, 20).map((g) => (
                         <NeutralTag key={g.gene} strong={g.n >= 2} style={{ marginBottom: 2, cursor: "pointer" }} onClick={() => runGene(g.gene)} title={g.patients.join(", ")}>
-                          {`${g.gene} ${g.n}/${loaded.length}`}
+                          {`${g.gene} ${g.n}/${loaded.length}${rnaLoad.partial ? "*" : ""}`}
                         </NeutralTag>
                       ))}
                     </div>
@@ -318,10 +344,10 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           <CohortGroupsCard onResolved={setSavedGroupKeys} summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} tumorOnly={tumorOnly} umapSelection={umapSelection} onSelectUmap={selectUmap} />
         </Col>
         <Col span={24}>
-          <CohortDePanel summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} fields={fields} umapSelection={umapSelection} onGene={runGene} savedGroups={savedGroupKeys} />
+          <CohortDePanel rnaLoad={rnaLoad} summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} fields={fields} umapSelection={umapSelection} onGene={runGene} savedGroups={savedGroupKeys} />
         </Col>
         <Col span={24}>
-          <CohortGeneSetPanel summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} field={chosenField} sharedMarkers={sharedMarkers} onScores={setScores} />
+          <CohortGeneSetPanel rnaLoad={rnaLoad} summaries={summaries} datasets={datasets} rna={rna} loaded={loaded} cellsOf={cellsOf} field={chosenField} sharedMarkers={sharedMarkers} onScores={setScores} />
         </Col>
         <Col span={24}>
           <CohortStateClonePanel
@@ -332,7 +358,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           />
         </Col>
         <Col span={24}>
-          <CohortDosagePanel summaries={summaries} files={filesProp} rna={rna} cnRows={cnRows} datasets={datasets} />
+          <CohortDosagePanel rnaLoad={rnaLoad} summaries={summaries} files={filesProp} rna={rna} cnRows={cnRows} datasets={datasets} />
         </Col>
         <Col span={24} ref={geneCardRef}>
           <Card
@@ -347,7 +373,7 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
           >
             {geneData ? (
               <>
-                <Text strong>{gene}</Text> <Text type="secondary">{geneTest ? `${geneTest.test === "kruskal-wallis" ? "Kruskal–Wallis" : "Mann–Whitney"} ${formatP(geneTest.p)}` : ""}</Text>
+                <Text strong>{gene}</Text> <Text type="secondary">{geneTest ? `${geneTest.test === "kruskal-wallis" ? "Kruskal–Wallis" : "Mann–Whitney"} ${formatP(geneTest.p)}${rnaLoad.partial ? " (provisional, partial data)" : ""}` : ""}</Text>
                 <div style={{ margin: "6px 0" }}>
                   <Segmented
                     size="small"

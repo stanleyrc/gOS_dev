@@ -8,6 +8,7 @@ import { ExperimentOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import SvgExportButton from "../svgExportButton";
 import ScErrorBoundary from "../errorBoundary";
+import { ResultNote } from "./rnaLoadStatus";
 import VolcanoPlot, { COLOR_DOWN, COLOR_UP } from "../rna/volcanoPlot";
 import { geneSetIndex, loadGmt, prettyTerm } from "../rna/geneSets";
 import { downloadTsv } from "../analysisResultsPanel";
@@ -85,7 +86,7 @@ function GroupEditor({ label, color, group, onChange, patients, fields, fieldOpt
  * inside each patient and combines (Fisher), reporting concordance. PCA runs
  * on the compared cells (or all tumour cells) over the most variable genes.
  */
-export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsOf, fields, umapSelection, onGene, savedGroups = [] }) {
+export default function CohortDePanel({ rnaLoad = null, summaries, datasets, rna, loaded, cellsOf, fields, umapSelection, onGene, savedGroups = [] }) {
   const { t } = useTranslation("common");
   const theme = useSelector((s) => s.SingleCell.layout.theme);
   const [ref, width] = useContainerWidth(1000);
@@ -104,6 +105,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
   const [busy, setBusy] = useState(null);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
+  const [ran, setRan] = useState(null); // { ranWith, ranPartial } when the last DE run started
   const [selectedGene, setSelectedGene] = useState(null);
   const [selectedGenes, setSelectedGenes] = useState([]);
   const [geneDetail, setGeneDetail] = useState(null);
@@ -160,6 +162,7 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
 
   const run = async () => {
     setBusy("de");
+    setRan({ ranWith: loaded.length, ranPartial: !!rnaLoad?.partial });
     setProgress(0);
     setResult(null);
     setOra(null);
@@ -373,6 +376,8 @@ export default function CohortDePanel({ summaries, datasets, rna, loaded, cellsO
                   <InputNumber size="small" min={0} max={5} step={0.1} value={lfcCut} onChange={(v) => setLfcCut(v ?? 0.5)} style={{ width: 70 }} />
                   <Button size="small" type="primary" loading={busy === "de"} disabled={nA < 3 || nB < 3} onClick={run}>{t("components.single-cell.cohort.de-run")}</Button>
                   {result?.rows && <Button size="small" icon={<AiOutlineDownload />} onClick={download}>TSV</Button>}
+                  {rnaLoad?.partial && <Text type="warning" style={{ fontSize: 12 }}>{`only ${loaded.length} of ${summaries.length} patients loaded: results are provisional`}</Text>}
+                  {result?.rows && <ResultNote ran={ran} usableNow={loaded.length} total={summaries.length} />}
                   {busy === "de" && <Progress percent={Math.round(100 * progress)} size="small" style={{ width: 160 }} />}
                 </>
               )}

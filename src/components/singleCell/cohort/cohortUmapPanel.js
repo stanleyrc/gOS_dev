@@ -89,6 +89,7 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
   const [dragMode, setDragMode] = useState("select");
   const [dim, setDim] = useState("2d");
   const [data3d, setData3d] = useState({ status: "loading" });
+  const [dataStatus, setDataStatus] = useState("loading");
   const [data, setData] = useState(undefined);
   const [colorBy, setColorBy] = useState("patient");
   const [hidden, setHidden] = useState([]);
@@ -103,7 +104,11 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
   useEffect(() => {
     if (!dataset) return undefined;
     let active = true;
-    tryGet(`${dataset.dataPath}_cohort/rna/cells.json`).then((r) => active && setData(r.status === "ok" ? r.data : null));
+    tryGet(`${dataset.dataPath}_cohort/rna/cells.json`).then((r) => {
+      if (!active) return;
+      setDataStatus(r.status);
+      setData(r.status === "ok" ? r.data : null);
+    });
     return () => {
       active = false;
     };
@@ -127,8 +132,8 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
     return [...names].filter((k) => !["rna_id", "cell_id", "umap_1", "umap_2", "patient"].includes(k) && cells.some((c) => typeof c[k] === "string"));
   }, [cells]);
   const [hover, setHover] = useState(null); // { c, mx, my }
-  if (data === undefined) return <Text type="secondary">{t("components.single-cell.loading")}</Text>;
-  if (!data) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("components.single-cell.cohort.umap-missing")} />;
+  if (data === undefined) return <Text type="secondary">{`${t("components.single-cell.loading")} (_cohort/rna/cells.json)`}</Text>;
+  if (!data) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`${t("components.single-cell.cohort.umap-missing")} (_cohort/rna/cells.json ${dataStatus === "error" ? "failed to load" : "not available: " + dataStatus})`} />;
   const patients = [...new Set(cells.map((c) => c.patient))].sort();
   const placed = cells.filter((c) => !hidden.includes(c.patient) && Number.isFinite(c.umap_1) && Number.isFinite(c.umap_2));
   const x0 = d3.scaleLinear().domain(d3.extent(cells, (c) => c.umap_1)).range([40, w - 12]);
