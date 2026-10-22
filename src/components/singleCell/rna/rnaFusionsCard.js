@@ -13,6 +13,9 @@ import { compareFusions, filterFusions, fusionStrip, fusionTier, groupFusions, i
 import FusionSupportCell from "./fusionSupportCell";
 import { compareSupport, fusionPairKeys, fusionSupport, indexDnaEvents } from "../../../helpers/singleCell/fusionSupport";
 import { NO_READS_COLOR, NO_RNA_COLOR, readsColor } from "../../../helpers/singleCell/rnaColors";
+import { dnaSupportOfFusion } from "../../../helpers/singleCell/breakpointRna";
+import { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
+import { passesConfidence } from "../../../helpers/singleCell/findingConfidence";
 import { tierColor } from "../../../helpers/utility";
 
 const { Text } = Typography;
@@ -77,6 +80,8 @@ export default function RnaFusionsCard({ summary }) {
     shown.forEach((f) => (c[fusionTier(f)] += 1));
     return c;
   }, [shown]);
+  const dnaSupport = useSelector((s) => (s.SingleCell.rnaDnaSupport?.status === "ok" ? s.SingleCell.rnaDnaSupport.data : null));
+  const [confLevel] = useFindingConfidence();
   const dnaIndex = useMemo(() => indexDnaEvents(events), [events]);
   const supportCache = useMemo(() => new WeakMap(), [dnaIndex]);
   const hasCohort = useMemo(() => (data?.fusions || []).some((f) => f.n_patients != null), [data]);
@@ -148,6 +153,19 @@ export default function RnaFusionsCard({ summary }) {
               <Tag color="volcano">{t(`${k}.cancer-gene`)}</Tag>
             </Tooltip>
           )}
+          {(() => {
+            const sup = dnaSupportOfFusion(dnaSupport, f);
+            if (!sup || !passesConfidence(sup, confLevel)) return null;
+            const tip = `${sup.class_label || sup.class}; SV ${sup.sv_jid}${sup.distance_bp != null ? `, ${sup.distance_bp} bp from the breakpoint` : ""}; carrier cells ${sup.carrier_cells ?? "n.a."}, non-carrier cells ${sup.noncarrier_cells ?? "n.a."}`;
+            return (
+              <Space size={2} data-dna-backed>
+                <Tooltip title={tip}>
+                  <Tag color="cyan">{`DNA-backed: ${sup.class === "cryptic_end" ? "cryptic end" : "canonical splice"}`}</Tag>
+                </Tooltip>
+                <ConfidenceBadge item={sup} />
+              </Space>
+            );
+          })()}
           {f.group && (
             <Tooltip title={t(`${k}.variants-tip`, { count: f.variants.length })}>
               <Tag>{t(`${k}.variants-tag`, { count: f.variants.length })}</Tag>
@@ -255,6 +273,9 @@ export default function RnaFusionsCard({ summary }) {
           <Text type="secondary">
             {grouped ? t(`${k}.shown-grouped`, { count: shown.length, variants: nVariants, total: data.fusions.length }) : t(`${k}.shown`, { count: shown.length, total: data.fusions.length })}
           </Text>
+          {dnaSupport && (
+            <Tag color="cyan" data-dna-backed-count>{`${dnaSupport.entries.filter((e) => e.fusion_id && passesConfidence(e, confLevel)).length} DNA-backed`}</Tag>
+          )}
           <Space size={2}>
             {TIER_FILTERS.map((v) => (
               <Tooltip key={v} title={t(`${k}.tier-${v}`)}>

@@ -4,6 +4,7 @@ import { Alert, Button, Typography } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { loadCellTrack } from "../../../redux/singleCell/loaders";
 import { footprintLocation } from "../../../helpers/singleCell/complexZoom";
+import BreakpointRnaBlock from "../rna/breakpointRnaBlock";
 import { buildJunctionEvidence, buildReadEvidence, evidenceSummary } from "../../../helpers/singleCell/junctionEvidence";
 
 const { Text } = Typography;
@@ -56,6 +57,7 @@ export default function JunctionEvidenceTrack({ event, carriers, tumorIds, treeL
   };
   return (
     <div data-junction-evidence>
+      <BreakpointRnaBlock junctionIds={event?.junction_ids} />
       {readEv && readEv.rows.length > 0 && (
         <EvidenceMatrix ev={readEv} unit="reads" id="reads" onExport={exportSvg}
           title="Primary: supporting reads per tumour cell (junction_identity.json: distinct read names, split reads plus discordant pairs where counted). 0 = no supporting read observed (coverage at the breakpoint is not separated from absence)." />
