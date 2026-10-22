@@ -16,6 +16,7 @@ import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { CARRIER_COLOR, COMPARATOR_COLOR } from "./useDriverEvidence";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text } = Typography;
 const Q_CUT = 0.1;
@@ -42,6 +43,7 @@ export function GeneDots({ gene, groups, row, showDetected = true }) {
   const [ref, width] = useContainerWidth(260);
   const theme = usePlotTheme();
   const [hover, setHover] = useState(null);
+  const tipRef = useTooltipGuard(hover, () => setHover(null));
   const M = { left: 36, right: 8, top: 22, bottom: 36 };
   const H = 184;
   const plotH = H - M.top - M.bottom;
@@ -101,7 +103,7 @@ export function GeneDots({ gene, groups, row, showDetected = true }) {
         })}
       </svg>
       {hover && (
-        <div style={{ position: "absolute", left: 8, top: 22, pointerEvents: "none", background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, padding: "2px 6px", fontSize: TYPE.tick }}>
+        <div ref={tipRef} style={{ position: "absolute", left: 8, top: 22, pointerEvents: "none", background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, padding: "2px 6px", fontSize: TYPE.tick }}>
           {`${hover.id} · ${hover.group} · ${hover.v.toFixed(2)}`}
         </div>
       )}

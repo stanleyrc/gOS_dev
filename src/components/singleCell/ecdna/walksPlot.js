@@ -10,6 +10,8 @@ import { toGlobal } from "../../../helpers/singleCell/walks";
 import { fmtSpan, laneEmphasis, panDomain, shortLabel, wheelDx, wheelIntent, wheelZoomFactor, zoomDomain } from "../../../helpers/singleCell/walkPlotState";
 import useContainerWidth from "../useContainerWidth";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { viewportShift } from "../../../helpers/singleCell/hoverPopup";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const GAP_X = 50; // same outer margin / inter-domain gap as the heatmap and the genes plot
 const BAR_MAX = 12;
@@ -219,6 +221,11 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, ho
     const tw = el.offsetWidth || TIP_W;
     el.style.left = `${x + tw + 24 > r.width ? Math.max(0, x - tw - 12) : x + 16}px`;
     el.style.top = `${y + 16}px`;
+    // keep the box inside the window, not just inside the card
+    el.style.transform = "";
+    const br = el.getBoundingClientRect();
+    const { dx, dy } = viewportShift(br, window.innerWidth, window.innerHeight);
+    if (dx || dy) el.style.transform = `translate(${Math.round(dx)}px, ${Math.round(dy)}px)`;
   };
   const lastEvent = useRef(null);
   const enterLane = (e, w, lines) => {
@@ -231,14 +238,8 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, ho
     if (tip && lastEvent.current) placeTip(lastEvent.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tip]);
-  const tipOn = !!tip;
-  useEffect(() => {
-    if (!tipOn) return undefined;
-    // the page moving under a still pointer would otherwise leave a stale lane highlighted
-    const clear = () => setTip(null);
-    window.addEventListener("scroll", clear, { capture: true, passive: true });
-    return () => window.removeEventListener("scroll", clear, { capture: true });
-  }, [tipOn]);
+  // Escape / scroll / pointercancel / blur / another tooltip opening clear the lane (the page moving under a still pointer would leave it stale)
+  useTooltipGuard(tip, () => setTip(null));
   const hoverId = tip?.walkId ?? hoverProp;
 
   // genomic axis ticks per panel

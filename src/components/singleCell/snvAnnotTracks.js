@@ -29,6 +29,7 @@ import {
   toggleValue,
   trackDef,
 } from "../../helpers/singleCell/snvAnnot";
+import { useTooltipGuard } from "./useTooltipGuard";
 
 const { Text } = Typography;
 
@@ -127,6 +128,7 @@ export function useSnvTracks(annot) {
 export function AnnotationStrips({ annot, tracks, columnOrder, bins, width, pixelRatio, onTrackClick, labelSide = "left" }) {
   const deviceWidth = Math.floor(width * pixelRatio);
   const [tip, setTip] = useState(null);
+  const tipRef = useTooltipGuard(tip, () => setTip(null));
   const driverBySig = useSelector((s) => s.SingleCell.layout?.snvDriverBySig) !== false && Boolean(annot?.cat?.signature);
   // colour of the driver tick in device column x: the assigned signature of the first driver site in the bin
   const driverColorAt = useCallback(
@@ -182,6 +184,7 @@ export function AnnotationStrips({ annot, tracks, columnOrder, bins, width, pixe
       })}
       {tip && tip.rows.length > 0 && (
         <div
+          ref={tipRef}
           style={{ position: "fixed", left: tip.x + 12, top: tip.y + 14, zIndex: 1100, pointerEvents: "none", background: "var(--sc-raised, #fff)", color: "var(--sc-text, #222)", border: "1px solid var(--sc-border, #ccc)", borderRadius: 4, padding: "4px 8px", fontSize: 11, maxWidth: 360, boxShadow: "0 2px 8px rgba(0,0,0,.18)" }}
         >
           {tip.rows.map(([k, v]) => (

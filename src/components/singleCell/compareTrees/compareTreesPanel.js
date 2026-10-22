@@ -52,6 +52,7 @@ import { SUPPORT_BINS, conflictSummary, labelSupport, supportBin, supportSummary
 import { CnLegend, CnSide, useCnShared } from "./cnCompareHeatmaps";
 import { CMPHEAT_PARAM, cnWidth, figurePad, parseCmpHeat, serializeCmpHeat, showsCn, showsSnv } from "../../../helpers/singleCell/cnCompare";
 import useCellLabels from "../useCellLabels";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text } = Typography;
 const DOT = 9; // width of a painted mutation column
@@ -161,6 +162,7 @@ export default function CompareTreesPanel() {
   const [painted, setPainted] = useState([]); // keys "s:<variant index>" / "e:<event key>"
   const [search, setSearch] = useState("");
   const [hover, setHover] = useState(null); // cell id
+  const tipRef = useTooltipGuard(hover, () => setHover(null));
   const [pick, setPick] = useState(null); // { side, cells: Set }
   const [wrapRef, width] = useContainerWidth(1000);
 
@@ -700,7 +702,7 @@ export default function CompareTreesPanel() {
           ) : null}
           {showsCn(heatMode) && !cnShared.ready && cnShared.message ? <Alert type="info" showIcon style={{ marginTop: 8 }} message={cnShared.message} /> : null}
           {hover && hovCell !== undefined ? (
-            <div style={{ position: "fixed", left: hover.x + 12, top: hover.y + 12, background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, padding: "4px 8px", fontSize: TYPE.tick, pointerEvents: "none", zIndex: 1000, borderRadius: 4 }}>
+            <div ref={tipRef} style={{ position: "fixed", left: hover.x + 12, top: hover.y + 12, background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, padding: "4px 8px", fontSize: TYPE.tick, pointerEvents: "none", zIndex: 1000, borderRadius: 4 }}>
               <div><b>{cellLabels.full(hover.id)}</b>{hovCell?.clone_id != null ? ` (clone ${hovCell.clone_id})` : ""}</div>
               {(hover.lines || []).map(([k, v]) => <div key={k}>{k}: {`${v}`}</div>)}
               {paints.map((p) => {

@@ -12,6 +12,7 @@ import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { formatP } from "../../../helpers/singleCell/tests";
 import { cnContrast, eventContrast } from "../../../helpers/singleCell/driverContrast";
 import { CARRIER_COLOR, COMPARATOR_COLOR } from "./useDriverEvidence";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text } = Typography;
 const STEP = 1e6;
@@ -29,6 +30,7 @@ function CnLines({ contrast, chromoBins, genomeLength, onZoom }) {
   const [ref, width] = useContainerWidth(800);
   const theme = usePlotTheme();
   const [hover, setHover] = useState(null); // index into contrast.positions
+  const tipRef = useTooltipGuard(hover, () => setHover(null));
   const M = { left: 34, right: 8, top: 8, bottom: 22 };
   const H = 150;
   const plotW = Math.max(width - M.left - M.right, 10);
@@ -126,6 +128,7 @@ function CnLines({ contrast, chromoBins, genomeLength, onZoom }) {
       </svg>
       {hover != null && where && (
         <div
+          ref={tipRef}
           style={{
             position: "absolute",
             left: Math.min(Math.max(hx + 10, 0), Math.max(width - 260, 0)),

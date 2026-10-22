@@ -257,7 +257,7 @@ export default function VolcanoPlot({ genes, labels, qCut, lfcCut, selectedGene,
         )}
       </svg>
       {hover && !lasso && (
-        <ChartTooltip x={Math.min(x(hover.x) + 12, width - 230)} y={Math.max(y(hover.y) - 70, 0)}>
+        <ChartTooltip onDismiss={() => setHover(null)} x={Math.min(x(hover.x) + 12, width - 230)} y={Math.max(y(hover.y) - 70, 0)}>
           <div style={{ fontWeight: 600 }}>{hover.gene}</div>
           <div>{`log2 FC ${hover.x.toFixed(2)} (${hover.x > 0 ? labels.A : labels.B} higher)`}</div>
           <div>{`p ${fmtP(hover.p)} · q ${fmtP(hover.q)}`}</div>

@@ -11,11 +11,13 @@ import { patientColor, FONT } from "./charts";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 import { CLADE_MEASURES, MEASURE_AXIS, VARIANT_SETS, associationTable, bestP, fmtP, maxCladeSize, scatterPoints } from "../../../helpers/singleCell/cladeTmbAssoc";
 import { cladeCompareSpecs } from "../../../helpers/singleCell/covariateDe";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text, Paragraph } = Typography;
 
 function CladeTmbScatter({ points, patients, width, xTitle, yTitle, onOpen }) {
   const [tip, setTip] = useState(null);
+  const tipRef = useTooltipGuard(tip, () => setTip(null));
   const H = 300;
   const M = { top: 10, right: 14, bottom: 42, left: 66 };
   if (!points.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="not available (no clades with this covariate at the current filters)" />;
@@ -42,7 +44,7 @@ function CladeTmbScatter({ points, patients, width, xTitle, yTitle, onOpen }) {
         ))}
       </svg>
       {tip && (
-        <div style={{ position: "absolute", left: Math.min(tip.x + 12, width - 230), top: tip.y + 12, background: "rgba(0,0,0,0.85)", color: "#fff", padding: "3px 8px", borderRadius: 3, fontSize: 12, pointerEvents: "none", zIndex: 5, lineHeight: 1.4 }}>
+        <div ref={tipRef} style={{ position: "absolute", left: Math.min(tip.x + 12, width - 230), top: tip.y + 12, background: "rgba(0,0,0,0.85)", color: "#fff", padding: "3px 8px", borderRadius: 3, fontSize: 12, pointerEvents: "none", zIndex: 5, lineHeight: 1.4 }}>
           <div><b>{tip.p.patient}</b> {tip.p.kind === "singleton" ? `single-cell branch ${tip.p.id}` : tip.p.id.replace(/^.*_/, "")}</div>
           <div>{tip.p.clone || "no clone"} · {tip.p.n_cells} cell{tip.p.n_cells === 1 ? "" : "s"} · {tip.p.snv} SNVs · {tip.p.terminal ? "terminal" : "nested (has sub-clades)"}</div>
           <div>covariate {d3.format(".3~g")(tip.p.x)} · TMB {d3.format(".3~g")(tip.p.y)}</div>

@@ -30,6 +30,7 @@ import {
   selectSharedColumns,
   serializeCdt,
 } from "../../../helpers/singleCell/cohortDriverTrees";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text } = Typography;
 const TREE_W = 84;
@@ -100,6 +101,7 @@ function BlockHeat({ aligned, nRows, width, height, pixelRatio, palette, onHover
 
 function PatientBlock({ pendingText, summary, info, aligned, state, colPx, expanded, onExpand, onOpen, onColumn, onEvent, openKey, cloneColors, palette, pixelRatio, nShared }) {
   const [hover, setHover] = useState(null);
+  const tipRef = useTooltipGuard(hover, () => setHover(null));
   const height = expanded ? EXPANDED_H : CDT_HEIGHTS[state.height];
   const width = Math.max(1, aligned.length * colPx);
   const nRows = info.order.length;
@@ -153,7 +155,7 @@ function PatientBlock({ pendingText, summary, info, aligned, state, colPx, expan
           }}
         />
         {tip && (
-          <div style={{ position: "absolute", left: TREE_W + Math.min(hover.x + 12, Math.max(0, width - 200)), top: Math.min(hover.y + 12, height - 60), zIndex: 5, pointerEvents: "none", background: "rgba(30,30,30,0.92)", color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 12, whiteSpace: "nowrap" }}>
+          <div ref={tipRef} style={{ position: "absolute", left: TREE_W + Math.min(hover.x + 12, Math.max(0, width - 200)), top: Math.min(hover.y + 12, height - 60), zIndex: 5, pointerEvents: "none", background: "rgba(30,30,30,0.92)", color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 12, whiteSpace: "nowrap" }}>
             <div><b>{summary.caseReportId}</b>{` · ${cellId}`}</div>
             <div>{`clone ${info.leafClones[hover.row] ?? "unassigned"}`}</div>
             {tip.entry?.rescued && <div>{`${tip.entry.label}: ${tip.entry.rescue.covered} of ${tip.entry.rescue.nTumour} tumour cells covered (${Math.round(100 * (tip.entry.rescue.coverage || 0))}%)`}</div>}

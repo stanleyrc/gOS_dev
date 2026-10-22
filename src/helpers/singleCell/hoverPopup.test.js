@@ -1,4 +1,4 @@
-import { createPopupController } from "./hoverPopup";
+import { viewportShift, createPopupController } from "./hoverPopup";
 
 const make = (graceMs = 300) => {
   let t = 0;
@@ -84,4 +84,20 @@ test("re-hovering the same region keeps one popup and cancels a pending close", 
   fire();
   expect(c.get().key).toBe("a");
   expect(log).toEqual(["a"]);
+});
+
+describe("viewportShift", () => {
+  const r = (left, top, w = 100, h = 40) => ({ left, top, right: left + w, bottom: top + h });
+  test("inside the window needs no shift", () => {
+    expect(viewportShift(r(100, 100), 1000, 800)).toEqual({ dx: 0, dy: 0 });
+  });
+  test("overflowing the right and bottom edges shifts back in", () => {
+    expect(viewportShift(r(950, 780), 1000, 800)).toEqual({ dx: -58, dy: -28 });
+  });
+  test("overflowing the left and top edges shifts in", () => {
+    expect(viewportShift(r(-30, -5), 1000, 800)).toEqual({ dx: 38, dy: 13 });
+  });
+  test("a box larger than the window is pinned to the margin", () => {
+    expect(viewportShift(r(50, 10, 2000, 40), 1000, 800)).toEqual({ dx: -42, dy: 0 });
+  });
 });

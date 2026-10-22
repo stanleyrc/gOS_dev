@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { ReactReduxContext } from "react-redux";
 import { INK } from "../../helpers/singleCell/plotTheme";
 import { figureStyle, formatTick, linearTicks, styleFontSize, styleFontWeight } from "../../helpers/singleCell/figureStyle";
+import { useTooltipGuard } from "./useTooltipGuard";
 
 // Axis and text primitives for the single-cell SVG charts, following the chart
 // style (helpers/singleCell/figureStyle) chosen in the layout. Kept free of d3
@@ -162,9 +163,17 @@ export function useChartText() {
 }
 
 /** Hover card over an SVG chart in the shared tooltip look (.sc-tooltip), at container coordinates. */
-export function ChartTooltip({ x, y, children }) {
+export function ChartTooltip({ x, y, children, onDismiss }) {
+  const [gone, setGone] = useState(null); // "x,y" at which Escape / scroll hid it; moving the pointer shows it again
+  const key = `${x},${y}`;
+  const tipRef = useTooltipGuard(gone !== key, () => {
+    setGone(key);
+    if (onDismiss) onDismiss();
+  });
+  if (gone === key) return null;
   return (
     <div
+      ref={tipRef}
       className="sc-tooltip"
       style={{
         position: "absolute",

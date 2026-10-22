@@ -58,6 +58,7 @@ import { GeneQuickLookContext } from "./cohort/geneQuickLook";
 import { eventLabelsForGene } from "../../helpers/singleCell/geneQuickLook";
 import { Provenance } from "./hintLine";
 import useCellLabels from "./useCellLabels";
+import { useTooltipGuard } from "./useTooltipGuard";
 
 // view panels load on demand (own webpack chunks); the overview stays in the main chunk
 const TmbPanel = React.lazy(() => import("./cohort/tmbPanel"));
@@ -164,6 +165,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
   const [rows, setRows] = useState({});
   const [progress, setProgress] = useState(0);
   const [hover, setHover] = useState(null);
+  const hoverTipRef = useTooltipGuard(hover, () => setHover(null));
   const [rowMode, setRowMode] = useState("patients");
 
   const summaries = useMemo(() => cohortSummaries(datafiles), [datafiles]);
@@ -912,7 +914,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
                   onLeave={() => setHover(null)}
                 />
                 {hover && (
-                  <div className="sc-tooltip" style={{ left: Math.max(0, hover.left), top: hover.top }}>
+                  <div ref={hoverTipRef} className="sc-tooltip" style={{ left: Math.max(0, hover.left), top: hover.top }}>
                     {hover.lines.map(([k, v]) => (
                       <div key={k}>
                         <span className="sc-tooltip-key">{k}</span> {`${v}`}
