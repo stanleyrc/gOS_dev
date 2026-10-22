@@ -156,3 +156,56 @@ export function emptyMessage(source, nShown, nTotal) {
   if (!nShown) return `none at this confidence level (${nTotal} hidden: use "Show less confident findings")`;
   return null;
 }
+
+// ---- fusion isoforms (rna/fusion_isoforms.json) ----
+export const ISOFORMS_FORMAT = "fusion_isoforms_v1";
+
+const truthy = (v) => v === true || v === 1 || /^(true|t|yes|1)$/i.test(`${v ?? ""}`);
+
+/** Normalised fusion_isoforms.json: { patient, pairs, byFusionId }. Throws on a different format. */
+export function normalizeFusionIsoforms(json) {
+  if (!json || !Array.isArray(json.pairs)) throw new Error("fusion_isoforms.json: no pairs array");
+  if (json.format && json.format !== ISOFORMS_FORMAT) throw new Error(`fusion_isoforms.json: unknown format ${json.format}`);
+  const pairs = json.pairs.map((p) => ({
+    ...p,
+    fusion_ids: list(p.fusion_ids).map((i) => `${i}`),
+    n_isoforms: num(p.n_isoforms) ?? list(p.isoforms).length,
+    n_isoforms_2cells: num(p.n_isoforms_2cells),
+    total_cells: num(p.total_cells),
+    any_inframe: truthy(p.any_inframe),
+    readthrough: truthy(p.readthrough),
+    isoforms: list(p.isoforms)
+      .map((i) => ({ ...i, n_cells: num(i.n_cells) ?? 0, n_cells_dnalinked: num(i.n_cells_dnalinked), total_reads: num(i.total_reads), reading_frame: i.reading_frame || null }))
+      .sort((a, b) => b.n_cells - a.n_cells),
+  }));
+  const byFusionId = new Map();
+  pairs.forEach((p) => p.fusion_ids.forEach((id) => !byFusionId.has(id) && byFusionId.set(id, p)));
+  return { patient: json.patient || null, pairs, byFusionId };
+}
+
+/** The isoform pair of a fusion row (its id, or any grouped variant's id), or null. */
+export function isoformsOfFusion(iso, fusion) {
+  if (!iso?.byFusionId || !fusion) return null;
+  const ids = [fusion.id, ...list(fusion.variants).map((v) => v?.id)].filter((i) => i != null);
+  for (const id of ids) {
+    const p = iso.byFusionId.get(`${id}`);
+    if (p) return p;
+  }
+  return null;
+}
+
+/** Badge texts of a pair: [{ text, color, tip }]; "in-frame isoform", "N isoforms" (>= 2 supported in 2+ cells), "read-through (adjacent genes)". */
+export function isoformBadges(pair) {
+  if (!pair) return [];
+  const out = [];
+  if (pair.any_inframe) out.push({ key: "inframe", text: "in-frame isoform", color: "green", tip: "At least one isoform of this gene pair keeps the reading frame across the fusion junction." });
+  const n = pair.n_isoforms_2cells ?? pair.n_isoforms;
+  if (n >= 2) out.push({ key: "n", text: `${n} isoforms`, color: "geekblue", tip: `${n} distinct exon-to-exon junctions supported by at least 2 cells (${pair.n_isoforms} in total).` });
+  if (pair.readthrough) out.push({ key: "rt", text: "read-through (adjacent genes)", color: "orange", tip: "The two genes are adjacent: transcription can read through from one into the next without a DNA rearrangement." });
+  return out;
+}
+
+/** Text of the nearby genomic SVs of a breakpoint transcript (field nearby_genomic_sv, list of objects or strings). */
+export function nearbySvText(t) {
+  return list(t?.nearby_genomic_sv).map((s) => (typeof s === "string" ? s : [s.cls, s.label || (s.chrA != null ? `${s.chrA}:${s.posA}-${s.chrB}:${s.posB}` : s.jid), s.n_cells != null ? `${s.n_cells} cells` : null].filter(Boolean).join(" ")));
+}

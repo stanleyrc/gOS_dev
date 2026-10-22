@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-import { Alert, Button, Card, Empty, Input, InputNumber, Select, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Empty, Input, InputNumber, Popover, Select, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import { NodeIndexOutlined } from "@ant-design/icons";
 import HintLine from "../hintLine";
 import useTreeView from "../useTreeView";
@@ -13,7 +13,7 @@ import { compareFusions, filterFusions, fusionStrip, fusionTier, groupFusions, i
 import FusionSupportCell from "./fusionSupportCell";
 import { compareSupport, fusionPairKeys, fusionSupport, indexDnaEvents } from "../../../helpers/singleCell/fusionSupport";
 import { NO_READS_COLOR, NO_RNA_COLOR, readsColor } from "../../../helpers/singleCell/rnaColors";
-import { dnaSupportOfFusion } from "../../../helpers/singleCell/breakpointRna";
+import { dnaSupportOfFusion, isoformBadges, isoformsOfFusion } from "../../../helpers/singleCell/breakpointRna";
 import { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
 import { passesConfidence } from "../../../helpers/singleCell/findingConfidence";
 import { tierColor } from "../../../helpers/utility";
@@ -24,6 +24,30 @@ const STRIP_H = 14;
 const CONFIDENCES = ["low", "medium", "high"];
 const confColor = { high: "green", medium: "gold", low: "default" };
 const TIER_FILTERS = [1, 2, 3];
+
+/** Isoforms of a gene pair (rna/fusion_isoforms.json): exon junction, frame, cells, reads. */
+function IsoformList({ pair }) {
+  return (
+    <div data-isoform-list>
+      <Text strong>{`${pair.pair || "isoforms"}: ${pair.n_isoforms} isoform${pair.n_isoforms === 1 ? "" : "s"}${pair.total_cells != null ? `, ${pair.total_cells} cells` : ""}`}</Text>
+      {pair.readthrough && <Tag color="orange" style={{ marginLeft: 6 }}>read-through (adjacent genes)</Tag>}
+      <Table
+        size="small"
+        pagination={false}
+        rowKey={(i) => `${i.label}|${i.pos1}|${i.pos2}`}
+        dataSource={pair.isoforms}
+        columns={[
+          { title: "Isoform", dataIndex: "label" },
+          { title: "Frame", dataIndex: "reading_frame", render: (v) => v || "n.a." },
+          { title: "Cells", dataIndex: "n_cells", align: "right" },
+          { title: "Cells with DNA", dataIndex: "n_cells_dnalinked", align: "right", render: (v) => v ?? "n.a." },
+          { title: "Reads", dataIndex: "total_reads", align: "right", render: (v) => v ?? "n.a." },
+          { title: "Retained domains", dataIndex: "retained_domains", render: (v) => v || "n.a." },
+        ]}
+      />
+    </div>
+  );
+}
 
 /** Carrier cells of one fusion on the tree order (canvas, one column per cell). */
 function FusionStrip({ fusion, order, rnaOfCell, width }) {
@@ -81,6 +105,7 @@ export default function RnaFusionsCard({ summary }) {
     return c;
   }, [shown]);
   const dnaSupport = useSelector((s) => (s.SingleCell.rnaDnaSupport?.status === "ok" ? s.SingleCell.rnaDnaSupport.data : null));
+  const isoforms = useSelector((s) => (s.SingleCell.rnaIsoforms?.status === "ok" ? s.SingleCell.rnaIsoforms.data : null));
   const [confLevel] = useFindingConfidence();
   const dnaIndex = useMemo(() => indexDnaEvents(events), [events]);
   const supportCache = useMemo(() => new WeakMap(), [dnaIndex]);
@@ -153,6 +178,22 @@ export default function RnaFusionsCard({ summary }) {
               <Tag color="volcano">{t(`${k}.cancer-gene`)}</Tag>
             </Tooltip>
           )}
+          {(() => {
+            const pair = isoformsOfFusion(isoforms, f);
+            const badges = isoformBadges(pair);
+            if (!badges.length) return null;
+            return (
+              <Popover trigger="click" placement="bottomLeft" overlayStyle={{ maxWidth: 900 }} content={<IsoformList pair={pair} />}>
+                <span data-isoform-badges style={{ cursor: "pointer" }}>
+                  {badges.map((b) => (
+                    <Tooltip key={b.key} title={`${b.tip} Click for the isoform list.`}>
+                      <Tag color={b.color} data-isoform-badge>{b.text}</Tag>
+                    </Tooltip>
+                  ))}
+                </span>
+              </Popover>
+            );
+          })()}
           {(() => {
             const sup = dnaSupportOfFusion(dnaSupport, f);
             if (!sup || !passesConfidence(sup, confLevel)) return null;

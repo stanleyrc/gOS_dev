@@ -114,6 +114,7 @@ const initState = {
   signatureVersions: emptySource, // signature_versions.json: the fit under several SNV-set definitions, flows, diagnostics
   rnaFusions: emptySource, // rna/fusions.json, normalised: { patient, nCellsRna, fusions }
   rnaBreakpoint: emptySource, // rna/breakpoint_transcripts.json, normalised: { patient, rule, nSv, transcripts }
+  rnaIsoforms: emptySource, // rna/fusion_isoforms.json, normalised: { pairs, byFusionId }
   rnaDnaSupport: emptySource, // rna/fusions_dna_support.json, normalised: { entries, byFusionId }
   rnaSplicing: emptySource, // rna/splicing.json, normalised: { variants, clusters, cellMap }
   walks: emptySource, // walks.json: { cells, walks: [{ id, label, circular, nodes, junctions, cells: { id: cn } }] }
@@ -216,6 +217,7 @@ export default function appReducer(state = initState, action) {
         rnaSplicing: action.rnaSplicing || emptySource,
         rnaBreakpoint: action.rnaBreakpoint || emptySource,
         rnaDnaSupport: action.rnaDnaSupport || emptySource,
+        rnaIsoforms: action.rnaIsoforms || emptySource,
         altTrees: action.altTrees || emptySource,
         precompute: action.precompute || {},
         cellFiles: action.cellFiles,
