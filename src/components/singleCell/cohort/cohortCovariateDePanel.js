@@ -12,6 +12,7 @@ import ScErrorBoundary from "../errorBoundary";
 import HintLine from "../hintLine";
 import { formatGenesParam, nF1AtLeast, parseGenesParam, passesCovariateFilters, reconcileSelection, testCladeF1, testGenePool, toggleGene, topGenes } from "../../../helpers/singleCell/covariateDeMulti";
 import { FAMILIES, FAMILY_LABELS, describeTest, sensitivityOnlyTerms, sensitivityProblems, sharedPrograms, formatQ, isRobust, looselyAdjusted, perPatientLfc, testRows, volcanoRows } from "../../../helpers/singleCell/covariateDe";
+import { GeneFunctionLine, GeneInfo } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const Q_CUT = 0.05;
@@ -157,11 +158,16 @@ export default function CohortCovariateDePanel({ dataset, focusTest = null, focu
     { title: "Top lower in A", dataIndex: "top_down", render: (v) => (v || []).slice(0, 4).join(", ") },
   ];
   const geneColumns = [
-    { title: "Gene", dataIndex: "gene", width: 120, render: (g) => (
-      <Space size={2} style={{ whiteSpace: "nowrap" }}>
-        <Text strong style={{ cursor: "pointer", color: selectedGenes.includes(g) ? "#fa541c" : undefined }} onClick={() => setSelectedGenes((cur) => toggleGene(cur, g))}>{g}</Text>
-        <GeneQuickLook gene={g} icon />
-      </Space>
+    { title: "Gene", dataIndex: "gene", width: 240, render: (g) => (
+      <div>
+        <Space size={2} style={{ whiteSpace: "nowrap" }}>
+          <GeneInfo gene={g} stopClick={false}>
+            <Text strong style={{ cursor: "pointer", color: selectedGenes.includes(g) ? "#fa541c" : undefined }} onClick={() => setSelectedGenes((cur) => toggleGene(cur, g))}>{g}</Text>
+          </GeneInfo>
+          <GeneQuickLook gene={g} icon />
+        </Space>
+        <GeneFunctionLine gene={g} n={90} />
+      </div>
     ) },
     { title: "log2FC", dataIndex: "avg_log2FC", width: 76, align: "right", render: (v) => v.toFixed(2) },
     { title: "z", dataIndex: "z", width: 64, align: "right", render: (v) => v.toFixed(1) },

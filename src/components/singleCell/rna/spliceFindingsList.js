@@ -7,6 +7,7 @@ import CellIgvPanel from "../cellIgvPanel";
 import { KIND_COLOR, SEVERITY_COLOR, findingIgvView, findingSliceCount, isNotable } from "../../../helpers/singleCell/rnaHeadlineFindings";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { ConfidenceBadge } from "../confidenceToggle";
+import { GeneFunctionLine, GeneInfo } from "../geneInfoPopover";
 
 const { Text, Link } = Typography;
 const k = "components.single-cell.splicing";
@@ -83,6 +84,14 @@ export default function SpliceFindingsList({ findings = [], onPick, spliceReads 
                   {t(`${k}.findings-igv`)}
                 </Text>
               </Tooltip>
+            )}
+            {f.gene && (
+              <div style={{ paddingInlineStart: 8, lineHeight: 1.3 }}>
+                <GeneInfo gene={f.gene}>
+                  <Text style={{ fontSize: TYPE.tick }} strong>{f.gene}</Text>
+                </GeneInfo>
+                <GeneFunctionLine gene={f.gene} n={160} style={{ display: "inline", marginInlineStart: 6 }} />
+              </div>
             )}
           </div>
         );
