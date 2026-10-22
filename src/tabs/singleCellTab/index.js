@@ -143,6 +143,10 @@ export default function SingleCellTab() {
               <Text>{t("components.single-cell.toggles.keep-genes")}</Text>
             </Space>
             <Space size={6}>
+              <Switch size="small" checked={Boolean(layout.keepToolbar)} onChange={toggle("keepToolbar")} />
+              <Text title="Keep the phylogeny and heatmap controls header visible while scrolling (off: it scrolls away so it never covers the heatmap)">Keep heatmap controls visible</Text>
+            </Space>
+            <Space size={6}>
               <Switch size="small" checked={Boolean(layout.showTreeBars)} onChange={toggle("showTreeBars")} />
               <Text>{t("components.single-cell.toggles.tree-bars")}</Text>
             </Space>
