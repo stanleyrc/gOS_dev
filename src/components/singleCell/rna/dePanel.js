@@ -40,7 +40,7 @@ import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { RefLine, XAxis, useChartText } from "../cohort/charts";
 import { Provenance } from "../hintLine";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
-import { GeneFunctionLine, GeneInfo } from "../geneInfoPopover";
+import { GeneChip, GeneFunctionLine, GeneInfo } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3));
@@ -290,7 +290,7 @@ function MultiGroupDe({ summary, matrix, rowsFor, minPct, significant, onView, v
             .filter((g) => g.avg_log2FC > 0 && significant(g))
             .slice(0, 6)
             .map((g) => (
-              <Tag key={g.gene} color="red">{g.gene}</Tag>
+              <GeneChip key={g.gene} gene={g.gene}><Tag color="red">{g.gene}</Tag></GeneChip>
             ))}
         </Space>
       ),
@@ -605,9 +605,11 @@ export default function DePanel({ summary, matrix, rowsFor, onGene, selectedGene
       render: (genes) => (
         <Space size={[2, 2]} wrap>
           {genes.slice(0, 12).map((g) => (
-            <Tag key={g} style={{ cursor: "pointer" }} onClick={() => onGene(g)}>
-              {g}
-            </Tag>
+            <GeneChip key={g} gene={g}>
+              <Tag style={{ cursor: "pointer" }} onClick={() => onGene(g)}>
+                {g}
+              </Tag>
+            </GeneChip>
           ))}
           {genes.length > 12 && <Text type="secondary">+{genes.length - 12}</Text>}
         </Space>

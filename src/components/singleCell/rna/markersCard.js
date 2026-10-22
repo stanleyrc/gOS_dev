@@ -17,6 +17,7 @@ import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { Provenance } from "../hintLine";
 import ColorTag from "../colorTag";
 import { fieldLabel } from "../../../helpers/singleCell/fieldLabels";
+import { GeneInfo } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const fmtP = (p) => (p == null ? "" : p < 1e-3 ? Number(p).toExponential(1) : Number(p).toFixed(3));
@@ -147,7 +148,7 @@ export default function MarkersCard({ summary, matrix }) {
   if (!summary) return null;
   const genes = markers ? [...new Set(groups.flatMap((g) => (markers.byGroup[g.key] || []).slice(0, topN).map((m) => m.gene)))] : [];
   const columns = [
-    { title: t("components.single-cell.results.gene"), dataIndex: "gene", render: (g) => <Button type="link" size="small" style={{ padding: 0 }} onClick={() => dispatch(scaActions.fetchExpression(g))}>{g}</Button> },
+    { title: t("components.single-cell.results.gene"), dataIndex: "gene", render: (g) => <GeneInfo gene={g} stopClick={false}><Button type="link" size="small" style={{ padding: 0 }} onClick={() => dispatch(scaActions.fetchExpression(g))}>{g}</Button></GeneInfo> },
     { title: "log2FC", dataIndex: "log2FC", render: (v) => (Number.isFinite(v) ? v.toFixed(2) : "–") },
     { title: "% in", dataIndex: "pct1", render: (v) => (Number.isFinite(v) ? `${Math.round(100 * v)}%` : "–") },
     { title: "% out", dataIndex: "pct2", render: (v) => (Number.isFinite(v) ? `${Math.round(100 * v)}%` : "–") },

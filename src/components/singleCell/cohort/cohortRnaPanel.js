@@ -30,6 +30,7 @@ import { mergeCovariates } from "../../../helpers/singleCell/rnaCovariates";
 
 import RnaLoadStatus from "./rnaLoadStatus";
 import { loadProgress, notAvailable } from "../../../helpers/singleCell/loadingState";
+import { GeneChip } from "../geneInfoPopover";
 const { Text } = Typography;
 const rnaCache = new Map();
 
@@ -326,9 +327,11 @@ export default function CohortRnaPanel({ summaries, datasets, cnRows = {}, files
                     <Text strong>{lv.level}</Text>
                     <div style={{ marginTop: 4 }}>
                       {lv.genes.slice(0, 20).map((g) => (
-                        <NeutralTag key={g.gene} strong={g.n >= 2} style={{ marginBottom: 2, cursor: "pointer" }} onClick={() => runGene(g.gene)} title={g.patients.join(", ")}>
-                          {`${g.gene} ${g.n}/${loaded.length}${rnaLoad.partial ? "*" : ""}`}
-                        </NeutralTag>
+                        <GeneChip key={g.gene} gene={g.gene}>
+                          <NeutralTag strong={g.n >= 2} style={{ marginBottom: 2, cursor: "pointer" }} onClick={() => runGene(g.gene)} title={`Patients: ${g.patients.join(", ")}`}>
+                            {`${g.gene} ${g.n}/${loaded.length}${rnaLoad.partial ? "*" : ""}`}
+                          </NeutralTag>
+                        </GeneChip>
                       ))}
                     </div>
                   </Col>
