@@ -7,6 +7,7 @@ import RnaFusionModal from "./rnaFusionModal";
 import { FindingKindTag } from "./rnaFindingsList";
 import { rnaHeadlineItems } from "../../../helpers/singleCell/rnaHeadlineFindings";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
+import { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
 
 const { Text, Link } = Typography;
 const k = "components.single-cell.splicing";
@@ -15,6 +16,8 @@ const k = "components.single-cell.splicing";
 export function usePatientRnaHeadlines() {
   const splicing = useSelector((s) => s.SingleCell.rnaSplicing);
   const fusions = useSelector((s) => s.SingleCell.rnaFusions);
+  // splicing findings of the confidence tiers shown (spliceconf; default consistent only)
+  const [level] = useFindingConfidence();
   return useMemo(
     () =>
       rnaHeadlineItems({
@@ -22,8 +25,9 @@ export function usePatientRnaHeadlines() {
         fusions: fusions?.status === "ok" ? fusions.data.fusions || [] : [],
         nCellsRna: fusions?.status === "ok" ? fusions.data.nCellsRna : null,
         max: Infinity,
+        level,
       }),
-    [splicing, fusions]
+    [splicing, fusions, level]
   );
 }
 
@@ -60,6 +64,7 @@ export default function RnaFindingsStrip({ max = 4, onPickSplicing, onShowAll })
             {items.slice(0, max).map((h) => (
               <div key={h.id} style={{ fontSize: TYPE.label, lineHeight: 1.6 }}>
                 <FindingKindTag item={h} />
+                {h.kind !== "fusion" && <ConfidenceBadge item={h.finding} />}
                 <Link onClick={() => pick(h)} style={{ fontSize: TYPE.label }}>
                   {h.text}
                 </Link>

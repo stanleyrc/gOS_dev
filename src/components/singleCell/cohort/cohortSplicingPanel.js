@@ -24,6 +24,8 @@ import CohortSpliceCells from "./cohortSpliceCells";
 import useCohortSpliceData from "./cohortSpliceData";
 import { bySummary, clusterCellSummary, focusJunctions, pooledCounts } from "../../../helpers/singleCell/spliceCells";
 import { describeEvent, geneContext, pinnedEvents } from "../../../helpers/singleCell/spliceContext";
+import ConfidenceToggle, { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
+import { CONFIDENCE_TIERS, confidenceCounts, hasConfidence, passesConfidence } from "../../../helpers/singleCell/findingConfidence";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -126,8 +128,12 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
     };
   }, [dataset]);
   const data = file?.status === "ok" ? file.data : null;
+  // confidence tiers of the cell-level re-test (gos_sc_splice_confidence.py): default consistent only, URL spliceconf
+  const [level, setLevel] = useFindingConfidence();
+  const tiered = useMemo(() => Boolean(data) && (hasConfidence(data.clusters) || hasConfidence(data.findings)), [data]);
+  const clusterCounts = useMemo(() => (tiered ? confidenceCounts(data.clusters) : null), [data, tiered]);
   const allFindings = useMemo(() => normalizeSpliceFindings(data?.findings), [data]);
-  const findings = useMemo(() => allFindings.filter((f) => passesGeneFilter(f, geneFilter)), [allFindings, geneFilter]);
+  const findings = useMemo(() => allFindings.filter((f) => passesConfidence(f, level) && passesGeneFilter(f, geneFilter)), [allFindings, geneFilter, level]);
   // IGV slices of a finding: its patient's rna/splice_reads/<cell>.bam (written for every finding cell)
   const readsOf = (f) => Object.fromEntries(f.cells.map((id) => [id, `rna/splice_reads/${id}.bam`]));
   const scrollToDetail = () => setTimeout(() => detailRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" }), 120);
@@ -143,7 +149,7 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
     setQuery("");
     setQueryText("");
   };
-  const allRowsRaw = useMemo(() => (data ? cohortClusterRows(data) : []), [data]);
+  const allRowsRaw = useMemo(() => (data ? cohortClusterRows(data).filter((r) => passesConfidence(r.cluster, level)) : []), [data, level]);
   const modelChroms = useMemo(() => [...new Set((data?.clusters || []).map((c) => `${c.chromosome}`.replace(/^chr/, "")))], [data]);
   const modelGenes = useMemo(() => [...new Set((data?.clusters || []).map((c) => c.gene).filter(Boolean))], [data]);
   const exonModel = useSpliceExons(dataset, modelChroms, modelGenes);
@@ -242,6 +248,16 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
     <Card size="small" title={title}>
       <div ref={ref}>
         <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          {tiered && (
+            <div>
+              <ConfidenceToggle level={level} onChange={(v) => { setLevel(v); setPage(1); }} counts={clusterCounts} />
+              <div>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Tiers from the cell-level re-test (cells as the unit, library batch accounted for, within-patient contrasts). Clusters and findings below follow the toggle; hover a tier for its reason.
+                </Text>
+              </div>
+            </div>
+          )}
           {findings.length > 0 && <SpliceFindingsList findings={findings} onPick={pickFinding} spliceReads={readsOf} showPatient maxNotable={12} />}
           {variantRows.length > 0 && (
             <div>
@@ -330,7 +346,34 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
                   render: (_, r) => (Number.isFinite(r.rank) ? r.rank : "–"),
                   sorter: (a, b) => (a.rank === b.rank ? 0 : a.rank < b.rank ? -1 : 1),
                 },
+                ...(tiered
+                  ? [
+                      {
+                        title: <span title="Confidence tier of the cell-level re-test (hover a tier for its reason)">Confidence</span>,
+                        key: "confidence",
+                        render: (_, r) => <ConfidenceBadge item={r.cluster} />,
+                        sorter: (a, b) => CONFIDENCE_TIERS.indexOf(a.cluster.confidence) - CONFIDENCE_TIERS.indexOf(b.cluster.confidence),
+                      },
+                    ]
+                  : []),
                 { title: t(`${k}.col-gene`), dataIndex: "gene", sorter: (a, b) => a.gene.localeCompare(b.gene) },
+                ...(tiered
+                  ? [
+                      {
+                        title: <span title="Consequence of the event junction on the canonical transcript (re-test table); first intron = alternative promoter / first exon">Consequence</span>,
+                        key: "consequence",
+                        render: (_, r) => {
+                          const d = r.cluster.confidence_detail || {};
+                          return (
+                            <span>
+                              {d.consequence || <Text type="secondary">–</Text>}
+                              {d.first_intron && <Text type="warning" style={{ fontSize: 11, marginInlineStart: 4 }}>first intron (alt. promoter)</Text>}
+                            </span>
+                          );
+                        },
+                      },
+                    ]
+                  : []),
                 {
                   title: <span title={t(`${k}.ev-col-exons-help`)}>{t(`${k}.ev-col-exons`)}</span>,
                   key: "exons",

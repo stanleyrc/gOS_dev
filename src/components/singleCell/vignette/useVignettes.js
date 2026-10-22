@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
-import { normalizeVignettes } from "../../../helpers/singleCell/vignettes";
+import { normalizeVignettes, vignettesAtConfidence } from "../../../helpers/singleCell/vignettes";
+import { useFindingConfidence } from "../confidenceToggle";
 
 // <dataPath>_cohort/vignettes.json, fetched once per dataset.
 const cache = new Map();
@@ -15,9 +16,10 @@ export function loadVignettes(dataset) {
   return cache.get(key);
 }
 
-/** { status: "loading" | "ok" | "none", vignettes } */
+/** { status: "loading" | "ok" | "none", vignettes }; splice items follow the splicing confidence toggle (spliceconf). */
 export default function useVignettes(dataset) {
   const [state, setState] = useState({ status: "loading", vignettes: null });
+  const [level] = useFindingConfidence();
   useEffect(() => {
     if (!dataset) {
       setState({ status: "none", vignettes: null });
@@ -31,5 +33,5 @@ export default function useVignettes(dataset) {
       active = false;
     };
   }, [dataset]);
-  return state;
+  return useMemo(() => (state.vignettes ? { ...state, vignettes: vignettesAtConfidence(state.vignettes, level) } : state), [state, level]);
 }
