@@ -113,6 +113,8 @@ const initState = {
   signaturesJoint: emptySource, // signatures_joint.json: patient signature set, bootstrap CIs, contrasts
   signatureVersions: emptySource, // signature_versions.json: the fit under several SNV-set definitions, flows, diagnostics
   rnaFusions: emptySource, // rna/fusions.json, normalised: { patient, nCellsRna, fusions }
+  rnaBreakpoint: emptySource, // rna/breakpoint_transcripts.json, normalised: { patient, rule, nSv, transcripts }
+  rnaDnaSupport: emptySource, // rna/fusions_dna_support.json, normalised: { entries, byFusionId }
   rnaSplicing: emptySource, // rna/splicing.json, normalised: { variants, clusters, cellMap }
   walks: emptySource, // walks.json: { cells, walks: [{ id, label, circular, nodes, junctions, cells: { id: cn } }] }
   altTrees: emptySource, // trees/index.json: [{ name, label, source_path, n_tips, n_matched }] (the files are fetched by the Compare Trees tab)
@@ -212,6 +214,8 @@ export default function appReducer(state = initState, action) {
         walks: action.walks || emptySource,
         rnaFusions: action.rnaFusions || emptySource,
         rnaSplicing: action.rnaSplicing || emptySource,
+        rnaBreakpoint: action.rnaBreakpoint || emptySource,
+        rnaDnaSupport: action.rnaDnaSupport || emptySource,
         altTrees: action.altTrees || emptySource,
         precompute: action.precompute || {},
         cellFiles: action.cellFiles,
