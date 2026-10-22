@@ -6,7 +6,7 @@ import { resolveChromosome } from "../../../helpers/singleCell/matrix";
 import Violins from "../violins";
 import { useTranslation } from "react-i18next";
 import { Alert, Card, Col, Empty, Input, Row, Segmented, Select, Space, Switch, Table, Tag, Typography } from "antd";
-import { BranchesOutlined } from "@ant-design/icons";
+import { BranchesOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import HintLine from "../hintLine";
 import useTreeView from "../useTreeView";
 import useContainerWidth from "../useContainerWidth";
@@ -36,6 +36,7 @@ import SpliceFindingsList from "./spliceFindingsList";
 import SpliceEventsTable from "./spliceEventsTable";
 import ConfidenceToggle, { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
 import { confidenceCounts, filterByConfidence, hasConfidence } from "../../../helpers/singleCell/findingConfidence";
+import { GeneFunctionLine, GeneInfo } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -197,7 +198,7 @@ function KnownVariants({ variants, rows, nTree, groupOf, width, cloneStrip, cell
         onRow={(r) => ({ onClick: () => setPicked(r.id), style: { cursor: "pointer" } })}
         columns={[
           { title: t(`${k}.col-variant`), dataIndex: "id", render: (v, r) => (r.nAlt > 0 ? <Text strong>{v}</Text> : v) },
-          { title: t(`${k}.col-gene`), dataIndex: "gene" },
+          { title: t(`${k}.col-gene`), dataIndex: "gene", render: (g) => <GeneInfo gene={g} /> },
           { title: "", dataIndex: "description" },
           { title: t(`${k}.col-alt-cells`), key: "cells", align: "right", render: (_, r) => `${r.nAlt} / ${r.nCells}` },
           { title: t(`${k}.col-alt`), dataIndex: "alt", align: "right" },
@@ -491,8 +492,9 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
             title: t(`${k}.col-gene`),
             dataIndex: "gene",
             render: (g, r) => (
+              <div>
               <Space size={4}>
-                <Text strong>{g || "?"}</Text>
+                {g ? <GeneInfo gene={g}><Text strong>{g}</Text></GeneInfo> : <Text strong>?</Text>}
                 <ConfidenceBadge item={r.cluster} />
                 {(r.cluster.selected_by || (r.cluster.cohort ? ["cohort"] : []))
                   .filter((x) => x !== "dispersion")
@@ -502,6 +504,8 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
                     </Tag>
                   ))}
               </Space>
+              <GeneFunctionLine gene={g} n={100} style={{ maxWidth: 360, whiteSpace: "normal" }} />
+              </div>
             ),
           },
           { title: t(`${k}.col-locus`), key: "locus", render: (_, r) => `${chrLabel(r.cluster.chromosome)}:${clusterStart(r.cluster).toLocaleString("en-US")}` },
@@ -549,6 +553,11 @@ function ClusterExplorer({ clusters, rows, nTree, groupOf, groupColor, width, cl
             <Text strong>
               {cluster.gene || "?"} · {junctionLabel(chrLabel(cluster.chromosome), { start: clusterStart(cluster), end: clusterEnd(cluster) })}
             </Text>
+            {cluster.gene && (
+              <GeneInfo gene={cluster.gene} style={{ borderBottom: "none" }}>
+                <InfoCircleOutlined aria-label={`${cluster.gene} function`} />
+              </GeneInfo>
+            )}
             <Segmented
               size="small"
               value={mode}

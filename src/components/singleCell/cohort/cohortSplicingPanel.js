@@ -26,6 +26,7 @@ import { bySummary, clusterCellSummary, focusJunctions, pooledCounts } from "../
 import { describeEvent, geneContext, pinnedEvents } from "../../../helpers/singleCell/spliceContext";
 import ConfidenceToggle, { ConfidenceBadge, useFindingConfidence } from "../confidenceToggle";
 import { CONFIDENCE_TIERS, confidenceCounts, hasConfidence, passesConfidence } from "../../../helpers/singleCell/findingConfidence";
+import { GeneFunctionLine, GeneInfo } from "../geneInfoPopover";
 
 const { Text } = Typography;
 const k = "components.single-cell.splicing";
@@ -356,7 +357,7 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
                       },
                     ]
                   : []),
-                { title: t(`${k}.col-gene`), dataIndex: "gene", sorter: (a, b) => a.gene.localeCompare(b.gene) },
+                { title: t(`${k}.col-gene`), dataIndex: "gene", width: 240, sorter: (a, b) => a.gene.localeCompare(b.gene), render: (g) => (g ? <div><GeneInfo gene={g}><b>{g}</b></GeneInfo><GeneFunctionLine gene={g} n={90} /></div> : "?") },
                 ...(tiered
                   ? [
                       {
@@ -435,7 +436,7 @@ export default function CohortSplicingPanel({ dataset, summaries = [] }) {
             <Space direction="vertical" size={12} style={{ width: "100%" }} ref={detailRef}>
               <Space wrap>
                 <Text strong>
-                  {t(`${k}.cohort-multiples`)} · {row.gene} · {row.locus}
+                  {t(`${k}.cohort-multiples`)} · <GeneInfo gene={row.gene} /> · {row.locus}
                 </Text>
                 <HintLine inline text={t(`${k}.sashimi-help`)} />
                 <SvgExportButton containerRef={plotRef} name={`sashimi-cohort-${row.gene || row.id}`} />
