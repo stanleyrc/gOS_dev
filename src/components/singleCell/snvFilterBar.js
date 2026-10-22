@@ -208,10 +208,10 @@ export default function SnvFilterBar({ annot, nShown, onIsolate = null, fitBusy 
         <Select size="small" style={{ width: 96 }} value={layout.snvLabel || "protein"} onChange={(v) => update({ snvLabel: v === "protein" ? null : v })} options={LABEL_MODES.map((m) => ({ value: m, label: m }))} />
       </Space>
       <Space size={4}>
-        <Tooltip title="Colour of sites with no reads in a cell, in every mutation matrix and its legend">
+        <Tooltip title="Colour of sites with no reads in a cell, in every mutation matrix and its legend. White (default): no reads = white, reference reads only = light blue, alt VAF grey to black. Grey: the earlier scheme (no reads grey, VAF white to black).">
           <Text type="secondary">Missing (no coverage)</Text>
         </Tooltip>
-        <Select size="small" style={{ width: 76 }} value={layout.snvNaColor === "white" ? "white" : "grey"} onChange={(v) => update({ snvNaColor: v === "white" ? "white" : null })} options={[{ value: "grey", label: "grey" }, { value: "white", label: "white" }]} />
+        <Select size="small" style={{ width: 76 }} value={layout.snvNaColor === "grey" ? "grey" : "white"} onChange={(v) => update({ snvNaColor: v === "grey" ? "grey" : null })} options={[{ value: "grey", label: "grey" }, { value: "white", label: "white" }]} />
       </Space>
     </div>
   );
