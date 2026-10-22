@@ -105,6 +105,7 @@ import SelectionExport from "./selectionExport";
 import useCellSignatures from "./useCellSignatures";
 import { ANNOTATION_PARAMS, ANNOTATION_WIDTHS, SIGNATURE_FIELD, annotationToSearch, annotationWidth as normaliseAnnotationWidth, cellSignatureFit, dominantSignature, signatureSegments, signatureTooltip } from "../../helpers/singleCell/cellSignatures";
 import { signatureColor } from "../../helpers/singleCell/signatureColors";
+import { useTooltipGuard } from "./useTooltipGuard";
 
 const CN_MAPPED_IDLE = { status: "idle", data: null, error: null };
 
@@ -162,6 +163,7 @@ export default function CellHeatmapPanel() {
   const [containerRef, containerWidth] = useContainerWidth();
   const pixelRatio = usePixelRatio();
   const [hover, setHover] = useState(null);
+  const hoverTipRef = useTooltipGuard(hover, () => setHover(null));
   /* ---- focus mode: the card fills the viewport (button, `f` to toggle, Esc to leave, ?focus=1) ---- */
   const [focus, setFocusState] = useState(() => {
     let stored = null;
@@ -2135,7 +2137,7 @@ export default function CellHeatmapPanel() {
               />
             )}
             {hover && (
-              <div className="sc-tooltip" style={{ left: Math.max(0, hover.left), top: hover.top }}>
+              <div ref={hoverTipRef} className="sc-tooltip" style={{ left: Math.max(0, hover.left), top: hover.top }}>
                 {hover.lines.map(([k, v]) => (
                   <div key={k}>
                     <span className="sc-tooltip-key">{k}</span> {`${v}`}

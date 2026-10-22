@@ -20,6 +20,7 @@ import UmapViewControls from "../umapViewControls";
 import Umap3dCanvas from "../umap3dCanvas";
 import { toScreen, zoomRadius } from "../../../helpers/singleCell/umapZoom";
 import { defaultView3d, parseColor, zoom3d } from "../../../helpers/singleCell/umap3d";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const { Text } = Typography;
 const HEIGHT = 520;
@@ -28,6 +29,7 @@ const HEIGHT = 520;
 function CohortUmap3d({ shown, data3d, colorOf, selection, keyOf, width, height, onOpen, onDim, dimDisabledReason, ink, hoverText }) {
   const [view, setView] = useState(defaultView3d);
   const [hover, setHover] = useState({ index: -1, x: 0, y: 0 });
+  const tipRef = useTooltipGuard(hover.index >= 0, () => setHover({ index: -1, x: 0, y: 0 }));
   const pts = useMemo(() => shown.filter((c) => data3d.index.has(keyOf(c))), [shown, data3d, keyOf]);
   const drawn = useMemo(
     () =>
@@ -62,7 +64,7 @@ function CohortUmap3d({ shown, data3d, colorOf, selection, keyOf, width, height,
         ink={ink}
       />
       {h && (
-        <div style={{ position: "absolute", left: Math.min(hover.x + 12, width - 260), top: hover.y + 12, background: "rgba(0,0,0,0.82)", color: "#fff", padding: "3px 7px", borderRadius: 3, fontSize: 12, pointerEvents: "none", maxWidth: 360, zIndex: 5 }}>
+        <div ref={tipRef} style={{ position: "absolute", left: Math.min(hover.x + 12, width - 260), top: hover.y + 12, background: "rgba(0,0,0,0.82)", color: "#fff", padding: "3px 7px", borderRadius: 3, fontSize: 12, pointerEvents: "none", maxWidth: 360, zIndex: 5 }}>
           {hoverText(h)}
         </div>
       )}
@@ -132,6 +134,7 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
     return [...names].filter((k) => !["rna_id", "cell_id", "umap_1", "umap_2", "patient"].includes(k) && cells.some((c) => typeof c[k] === "string"));
   }, [cells]);
   const [hover, setHover] = useState(null); // { c, mx, my }
+  const tip2dRef = useTooltipGuard(hover, () => setHover(null));
   if (data === undefined) return <Text type="secondary">{`${t("components.single-cell.loading")} (_cohort/rna/cells.json)`}</Text>;
   if (!data) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`${t("components.single-cell.cohort.umap-missing")} (_cohort/rna/cells.json ${dataStatus === "error" ? "failed to load" : "not available: " + dataStatus})`} />;
   const patients = [...new Set(cells.map((c) => c.patient))].sort();
@@ -265,7 +268,7 @@ export default function CohortUmapPanel({ summaries, datasets, overlay = null, s
         </div>
         )}
         {hover && !drag && (
-          <div style={{ position: "absolute", left: Math.min(hover.mx + 12, w - 260), top: hover.my + 12, background: "rgba(0,0,0,0.82)", color: "#fff", padding: "3px 7px", borderRadius: 3, fontSize: 12, pointerEvents: "none", maxWidth: 360, zIndex: 5 }}>
+          <div ref={tip2dRef} style={{ position: "absolute", left: Math.min(hover.mx + 12, w - 260), top: hover.my + 12, background: "rgba(0,0,0,0.82)", color: "#fff", padding: "3px 7px", borderRadius: 3, fontSize: 12, pointerEvents: "none", maxWidth: 360, zIndex: 5 }}>
             {hoverText(hover.c)}
             <div style={{ opacity: 0.7 }}>click to open the patient</div>
           </div>

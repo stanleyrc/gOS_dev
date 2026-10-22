@@ -63,3 +63,17 @@ export function createPopupController({ graceMs = GRACE_MS, onChange = () => {},
     dispose: cancel,
   };
 }
+
+// Viewport placement for a tooltip box already laid out at `rect` ({left, top, right, bottom} in client px): returns the
+// translation {dx, dy} that keeps it inside a vw x vh window with `margin` px to spare. A box wider/taller than the window
+// is pinned to the top-left margin. Pure and d3-free so it can be unit tested.
+export function viewportShift(rect, vw, vh, margin = 8) {
+  const shift = (lo, hi, max) => {
+    const size = hi - lo;
+    if (size + 2 * margin >= max) return margin - lo;
+    if (hi > max - margin) return max - margin - hi;
+    if (lo < margin) return margin - lo;
+    return 0;
+  };
+  return { dx: shift(rect.left, rect.right, vw), dy: shift(rect.top, rect.bottom, vh) };
+}

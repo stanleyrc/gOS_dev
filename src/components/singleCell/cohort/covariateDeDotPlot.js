@@ -90,7 +90,7 @@ export default function CovariateDeDotPlot({ genes, columns, cells, labelA, labe
         </g>
       </svg>
       {tip && (
-        <ChartTooltip x={tip.x} y={tip.y}>
+        <ChartTooltip x={tip.x} y={tip.y} onDismiss={() => setTip(null)}>
           <b>{tip.g}</b> · {tip.c.patient ? `${tip.c.patient} ` : ""}{tip.c.side === "A" ? labelA : labelB}
           <br />
           {`mean scaled expression ${tip.cell.mean?.toFixed(2)} · ${Math.round(tip.cell.pct * 100)}% of ${tip.cell.n} cells > 0`}

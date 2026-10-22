@@ -7,6 +7,7 @@ import { binAt, cnColorer } from "../../../helpers/singleCell/matrix";
 import { toLocalPosition } from "../../../helpers/singleCell/driverSummary";
 import { CARRIER_COLOR, COMPARATOR_COLOR } from "./useDriverEvidence";
 import GeneTrack from "../../genes/geneTrack";
+import { useTooltipGuard } from "../useTooltipGuard";
 
 const COLS = 360;
 const mean = (v) => (v.length ? v.reduce((s, x) => s + x, 0) / v.length : NaN);
@@ -26,6 +27,7 @@ export default function LocalCnPlot({ carriers, others, lo, hi, marks = [] }) {
   const [ref, width] = useContainerWidth(700);
   const canvasRef = useRef(null);
   const [hover, setHover] = useState(null);
+  const tipRef = useTooltipGuard(hover, () => setHover(null));
   const data = cn?.status === "ok" ? cn.data : null;
   const M = { left: 86, right: 10, top: 6 };
   const lineH = 90;
@@ -147,7 +149,7 @@ export default function LocalCnPlot({ carriers, others, lo, hi, marks = [] }) {
       <div style={{ height: H }} />
       <GeneTrack width={width} domains={[[lo, hi]]} gapX={M.left} gapRight={M.right} interactive={false} hoverLine={false} exportName="driver-locus-genes" />
       {hover && where && (
-        <div style={{ position: "absolute", left: Math.min(hover.px + 12, width - 240), top: Math.max(hover.py - 50, 0), pointerEvents: "none", background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, padding: "2px 8px", fontSize: TYPE.tick, whiteSpace: "nowrap", zIndex: 3 }}>
+        <div ref={tipRef} style={{ position: "absolute", left: Math.min(hover.px + 12, width - 240), top: Math.max(hover.py - 50, 0), pointerEvents: "none", background: theme.raised, color: theme.text, border: `1px solid ${theme.border}`, borderRadius: 4, padding: "2px 8px", fontSize: TYPE.tick, whiteSpace: "nowrap", zIndex: 3 }}>
           <div style={{ fontWeight: 600 }}>{`chr${where.chrom}:${(where.pos / 1e6).toFixed(2)} Mb`}</div>
           {hover.cell ? (
             <div>{`${hover.cell.id} (${hover.cell.group}): CN ${fmt(hover.cell.v[hover.k])}`}</div>

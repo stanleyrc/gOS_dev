@@ -18,6 +18,7 @@ import { Swatches } from "./cohort/charts";
 import HintLine, { Provenance } from "./hintLine";
 import { INK, TYPE } from "../../helpers/singleCell/plotTheme";
 import useCellLabels from "./useCellLabels";
+import { viewportShift } from "../../helpers/singleCell/hoverPopup";
 
 const { Text } = Typography;
 const CLASS_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", fusion: "#7B3294", trunc: "#1A1A1A", splice: "#E6AB02", missense: "#1B9E77", promoter: "#E7298A", complex: "#E66101", other: "#8c8c8c" };
@@ -220,7 +221,21 @@ export default function DriverCellMatrix({ drivers }) {
     tip.style.display = "block";
     tip.style.left = `${LABEL_W + Math.min(hit.x + 12, matW - 160)}px`;
     tip.style.top = `${top + hit.y + 14}px`;
+    // keep the box inside the window, not just inside the card
+    tip.style.transform = "";
+    const { dx, dy } = viewportShift(tip.getBoundingClientRect(), window.innerWidth, window.innerHeight);
+    if (dx || dy) tip.style.transform = `translate(${Math.round(dx)}px, ${Math.round(dy)}px)`;
   };
+  // Escape / scroll / pointercancel / blur hide the DOM tooltip (the canvas can move under a still pointer)
+  useEffect(() => {
+    const hide = (e) => {
+      if (e.type === "keydown" && e.key !== "Escape") return;
+      if (tipRef.current) tipRef.current.style.display = "none";
+    };
+    const evs = [["keydown", false], ["scroll", true], ["pointercancel", true], ["blur", false]];
+    evs.forEach(([n, c]) => window.addEventListener(n, hide, c));
+    return () => evs.forEach(([n, c]) => window.removeEventListener(n, hide, c));
+  }, []);
   const onCanvasLeave = () => {
     if (tipRef.current) tipRef.current.style.display = "none";
   };
