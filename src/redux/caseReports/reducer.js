@@ -3,7 +3,7 @@ import { cascaderOperators } from "../../helpers/filters";
 
 const defaultFilters = () => ({
   page: 1,
-  per_page: 10,
+  per_page: 25,
   texts: "",
   orderId: 1,
   operator: cascaderOperators[0],
