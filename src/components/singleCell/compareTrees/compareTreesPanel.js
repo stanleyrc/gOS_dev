@@ -48,7 +48,7 @@ import useAltTree from "./useAltTree";
 import useTreeSupport from "./useTreeSupport";
 import useSnvSet, { useSnvSetIndex } from "./useSnvSet";
 import { CMP_SET_PARAM, CMP_TREE_A_PARAM, CMP_TREE_B_PARAM, noSupportText, defaultSnvSet, hasTreeSupport, serializeChoice, usableSnvSets, validChoice } from "../../../helpers/singleCell/compareChoices";
-import { SUPPORT_BINS, conflictSummary, labelSupport, supportBin, supportSummary } from "../../../helpers/singleCell/treeSupport";
+import { SUPPORT_BINS, conflictSummary, isTbeOnly, labelSupport, supportBin, supportSummary, supportValue } from "../../../helpers/singleCell/treeSupport";
 import { CnLegend, CnSide, useCnShared } from "./cnCompareHeatmaps";
 import { CMPHEAT_PARAM, cnWidth, figurePad, parseCmpHeat, serializeCmpHeat, showsCn, showsSnv } from "../../../helpers/singleCell/cnCompare";
 import useCellLabels from "../useCellLabels";
@@ -317,19 +317,19 @@ export default function CompareTreesPanel() {
   const SUPPORT_COLORS = ["#d1495b", "#edae49", "#66a182", "#4a90d9"];
   const supportMarks = (layout, g, side) => {
     const uniq = conflict ? (side === "A" ? conflict.a : conflict.b).uniqueIds : new Set();
-    const nodes = layout.nodes.filter((n) => !n.isLeaf && n.parent >= 0 && n.support && Number.isFinite(n.support.fbp));
+    const nodes = layout.nodes.filter((n) => !n.isLeaf && n.parent >= 0 && n.support && Number.isFinite(supportValue(n.support)));
     const label = labelSupport(nodes.length);
     const dir = side === "A" ? 1 : -1;
     return (
       <g key={`${side}support`}>
         {nodes.map((n) => {
-          const f = n.support.fbp;
+          const f = supportValue(n.support);
           const cx = g.px(n.x);
           const cy = g.py(n.y + 0.5);
           return (
             <g key={n.id}>
               <circle cx={cx} cy={cy} r={uniq.has(n.id) ? 3.6 : 2.4} fill={SUPPORT_COLORS[supportBin(f)]} stroke={uniq.has(n.id) ? theme.text : "none"} strokeWidth={1.2}>
-                <title>{`bootstrap support ${Math.round(f * 100)}%${Number.isFinite(n.support.tbe) ? `, TBE ${Math.round(n.support.tbe * 100)}%` : ""}${uniq.has(n.id) ? " (clade absent from the other tree)" : ""}`}</title>
+                <title>{`${isTbeOnly(n.support) ? "TBE support" : "bootstrap support"} ${Math.round(f * 100)}%${!isTbeOnly(n.support) && Number.isFinite(n.support.tbe) ? `, TBE ${Math.round(n.support.tbe * 100)}%` : ""}${uniq.has(n.id) ? " (clade absent from the other tree)" : ""}`}</title>
               </circle>
               {label ? <text x={cx + dir * 4} y={cy - 3} fontSize={8} textAnchor={side === "A" ? "start" : "end"} fill={theme.muted}>{Math.round(f * 100)}</text> : null}
             </g>
@@ -517,7 +517,7 @@ export default function CompareTreesPanel() {
       {supportOn && sup && hasTreeSupport(supportFile.data, name) ? (
         <div>
           <Text style={{ fontSize: TYPE.tick }}>
-            {sup.n ? `Bootstrap support: median ${Math.round(sup.median * 100)}%, ${sup.nGe70} of ${sup.n} clades >= 70%` : "Bootstrap support: not available for this tree"}
+            {sup.n ? `${sup.tbeOnly ? "TBE" : "Bootstrap"} support: median ${Math.round(sup.median * 100)}%, ${sup.nGe70} of ${sup.n} clades >= 70%` : "Bootstrap support: not available for this tree"}
           </Text>
         </div>
       ) : null}
@@ -542,6 +542,7 @@ export default function CompareTreesPanel() {
           ))}
           <span><svg width={12} height={12} style={{ verticalAlign: "middle" }}><circle cx={6} cy={6} r={4.5} fill="none" stroke={theme.text} strokeWidth={1.2} /></svg> clade absent from the other tree</span>
         </Space>
+        {supA.tbeOnly || supB.tbeOnly ? <div style={{ fontSize: TYPE.tick, color: theme.muted }}>{`${[supA.tbeOnly ? labelOf(a) : null, supB.tbeOnly ? labelOf(b) : null].filter(Boolean).join(" and ")}: support is the transfer bootstrap expectation (TBE) from the collaborator's own replicates, not the CellPhy replicates; the same colour bins apply.`}</div> : null}
         {conflict ? <div style={{ fontSize: TYPE.tick }}>{`${sel(conflict.a, a)}. ${sel(conflict.b, b)}. Absent clades with support below 50% are weakly supported, so not firm conflicts.`}</div> : null}
         <div style={{ fontSize: TYPE.tick, color: theme.muted }}>
           {`${supportFile.data.n_replicates} CellPhy bootstrap replicates (${agree != null ? `the pipeline tree shares ${Math.round(agree * 100)}% of its clades with their search tree; ` : ""}other trees are scored against the same replicates, so their support is how often the replicates recover each of their clades).`}
