@@ -6,7 +6,7 @@ import { DataSwatch } from "../neutralTag";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
-const TYPE_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", cnother: "#8c8c8c", snv: "#1B9E77", fusion: "#7B3294", rnafusion: "#B58BD0", complex: "#E66101", ecdna: "#C2185B" };
+const TYPE_COLORS = { amp: "#D7191C", homdel: "#2C7BB6", cnother: "#8c8c8c", armgain: "#E8837C", armloss: "#74ADD1", junction: "#5B7083", snv: "#1B9E77", fusion: "#7B3294", rnafusion: "#B58BD0", complex: "#E66101", ecdna: "#C2185B" };
 const SCROLL_Y = 560;
 const pct = (f) => (Number.isFinite(f) ? `${(100 * f).toFixed(f < 0.1 ? 1 : 0)}%` : "");
 
@@ -27,7 +27,7 @@ function download(name, text) {
  * @param filesByPatient { patientId: { events, variants, walks, rnaFusions, tree } | null while loading }
  * @param onOpen optional (row) => void; without it the link opens the report in a new tab
  */
-export default function EventsCatalogTable({ filesByPatient, patients, datasetKey = "gbm-sc", scope = "cohort", onOpen = null, loading = false }) {
+export default function EventsCatalogTable({ filesByPatient, patients, datasetKey = "gbm-sc", scope = "cohort", onOpen = null, loading = false, versionToggle = null }) {
   const [filters, setFilters] = useState(emptyCatalogFilters());
   const [includeNoncoding, setIncludeNoncoding] = useState(false);
   const [sort, setSort] = useState({ key: "nCells", dir: "desc" });
@@ -55,9 +55,9 @@ export default function EventsCatalogTable({ filesByPatient, patients, datasetKe
         <Space size={6}>
           <svg width={70} height={10}>
             <rect x={0} y={0} width={70} height={10} fill={INK.empty} rx={2} />
-            <rect x={0} y={0} width={70 * Math.min(1, r.fraction || 0)} height={10} fill={TYPE_COLORS[r.type]} rx={2} />
+            <rect x={0} y={0} width={70 * Math.min(1, Number.isFinite(r.fraction) ? r.fraction : 0)} height={10} fill={TYPE_COLORS[r.type]} rx={2} />
           </svg>
-          <Text style={{ fontSize: 13, whiteSpace: "nowrap" }}>{`${n.toLocaleString("en-US")} (${pct(r.fraction)})`}</Text>
+          <Text style={{ fontSize: 13, whiteSpace: "nowrap" }}>{Number.isFinite(r.fraction) ? `${n.toLocaleString("en-US")} (${pct(r.fraction)})` : n.toLocaleString("en-US")}</Text>
         </Space>
       ),
     },
@@ -93,6 +93,12 @@ export default function EventsCatalogTable({ filesByPatient, patients, datasetKe
           <Text>Drivers only</Text>
           <Switch size="small" checked={includeNoncoding} onChange={setIncludeNoncoding} />
           <Text>Include non-coding SNVs</Text>
+          {versionToggle && (
+            <>
+              <Switch size="small" checked={versionToggle.checked} onChange={versionToggle.onChange} />
+              <Text>Show report versions</Text>
+            </>
+          )}
           <Button size="small" icon={<DownloadOutlined />} disabled={!shown.length} onClick={() => download(`events_${scope === "cohort" ? "cohort" : ids[0] || "patient"}.csv`, catalogToCsv(shown))}>CSV ({shown.length.toLocaleString("en-US")})</Button>
         </Space>
       }
@@ -112,7 +118,6 @@ export default function EventsCatalogTable({ filesByPatient, patients, datasetKe
       />
       <div style={{ padding: "8px 12px", fontSize: 12.5 }}>
         <Text type="secondary">
-          Not available: {UNAVAILABLE_TYPES.filter((u) => u.proposal).map((u) => `${u.label} (${u.reason})`).join("; ")}.{" "}
           {omitted > 0 ? `${omitted.toLocaleString("en-US")} non-coding SNV sites are not listed (switch on "Include non-coding SNVs"). ` : ""}
           Cells = carrier cells; for SNV sites, the fraction is of cells with coverage. Clonality: exported call, else the carrier-cell fraction rule.
         </Text>
