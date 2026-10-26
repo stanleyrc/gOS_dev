@@ -6,13 +6,13 @@ import { binAt, domainExtents, annotationColors } from "../../../helpers/singleC
 import { AMP_LEGEND, ampliconCss, ampliconRGBA, binSnvMatrix, geneSetColor, isNormalClone, snvTreeOrder } from "../../../helpers/singleCell/figures";
 import { compressLongBranches, figureRows, leavesUnder, pruneLayout } from "../../../helpers/singleCell/figureMath";
 import { selectMode } from "./cellSelection";
-import { NO_READS_DARK, useDarkTheme, vafGray } from "./darkTheme";
+import { NO_READS_DARK, NO_READS_LIGHT, useDarkTheme, vafGray } from "./darkTheme";
 
 const TOP = 28;
 const BOTTOM = 46;
 const STRIP = 9;
 const GAP = 6;
-const NO_READS = 0xffffffff; // white
+const NO_READS = NO_READS_LIGHT; // blue (no reads); VAF 0 is white
 const NO_CN = 0xffeeeeee;
 
 const mb = (bp) => `${(bp / 1e6).toFixed(bp >= 1e7 ? 0 : 1)}`;

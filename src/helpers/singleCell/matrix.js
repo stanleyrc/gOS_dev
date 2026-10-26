@@ -669,31 +669,32 @@ const SNV_DARK = { zero: 44, one: 200, missing: "#191919" };
 /** Colour of sites with no reads for the current theme. */
 let snvNaWhite = true;
 /**
- * "Missing (no coverage)" colour mode for the mutation matrices: white (default since 2026-10-22, so a dropout never
- * reads as a mid-VAF grey SNV) or grey (the earlier default, kept as a setting). Anything but "grey" is white.
+ * "Missing (no coverage)" colour mode for the mutation matrices: blue (default since 2026-10-26; white from 10-22, so a dropout never
+ * reads as a mid-VAF grey SNV; VAF 0 is white) or grey (the earlier default, kept as a setting). Anything but "grey" is white.
  */
 export const setSnvNaMode = (mode) => {
   snvNaWhite = mode !== "grey";
 };
 export const snvNaMode = () => (snvNaWhite ? "white" : "grey");
-export const SNV_NA_WHITE = "#ffffff";
-/** Covered site with reference reads only (VAF 0) while missing is white: a light blue, never white. */
-export const SNV_REF_COLOR = "#cfe0f1";
+/** Site with no reads (depth 0 / missing) in the default mode: blue (changed 2026-10-26; the mode key stays "white" for old links). */
+export const SNV_NO_READS_BLUE = "#a9cbe8";
+/** Covered site with reference reads only (VAF 0): white. */
+export const SNV_REF_COLOR = "#ffffff";
 /** Grey level of an alt VAF f in (0, 1] in white-NA mode: 205 (lightest alt, clearly off-white) down to 0. */
 export const SNV_ALT_TOP = 205;
 export const snvAltLevel = (f) => Math.round(SNV_ALT_TOP * (1 - Math.max(0, Math.min(1, f))));
 /**
- * [r, g, b] of a VAF cell in light theme with white = no reads: ref (VAF 0) light blue, alt grey 205 -> black,
- * missing (null) white. Used by the patient heatmaps and the paper-figure SNV panels so the conventions match.
+ * [r, g, b] of a VAF cell in light theme with blue = no reads: ref (VAF 0) white, alt grey 205 -> black,
+ * missing (null) blue. Used by the patient heatmaps and the paper-figure SNV panels so the conventions match.
  */
 export function snvWhiteNaRGB(vaf) {
-  if (vaf == null || !Number.isFinite(vaf)) return [255, 255, 255];
+  if (vaf == null || !Number.isFinite(vaf)) return hexToRgb(SNV_NO_READS_BLUE);
   if (vaf <= 0) return hexToRgb(SNV_REF_COLOR);
   const v = snvAltLevel(vaf);
   return [v, v, v];
 }
 // dark plots keep their darkest no-reads colour (a white NA would glare on the dark panel); light: white (default) or grey
-export const snvMissingColor = () => (isDarkPlots() ? SNV_DARK.missing : snvNaWhite ? SNV_NA_WHITE : SNV_MISSING_COLOR);
+export const snvMissingColor = () => (isDarkPlots() ? SNV_DARK.missing : snvNaWhite ? SNV_NO_READS_BLUE : SNV_MISSING_COLOR);
 
 /** [r, g, b] for a VAF / positive fraction: white (0) to black (1) as pgv draws it; dark theme: dark grey to light grey. */
 export function vafRGB(value) {
@@ -754,7 +755,7 @@ export function snvMetricRGBA(value, metric, max) {
   if (metric === "gt") {
     if (value === 1) return packRGBA(hexToRgb(GT_COLORS.alt));
     if (value === 0) return packRGBA(hexToRgb(GT_COLORS.ref));
-    return packRGBA(hexToRgb(isDarkPlots() ? SNV_DARK.missing : snvNaWhite ? SNV_NA_WHITE : GT_COLORS.nocall));
+    return packRGBA(hexToRgb(isDarkPlots() ? SNV_DARK.missing : snvNaWhite ? SNV_NO_READS_BLUE : GT_COLORS.nocall));
   }
   return metric === "vaf" ? vafRGBA(value) : countRGBA(value, max, metric);
 }

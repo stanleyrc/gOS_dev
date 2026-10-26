@@ -1,4 +1,4 @@
-import { ALT_BINS, SNV_ALT_TOP, SNV_REF_COLOR, altBin, countRGBA, hexToRgb, setSnvNaMode, snvMetricMax, snvMetricRGBA, snvMissingColor, snvNaMode, snvWhiteNaRGB, vafRGB } from "./matrix";
+import { ALT_BINS, SNV_ALT_TOP, SNV_REF_COLOR, SNV_NO_READS_BLUE, altBin, countRGBA, hexToRgb, setSnvNaMode, snvMetricMax, snvMetricRGBA, snvMissingColor, snvNaMode, snvWhiteNaRGB, vafRGB } from "./matrix";
 import { parseSiteState, serializeSiteState, siteAnnotations, matchesAnnotFilter, setRange, setValues } from "./snvAnnot";
 
 afterEach(() => setSnvNaMode("white")); // restore the default
@@ -18,9 +18,9 @@ describe("ALT read counts", () => {
 });
 
 describe("missing colour option", () => {
-  test("white by default, grey on request, in every metric", () => {
+  test("blue by default, grey on request, in every metric", () => {
     expect(snvNaMode()).toBe("white");
-    expect(snvMissingColor()).toBe("#ffffff");
+    expect(snvMissingColor()).toBe(SNV_NO_READS_BLUE);
     const white = countRGBA(null, 6, "alt");
     expect(snvMetricRGBA(null, "gt", 1)).toBe(white);
     setSnvNaMode("grey");
@@ -32,8 +32,10 @@ describe("missing colour option", () => {
   test("white NA: reference reads and every alt VAF stay distinct from no reads", () => {
     setSnvNaMode("white");
     const na = vafRGB(null).join(",");
-    expect(na).toBe("255,255,255");
+    expect(na).toBe(hexToRgb(SNV_NO_READS_BLUE).join(","));
+    expect(vafRGB(0)).toEqual([255, 255, 255]);
     expect(vafRGB(0)).toEqual(hexToRgb(SNV_REF_COLOR));
+    expect(na).not.toBe("255,255,255");
     expect(vafRGB(0).join(",")).not.toBe(na);
     [0.01, 0.25, 0.5, 1].forEach((f) => {
       const [r, g, b] = vafRGB(f);
@@ -43,7 +45,8 @@ describe("missing colour option", () => {
     });
     expect(vafRGB(1)).toEqual([0, 0, 0]);
     expect(vafRGB(0.5)[0]).toBeGreaterThan(vafRGB(0.75)[0]);
-    expect(snvWhiteNaRGB(null)).toEqual([255, 255, 255]);
+    expect(snvWhiteNaRGB(null)).toEqual(hexToRgb(SNV_NO_READS_BLUE));
+    expect(snvWhiteNaRGB(0)).toEqual([255, 255, 255]);
     setSnvNaMode("grey");
     expect(vafRGB(0)).toEqual([255, 255, 255]);
     setSnvNaMode("white");

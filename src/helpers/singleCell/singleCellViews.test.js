@@ -15,6 +15,7 @@ import {
   vafRGBA,
   setSnvNaMode,
   SNV_REF_COLOR,
+  SNV_NO_READS_BLUE,
 } from "./matrix";
 import { allelicRowFromAllelic, parseVariantId, snvFromSparse } from "./cellFiles";
 import { expressionByCell, parseRnaSummary, readMatrixBuffers, searchGeneNames } from "./staticRna";
@@ -128,9 +129,10 @@ describe("mutation colours and bins", () => {
       setSnvNaMode("white");
     }
   });
-  it("default: no reads white, reference reads light blue, alt VAF grey to black", () => {
-    expect(vafRGBA(null)).toBe(rgba("#FFFFFF"));
-    expect(vafRGBA(0)).toBe(rgba(SNV_REF_COLOR));
+  it("default: no reads blue, reference reads (VAF 0) white, alt VAF grey to black", () => {
+    expect(vafRGBA(null)).toBe(rgba(SNV_NO_READS_BLUE));
+    expect(vafRGBA(0)).toBe(rgba("#FFFFFF"));
+    expect(SNV_REF_COLOR).toBe("#ffffff");
     expect(vafRGBA(1)).toBe(rgba("#000000"));
     expect(vafRGBA(0.01)).not.toBe(rgba("#FFFFFF"));
   });

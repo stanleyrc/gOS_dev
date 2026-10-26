@@ -57,7 +57,7 @@ export const SC_DEFAULT_LAYOUT = {
   snvTracks: null, // annotation tracks over the SNV columns (helpers/singleCell/snvAnnot.js); null = default (tree site + driver)
   snvAnnotFilter: null, // site filter set by clicking track values: { track: { values } | { min, max } }
   snvLabel: null, // column labels of the mutation matrices: gene | protein | position | none (null = protein)
-  snvNaColor: null, // "Missing (no coverage)" colour of the mutation matrices: null/"white" (default) or "grey"
+  snvNaColor: null, // "Missing (no coverage)" colour of the mutation matrices: null/"white" (default, drawn blue) or "grey"
   snvFiltersHidden: false, // collapse the filter bar to a one-line stub (filters stay active)
   snvLegendHidden: false, // hide the annotation-track legend rows
   snvIsolate: false, // isolate the filtered sites: where they sit (branch counts, carrier cells), table and fit
