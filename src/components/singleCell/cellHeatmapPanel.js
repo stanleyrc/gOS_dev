@@ -1367,6 +1367,22 @@ export default function CellHeatmapPanel() {
                 onChange={(value) => dispatch(singleCellActions.updateLayout({ hiddenClones: value }))}
                 options={cloneNames.map((c) => ({ value: c, label: c }))}
               />
+              <Text type="secondary">Select</Text>
+              <Select
+                size="small"
+                mode="multiple"
+                allowClear
+                maxTagCount="responsive"
+                aria-label="Select clones to show"
+                style={{ minWidth: 160, maxWidth: 320 }}
+                placeholder="Show only..."
+                value={layout.selectedClones || []}
+                onChange={(value) => dispatch(singleCellActions.updateLayout({ selectedClones: value }))}
+                options={cloneNames.map((c) => ({ value: c, label: c }))}
+              />
+              {((layout.selectedClones || []).length > 0 || (layout.hiddenClones || []).length > 0) && (
+                <Button size="small" onClick={() => dispatch(singleCellActions.updateLayout({ selectedClones: [], hiddenClones: [] }))}>Reset clones</Button>
+              )}
             </Space>
           )}
           {hasPloidy && (

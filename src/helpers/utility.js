@@ -333,7 +333,7 @@ export function dataToGenome(data, chromoBins) {
 }
 
 export function defaultSearchFilters() {
-  return { page: 1, per_page: 10, texts: "", orderId: 1 };
+  return { page: 1, per_page: 25, texts: "", orderId: 1 };
 }
 
 export function plotMargins() {
