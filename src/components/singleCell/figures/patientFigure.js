@@ -709,7 +709,7 @@ export default function PatientFigure({ patient, events = [], focusWalkId, onFoc
       };
       if (snvImg || ecImg) {
         const rx = snvImg ? L.snvX : L.ecX;
-        ramp(rx, 16, Math.min(120, (snvImg ? L.snvW : L.ecW) - 4), c.dark ? [[0, "#2a2a2a"], [1, "#f0f0f0"]] : [[0, SNV_REF_COLOR], [0.04, SNV_REF_COLOR], [0.05, `rgb(${SNV_ALT_TOP},${SNV_ALT_TOP},${SNV_ALT_TOP})`], [1, "#000000"]], [[0, "0"], [0.5, "0.5"], [1, "1"]], c.dark ? "Variant allele frequency" : "VAF (0 = ref reads, blue; no reads = white)");
+        ramp(rx, 16, Math.min(120, (snvImg ? L.snvW : L.ecW) - 4), c.dark ? [[0, "#2a2a2a"], [1, "#f0f0f0"]] : [[0, SNV_REF_COLOR], [0.04, SNV_REF_COLOR], [0.05, `rgb(${SNV_ALT_TOP},${SNV_ALT_TOP},${SNV_ALT_TOP})`], [1, "#000000"]], [[0, "0"], [0.5, "0.5"], [1, "1"]], c.dark ? "Variant allele frequency" : "VAF (0 = ref reads, white; no reads = blue)");
       }
       if (cnGeo) {
         const stops = AMP_LEGEND.map((v, k) => [k / (AMP_LEGEND.length - 1), cnCss(v)]);

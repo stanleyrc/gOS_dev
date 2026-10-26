@@ -123,7 +123,7 @@ export default function HeatmapLegend({
     groups.push({
       key: "snv",
       title: t(`components.single-cell.metric.${snvMetric}`),
-      items: [...items, { color: snvMissingColor(), label: naMode === "white" ? "no reads = white" : `${t("components.single-cell.side.no-reads")} (missing, grey)` }],
+      items: [...items, { color: snvMissingColor(), label: naMode === "white" ? "no reads = blue" : `${t("components.single-cell.side.no-reads")} (missing, grey)` }],
       note,
     });
   }
