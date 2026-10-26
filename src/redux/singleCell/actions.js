@@ -37,6 +37,7 @@ export const SC_DEFAULT_LAYOUT = {
   showCellTable: false,
   clipBranches: true,
   hiddenClones: [],
+  selectedClones: [], // isolate: when non-empty only these clones show (helpers/singleCell/cloneSelect.js)
   qcExcludeRules: [], // global cell filter: QC flags whose cells every view drops (helpers/singleCell/precompute.js)
   excludedCells: [], // manually excluded cell ids (global cell filter)
   hideLowQc: false, // hide cells failing the coverage QC thresholds in every view (helpers/singleCell/cellQc.js; ?hidelowqc=1)

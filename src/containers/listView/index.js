@@ -341,7 +341,7 @@ export class ListView extends Component {
       ...this.props.searchFilters,
       ...this.formRef.current.getFieldsValue(),
       page: 1,
-      per_page: 10,
+      per_page: 25,
       orderId: 1,
     });
   };
@@ -374,7 +374,7 @@ export class ListView extends Component {
     this.props.onSearch({
       ...resetValues,
       page: 1,
-      per_page: 10,
+      per_page: 25,
       orderId: 1,
     });
   };
@@ -429,7 +429,7 @@ export class ListView extends Component {
     ...this.props.searchFilters,
     ...(this.formRef.current?.getFieldsValue?.() || {}),
     page: 1,
-    per_page: this.props.searchFilters?.per_page || 10,
+    per_page: this.props.searchFilters?.per_page || 25,
     orderId: this.props.searchFilters?.orderId || 1,
   });
 
@@ -653,7 +653,7 @@ export class ListView extends Component {
     let searchFilters = {
       ...this.props.searchFilters,
       ...fieldValues,
-      ...{ page: 1, per_page: 10, orderId },
+      ...{ page: 1, per_page: 25, orderId },
     };
     this.props.onSearch(searchFilters);
   };
@@ -1124,7 +1124,7 @@ export class ListView extends Component {
                                   }
                                   defaultCurrent={1}
                                   current={searchFilters.page || 1}
-                                  pageSize={searchFilters.per_page || 10}
+                                  pageSize={searchFilters.per_page || 25}
                                   onChange={this.onPageChanged}
                                 />
                               </Col>
@@ -1469,7 +1469,7 @@ export class ListView extends Component {
                                   }
                                   defaultCurrent={1}
                                   current={searchFilters.page || 1}
-                                  pageSize={searchFilters.per_page || 10}
+                                  pageSize={searchFilters.per_page || 25}
                                   onChange={this.onPageChanged}
                                 />
                               </Col>
@@ -1547,7 +1547,7 @@ export class ListView extends Component {
 }
 ListView.propTypes = {};
 ListView.defaultProps = {
-  searchFilters: { per_page: 10, page: 1, orderId: 1 },
+  searchFilters: { per_page: 25, page: 1, orderId: 1 },
   filtersExtents: {},
 };
 const mapDispatchToProps = (dispatch) => ({
