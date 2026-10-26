@@ -93,6 +93,12 @@ export function annotateSupport(root, entry) {
   return { root: copy(root), mapped: supportOf.size, internal, ok: true };
 }
 
+/** Support fraction of an annotated node: the bootstrap proportion (fbp), else the transfer bootstrap expectation (tbe; trees whose support comes from TBE only); NaN when neither. */
+export const supportValue = (s) => (Number.isFinite(s?.fbp) ? s.fbp : Number.isFinite(s?.tbe) ? s.tbe : NaN);
+
+/** True when the node's support is a TBE value without a Felsenstein bootstrap proportion. */
+export const isTbeOnly = (s) => Boolean(s) && !Number.isFinite(s.fbp) && Number.isFinite(s.tbe);
+
 export const SUPPORT_BINS = [
   { key: "lt50", label: "< 50%", max: 0.5 },
   { key: "50-70", label: "50-70%", max: 0.7 },
@@ -113,13 +119,17 @@ const median = (a) => {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 
-/** Per-tree summary over the annotated nodes of a layout: { n, median, nGe70 }. */
+/** Per-tree summary over the annotated nodes of a layout: { n, median, nGe70, tbeOnly }. */
 export function supportSummary(layout) {
   const vals = [];
+  let tbe = 0;
   (layout?.nodes || []).forEach((n) => {
-    if (!n.isLeaf && n.parent >= 0 && n.support && Number.isFinite(n.support.fbp)) vals.push(n.support.fbp);
+    if (!n.isLeaf && n.parent >= 0 && n.support && Number.isFinite(supportValue(n.support))) {
+      vals.push(supportValue(n.support));
+      if (isTbeOnly(n.support)) tbe += 1;
+    }
   });
-  return { n: vals.length, median: median(vals), nGe70: vals.filter((v) => v >= 0.7).length };
+  return { n: vals.length, median: median(vals), nGe70: vals.filter((v) => v >= 0.7).length, tbeOnly: vals.length > 0 && tbe === vals.length };
 }
 
 /** Canonical keys of the internal non-root nodes of a layout, restricted to the `common` tip set: Map(node id -> key). */
@@ -155,7 +165,7 @@ export function conflictSummary(layoutA, layoutB, common) {
       if (keys.has(key)) return;
       res.unique += 1;
       res.uniqueIds.add(id);
-      const f = layout.nodes[id].support?.fbp;
+      const f = supportValue(layout.nodes[id].support);
       if (!Number.isFinite(f)) res.uniqueNoValue += 1;
       else if (f < 0.5) res.uniqueLow += 1;
       else if (f >= 0.7) res.uniqueSupported += 1;
