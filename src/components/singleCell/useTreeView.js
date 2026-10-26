@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { clipLongBranches, longBranchCap, treeForCells } from "../../helpers/singleCell/newick";
 import { excludedCellIds } from "../../helpers/singleCell/precompute";
+import { cloneNamesOf, effectiveHiddenClones } from "../../helpers/singleCell/cloneSelect";
 
 /**
  * Displayed tree and row order, shared by every view aligned to the
@@ -15,9 +16,9 @@ export default function useTreeView() {
     () => excludedCellIds(cells, layout.qcExcludeRules, layout.excludedCells, { on: layout.hideLowQc, thresholds: layout.covQcThresholds }),
     [cells, layout.qcExcludeRules, layout.excludedCells, layout.hideLowQc, layout.covQcThresholds]
   );
-  const hiddenKey = `${(layout.hiddenClones || []).join("|")}#${[...excluded].join("|")}`;
+  const hiddenKey = `${(layout.hiddenClones || []).join("|")}@${(layout.selectedClones || []).join("|")}#${[...excluded].join("|")}`;
   return useMemo(() => {
-    const hidden = new Set(layout.hiddenClones || []);
+    const hidden = effectiveHiddenClones(cloneNamesOf(cells), layout.hiddenClones, layout.selectedClones);
     let rows = fullOrder;
     let treeLayout = tree.status === "ok" ? tree.data?.layout || null : null;
     if (hidden.size || excluded.size) {
