@@ -2,12 +2,15 @@
 // and the per-patient Events tab. Sources: filtered.events.json (copy-number, fusions, complex SVs, driver SNVs), the SNV matrix
 // sites (coding / driver sites), rna/fusions.json and walks.json. Nothing is invented: a field the export lacks is null.
 import { eventClass, eventLabel } from "./cohortStats";
-import { eventQuality } from "./eventQuality";
+import { clonalityOf, eventQuality } from "./eventQuality";
 
 export const CATALOG_TYPES = [
   { key: "amp", label: "Amplification", source: "filtered.events.json" },
   { key: "homdel", label: "Homozygous deletion", source: "filtered.events.json" },
   { key: "cnother", label: "Copy-number event (class not set)", source: "filtered.events.json" },
+  { key: "armgain", label: "Arm / chromosome gain", source: "arm_events.json" },
+  { key: "armloss", label: "Arm / chromosome loss", source: "arm_events.json" },
+  { key: "junction", label: "Junction (SV)", source: "junctions_table.json" },
   { key: "snv", label: "SNV / indel", source: "filtered.events.json + SNV matrix sites" },
   { key: "fusion", label: "Fusion (DNA)", source: "filtered.events.json" },
   { key: "rnafusion", label: "Fusion (RNA)", source: "rna/fusions.json" },
@@ -19,21 +22,14 @@ export const TYPE_LABEL = Object.fromEntries(CATALOG_TYPES.map((t) => [t.key, t.
 /** Event types that no exported file carries, with the reason shown in the legend and the exporter change proposed. */
 export const UNAVAILABLE_TYPES = [
   {
-    label: "Arm-level and chromosome-level gains / losses",
-    reason: "no per-cell arm or segment summary is exported; filtered.events.json lists gene-level amplifications and deletions only",
-    proposal: "skilift_dev inst/python/gos_single_cell/: new exporter arm_events.json = [{chrom, arm, state: gain|loss, mean_cn, frac_arm, n_cells, cells: [..]}] per patient, from the per-cell 100 kb copy number (cn_binned_100kb)",
-  },
-  {
-    label: "Individual junctions / SVs (non-complex)",
-    reason: "junctions are exported as heatmap layers and inside walks, not as a site list",
-    proposal: "skilift_dev sc_* exporter: junctions_table.json = [{chr1, pos1, strand1, chr2, pos2, strand2, type, n_split_reads, n_cells, genes, cells: [..]}] per patient, from the multi-caller junction merge",
-  },
-  {
     label: "Non-coding SNVs",
     reason: "49k sites per patient are in the SNV matrix; the catalog lists coding and driver sites unless 'Include non-coding SNVs' is on",
     proposal: null,
   },
 ];
+
+/** Report versions of a patient (MGH285_T2, BWH70_v5): hidden in the cohort catalog by default. */
+export const isReportVersion = (id) => /_(T\d+|v\d+)$/i.test(`${id}`);
 
 const num = (v) => (v == null || v === "" || v === "None" || !Number.isFinite(Number(v)) ? null : Number(v));
 const CODING = /missense|stop_gained|stop_lost|start_lost|frameshift|inframe|splice_(donor|acceptor)|protein_altering|synonymous|initiator/;
@@ -59,10 +55,33 @@ const locusOfEvent = (e) => {
   return s == null ? chr : t != null && t !== s ? `chr${chr}:${s}-${t}` : `chr${chr}:${s}`;
 };
 
+/**
+ * Class of a copy-number event whose export has no class (vartype empty): from the event's own segment copy number and
+ * altered copies, with the app's thresholds (convergence view): homdel when segment CN = 0, amp when CN >= max(base + 3, 2 x base),
+ * base = the cell's ploidy baseline = segment CN - altered copies (a gain) or the altered copies (a deletion). Null when undecidable.
+ */
+export function inferCnClass(e) {
+  const seg = num(e?.segment_cn);
+  const est = num(e?.estimated_altered_copies);
+  if (seg == null) return null;
+  if (seg === 0) return "homdel";
+  if (est == null) return null;
+  const base = seg - est;
+  return base > 0 && seg >= Math.max(base + 3, 2 * base) ? "amp" : null;
+}
+
 function eventRow(patient, e, i, ctx) {
   const cls = eventClass(e);
   let type = cls === "amp" || cls === "homdel" || cls === "fusion" || cls === "complex" ? cls : cls === "other" && e.type === "SCNA" ? "cnother" : "snv";
   if (cls === "promoter") type = "snv";
+  let inferred = false;
+  if (type === "cnother") {
+    const inf = inferCnClass(e);
+    if (inf) {
+      type = inf;
+      inferred = true;
+    }
+  }
   const fraction = num(e.cell_fraction) ?? 0;
   const q = eventQuality(e, cls, { tree: ctx.tree, rnaFusions: ctx.rnaFusions, fraction });
   const tier = num(e.Tier);
@@ -72,7 +91,7 @@ function eventRow(patient, e, i, ctx) {
     type,
     gene: eventLabel(e) || "",
     locus: locusOfEvent(e),
-    detail: [e.Variant && e.Variant !== "None" ? e.Variant : e.Variant_g || "", type === "snv" && e.type ? `(${e.type})` : ""].filter(Boolean).join(" "),
+    detail: [e.Variant && e.Variant !== "None" ? e.Variant : e.Variant_g || "", type === "snv" && e.type ? `(${e.type})` : "", inferred ? "(class from segment CN)" : ""].filter(Boolean).join(" "),
     nCells: num(e.n_cells) ?? 0,
     fraction,
     clonality: q.clonality,
@@ -108,6 +127,48 @@ function variantRow(patient, v, nTumour) {
     coding: isCodingConsequence(v.consequence),
     link: { tab: 7, heatmap: "snv", gene: gene && !gene.startsWith("ENSG") ? gene : null, location: m ? `chr${m[1]}:${m[2]}` : null },
     variant: v,
+  };
+}
+
+function armRow(patient, a) {
+  const frac = num(a.cell_fraction);
+  return {
+    key: `${patient}|a|${a.id}`,
+    patient,
+    type: a.state === "gain" ? "armgain" : "armloss",
+    gene: "",
+    locus: a.locus || "",
+    detail: [a.level === "chromosome" ? `chr${a.chrom} whole chromosome` : `${a.chrom}${a.arm} arm`, num(a.median_cn_delta, Number) != null ? `median CN ${a.median_cn_delta > 0 ? "+" : ""}${a.median_cn_delta} vs baseline` : ""].filter(Boolean).join(", "),
+    nCells: num(a.n_cells) ?? 0,
+    fraction: frac,
+    clonality: clonalityOf(frac),
+    tier: null,
+    driver: false,
+    clade: null,
+    source: "arm_events.json",
+    link: { tab: 7, heatmap: "cn", gene: null, location: a.locus || null },
+    arm: a,
+  };
+}
+
+function junctionRow(patient, j, i, nTumour) {
+  const n = num(j.n_cells_tumour) ?? 0;
+  return {
+    key: `${patient}|j|${i}`,
+    patient,
+    type: "junction",
+    gene: j.genes || "",
+    locus: `${j.chrA}:${j.posA}${j.strA} | ${j.chrB}:${j.posB}${j.strB}`,
+    detail: [j.class, num(j.span) != null ? `${(j.span / 1e6).toFixed(j.span < 1e6 ? 3 : 1)} Mb` : "", j.tier, num(j.n_reads_normal) ? `${j.n_reads_normal} normal reads` : "", j.splice_mimic ? "splice mimic" : ""].filter(Boolean).join(", "),
+    nCells: n,
+    fraction: nTumour ? n / nTumour : null,
+    clonality: null,
+    tier: null,
+    driver: false,
+    clade: null,
+    source: "junctions_table.json",
+    link: { tab: 7, heatmap: "junctions", gene: null, location: `${j.chrA}:${j.posA}` },
+    junction: j,
   };
 }
 
@@ -184,6 +245,9 @@ export function buildPatientRows(patient, files = {}, { includeNoncoding = false
   (files.rnaFusions || []).forEach((f, i) => rows.push(rnaFusionRow(patient, f, i, nRna)));
   const nWalkCells = num(files.walks?.n_cells) ?? (Array.isArray(files.walks?.cells) ? files.walks.cells.length : null);
   (files.walks?.walks || []).forEach((w, i) => rows.push(walkRow(patient, w, i, nWalkCells)));
+  (files.armEvents?.events || []).forEach((a) => rows.push(armRow(patient, a)));
+  const nTumourCn = num(files.armEvents?.n_tumour_cells);
+  (files.junctions?.junctions || []).forEach((j, i) => rows.push(junctionRow(patient, j, i, nTumourCn)));
   return rows;
 }
 
@@ -200,6 +264,8 @@ export function missingSources(files = {}) {
   if (!files.variants) out.push({ type: "SNV sites", reason: "SNV matrix (snv_variants.json) not available" });
   if (!files.rnaFusions) out.push({ type: "Fusion (RNA)", reason: "rna/fusions.json not available" });
   if (!files.walks) out.push({ type: "ecDNA / amplicon walk", reason: "walks.json not available" });
+  if (!files.armEvents) out.push({ type: "Arm / chromosome gain / loss", reason: "arm_events.json not exported for this report" });
+  if (!files.junctions) out.push({ type: "Junction (SV)", reason: "junctions_table.json not exported for this report" });
   return out;
 }
 

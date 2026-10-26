@@ -87,7 +87,7 @@ const CohortDriverTreesPanel = React.lazy(() => import("./cohort/cohortDriverTre
 const CohortTsgHitsPanel = React.lazy(() => import("./cohort/cohortTsgHitsPanel"));
 const CohortCircosPanel = React.lazy(() => import("./cohort/cohortCircosPanel"));
 const CohortEventsTable = React.lazy(() => import("./cohort/cohortEventsTable"));
-const EventsCatalogTable = React.lazy(() => import("./events/eventsCatalogTable"));
+const CohortEventsCatalog = React.lazy(() => import("./events/cohortEventsCatalog"));
 const CohortRnaPanel = React.lazy(() => import("./cohort/cohortRnaPanel"));
 const CohortConvergencePanel = React.lazy(() => import("./cohort/cohortConvergencePanel"));
 const CohortAmpliconPanel = React.lazy(() => import("./cohort/cohortAmpliconPanel"));
@@ -716,7 +716,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "catalog" && (
           <Col span={24}>
-            <EventsCatalogTable filesByPatient={cohortFiles.files} patients={summaries.map((s) => s.caseReportId)} datasetKey={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`)?.id || "gbm-sc"} loading={cohortFiles.progress < 100} />
+            <CohortEventsCatalog summaries={summaries} datasets={datasets} cohortFiles={cohortFiles} datasetKey={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`)?.id || "gbm-sc"} />
           </Col>
         )}
         {view === "scatter" && (
