@@ -120,6 +120,8 @@ export const getDetailTabAvailability = (state = {}) => {
     15: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true),
     // Tab 19: purity / ploidy fit of cells (needs cells; coverage is checked in the tab)
     19: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0),
+    // Tab 20: events catalog of the patient (loads its own files)
+    20: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true),
     // Tab 18: compare phylogenies; only for patients with an exported trees/index.json listing another tree
     18: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0 && usableTrees(state.SingleCell?.altTrees?.data).length > 1),
   };

@@ -445,7 +445,8 @@
         "tab15": "Single-Cell Evidence",
         "tab16": "Single-Cell Story",
         "tab18": "Compare Trees",
-        "tab19": "Single-Cell Purity/Ploidy"
+        "tab19": "Single-Cell Purity/Ploidy",
+        "tab20": "Events"
       }
     },
     "detail-error-view": {
@@ -1477,6 +1478,7 @@
         "circos-title": "Alterations of the chosen genes across patients (circos)",
         "circos-help": "One ring per patient (outer = first). Marks sit at the gene's locus, coloured by alteration class with opacity = fraction of tumor cells; fusions are arcs between the partner loci (width = fraction). Gene names label the first occurrence.",
         "view-events": "All events",
+        "view-catalog": "Events catalog",
         "events-title": "Filtered events across patients ({{count}} of {{total}})",
         "ev-search": "Search gene / variant / role…",
         "ev-class": "Alteration",
@@ -1543,6 +1545,7 @@
         "purpose-mutations": "SNV burden on the tree (truncal, subclonal, private) and mutational signatures.",
         "purpose-rnacovde": "RNA differential on driver carriers, oncogene copy number and clades, tested inside each patient and combined across patients, with plate and cycling controlled; volcano per test and the robust hits.",
         "purpose-rna": "Cell states, copy-number dosage and clone-linked expression across patients.",
+        "purpose-catalog": "Every copy-number event, SNV, fusion, complex SV and ecDNA walk of every patient: search, filter, download.",
         "purpose-events": "Every filtered alteration in every patient, searchable.",
         "purpose-scatter": "Compare patients on any two metrics.",
         "purpose-tsghits": "Tumour suppressors x patients: every hit (mutation class, LOH, homozygous deletion, SV), how many, whether they share cells, clonal or subclonal; patients ranked by TSGs with two or more hits.",
