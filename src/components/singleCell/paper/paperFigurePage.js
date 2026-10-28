@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { Button, Empty, Modal, Space, Tag, Tooltip, Typography } from "antd";
+import { Button, Empty, Modal, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import { CompressOutlined, DownloadOutlined, ExpandOutlined, LeftOutlined, LinkOutlined, RightOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import useCohortExport from "../cohort/useCohortExport";
@@ -25,6 +25,10 @@ import { STATE_SCORES_FILE, parseStateScores } from "../../../helpers/singleCell
 import { isPatientRecord, patientKeyOf } from "../../../helpers/singleCell/cellFiles";
 import { ringBox } from "../../../helpers/singleCell/paperRing";
 import PanelControls, { controlOverlays } from "./panelControls";
+import FigureGeneCard from "./figureGeneCard";
+import { useGeneSummaries } from "../geneInfoPopover";
+import useGeneSpans from "../cohort/useGeneSpans";
+import { geneAtPoint } from "../../../helpers/singleCell/paperGenes";
 import { selectCells, selectedIds, selectionGroups, selectionText } from "../../../helpers/singleCell/paperSelection";
 import { colIndexAt, graphInWindow, regionWindows, snvAt } from "../../../helpers/singleCell/paperZoom";
 import { livePanel, livePanels, liveStart } from "../../../helpers/singleCell/paperLiveView";
@@ -164,6 +168,24 @@ export default function PaperFigurePage({ label }) {
     };
   }, [manifest]);
   const [hit, setHit] = useState(null);
+  // gene cards: any gene symbol found in the sidecar (mark gene field, axis label) opens the gene card; genome tracks resolve genes via gene_spans when "Genes on tracks" is on
+  const geneSummaries = useGeneSummaries();
+  const { spans: geneSpans } = useGeneSpans();
+  const [geneCard, setGeneCard] = useState(null); // { gene, genes, anchor: { x, y } | null }
+  const [geneGenome, setGeneGenome] = useState(false);
+  const [geneHover, setGeneHover] = useState(null);
+  const isGene = useMemo(() => (geneSummaries.map ? (sym) => geneSummaries.map.has(sym) : null), [geneSummaries.map]);
+  useEffect(() => {
+    // deep link: ?figgene=EGFR opens that gene's card
+    if (!geneSummaries.map) return;
+    let sym = null;
+    try {
+      sym = new URLSearchParams(window.location.search).get("figgene");
+    } catch (e) {
+      sym = null;
+    }
+    if (sym && geneSummaries.map.has(sym)) setGeneCard((cur) => cur || { gene: sym, genes: [sym], anchor: null });
+  }, [geneSummaries.map]);
   const [plotHit, setPlotHit] = useState(null);
   const [trackHit, setTrackHit] = useState(null);
   const [patientOpen, setPatientOpen] = useState(null);
@@ -187,6 +209,7 @@ export default function PaperFigurePage({ label }) {
     setPlotHit(null);
     setHover(null);
     setTip(null);
+    setGeneHover(null);
   };
   const clearHoverRef = useRef(clearHover);
   clearHoverRef.current = clearHover;
@@ -407,6 +430,7 @@ export default function PaperFigurePage({ label }) {
     const t = (x - h.region.x) / h.region.w;
     return { chr: `${h.region.axis.chr}`, pos: Math.round(w.from + t * (w.to - w.from)) };
   };
+  const geneAt = (x, y) => geneAtPoint(sidecar, x, y, { isGene, spans: geneSpans, genome: geneGenome, zoomWin: (r) => zoomWin(r.id) });
   const trackAt = (x, y) => tracks.find((t) => inRect(t.rect, x, y)) || null;
   const trackInfo = (t, x) => {
     const pos = regionWindow(t.region, x, x);
@@ -572,6 +596,12 @@ export default function PaperFigurePage({ label }) {
               <Button size="small" icon={<RightOutlined />} aria-label="Next figure" onClick={() => goFigure(1)} />
             </Tooltip>
           </Space.Compact>
+          <Tooltip title="Genes in the figure open a gene card on click (marks and axis labels). With this on, a click on a genome track opens the card of the gene under the cursor (GENCODE v32 coordinates) instead of selecting the cell.">
+            <span style={{ fontSize: 12 }}>
+              <Switch size="small" checked={geneGenome} onChange={setGeneGenome} disabled={!geneSpans} aria-label="Genes on genome tracks" />
+              {` Genes on tracks${geneSpans ? "" : " (not available: gene_spans.json)"}`}
+            </span>
+          </Tooltip>
           <Button size="small" icon={<ExpandOutlined />} onClick={() => setZoom(true)}>
             Zoom
           </Button>
@@ -687,7 +717,7 @@ export default function PaperFigurePage({ label }) {
       <div
         ref={sheetRef}
         className="sc-paperpage-sheet"
-        style={{ position: "relative", width, height, cursor: drag.current?.kind === "pan" ? "grabbing" : hit || trackHit ? "crosshair" : hover || plotHit?.fields ? "pointer" : lens ? "grab" : "default", touchAction: "none", userSelect: "none" }}
+        style={{ position: "relative", width, height, cursor: drag.current?.kind === "pan" ? "grabbing" : geneHover ? "pointer" : hit || trackHit ? "crosshair" : hover || plotHit?.fields ? "pointer" : lens ? "grab" : "default", touchAction: "none", userSelect: "none" }}
         onPointerDown={(e) => {
           const [x, y, px, py] = at(e);
           pointers.current.set(e.pointerId, [px, py]);
@@ -697,7 +727,7 @@ export default function PaperFigurePage({ label }) {
             return;
           }
           const h = trackAt(x, y) ? null : hitAt(sidecar, x, y);
-          if (h) {
+          if (h && !(geneGenome && geneAt(x, y))) {
             drag.current = { kind: "rows", h, y0: y, moved: false };
             return;
           }
@@ -771,7 +801,9 @@ export default function PaperFigurePage({ label }) {
           setPlotHit(ph && (ph.fields || ph.axis) ? ph : null);
           const p = h || t || (ph && ph.fields) ? null : panelAt(anchors, x, y);
           setHover(p);
-          setTip(h || t || ph || p ? { px, py } : null);
+          const gh = isGene && !drag.current ? geneAt(x, y) : null;
+          setGeneHover(gh ? { ...gh, px, py } : null);
+          setTip(h || t || ph || p || gh ? { px, py } : null);
         }}
         onPointerCancel={(e) => {
           pointers.current.delete(e.pointerId);
@@ -819,6 +851,11 @@ export default function PaperFigurePage({ label }) {
             return;
           }
           const [x, y] = at(e);
+          const gc = isGene ? geneAt(x, y) : null;
+          if (gc) {
+            setGeneCard({ gene: gc.gene, genes: gc.genes, anchor: { x: e.clientX, y: e.clientY } });
+            return;
+          }
           const t = trackAt(x, y);
           if (t) {
             select([t.cell], t.patient, `${t.cell} (${fig.label}${t.panel || ""})`, e);
@@ -910,7 +947,13 @@ export default function PaperFigurePage({ label }) {
             <div style={{ opacity: 0.8 }}>{plotHit.fields?.cell ? "click to select · shift adds · drag a box to select many" : plotHit.fields?.patient ? "click for the patient summary" : "drag a box to select cells · click to open the panel"}</div>
           </div>
         )}
-        {hover && tip && !hit && !plotHit && !trackHit && (
+        {geneHover && tip && (
+          <div className="sc-tooltip" style={{ ...tooltipStyle, top: (tip.py || 0) - 14, transform: "translateY(-100%)" }}>
+            <div style={{ fontWeight: 600 }}>{geneHover.genes.length > 1 ? geneHover.genes.join(" · ") : geneHover.gene}</div>
+            <div style={{ opacity: 0.8 }}>{`click for the gene card${geneHover.kind === "genome" ? ` · ${geneHover.position.chr}:${geneHover.position.pos.toLocaleString()}` : ""}`}</div>
+          </div>
+        )}
+        {hover && tip && !hit && !plotHit && !trackHit && !geneHover && (
           <div className="sc-tooltip" style={tooltipStyle}>
             <div style={{ fontWeight: 600 }}>{`${fig.label}${hover.letter}`}</div>
             <div>{hover.status}</div>
@@ -963,6 +1006,7 @@ export default function PaperFigurePage({ label }) {
           />
         </React.Suspense>
       )}
+      {geneCard && <FigureGeneCard gene={geneCard.gene} genes={geneCard.genes} anchor={geneCard.anchor} onPick={(g) => setGeneCard((c) => ({ ...c, gene: g }))} onClose={() => setGeneCard(null)} />}
       {patientOpen && (
         <React.Suspense fallback={null}>
           <PatientDrawer patient={patientOpen.patient} focus={patientOpen} onClose={() => setPatientOpen(null)} />
