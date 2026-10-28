@@ -8,6 +8,7 @@ import {
   cladeCells,
   countCrossings,
   defaultPair,
+  defaultTreeB,
   eventChoices,
   eventLeafStates,
   layoutFor,
@@ -51,6 +52,14 @@ describe("tip matching", () => {
     expect(defaultPair(usableTrees(idx))).toEqual(["gos", "Collaborator_latest"]);
     expect(defaultPair([{ name: "a" }, { name: "b" }])).toEqual(["a", "b"]);
     expect(usableTrees(null)).toEqual([]);
+  });
+  it("defaults tree B to the collaborator's 26 Oct TBE tree, else his older trees", () => {
+    const t = (...n) => n.map((name) => ({ name, n_matched: 9 }));
+    expect(defaultPair(t("gos", "Collaborator_latest", "Collaborator_old", "Collaborator_tbe_261026", "Collaborator_tbe_tumour_261026"))).toEqual(["gos", "Collaborator_tbe_261026"]);
+    expect(defaultPair(t("gos", "Collaborator_old", "Collaborator_latest"))).toEqual(["gos", "Collaborator_latest"]);
+    expect(defaultPair(t("gos", "Collaborator_old", "strict"))).toEqual(["gos", "Collaborator_old"]);
+    expect(defaultTreeB(t("gos", "Collaborator_tbe_261026", "Collaborator_latest"), "Collaborator_tbe_261026")).toBe("Collaborator_latest");
+    expect(defaultPair(t("gos"))).toEqual(["gos", null]);
   });
 });
 
@@ -213,5 +222,15 @@ describe("rotation and cladograms", () => {
     const a = parseNewick("((a:1,b:1):1,(c:1,d:1):1);");
     const out = optimizeRotation(a, parseNewick("((a:1,c:1):1,(b:1,d:1):1);"));
     expect(out.after).toBeLessThanOrEqual(out.before);
+  });
+});
+
+describe("pipeline tree keeps its order", () => {
+  it("fixA rotates only B", () => {
+    const a = parseNewick("((a:1,b:1):1,(c:1,d:1):1);");
+    const b = parseNewick("((c:1,d:1):1,(b:1,a:1):1);");
+    const out = optimizeRotation(a, b, 8, true);
+    expect(leafNames(out.rootA)).toEqual(["a", "b", "c", "d"]);
+    expect(out.after).toBe(0);
   });
 });

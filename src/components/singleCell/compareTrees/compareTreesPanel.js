@@ -128,8 +128,8 @@ export default function CompareTreesPanel() {
   const treeB = useAltTree(b, supportFile.data);
   const [showSupport, setShowSupport] = useState(true);
   const [showLinks, setShowLinks] = useState(true);
-  const [hideNormal, setHideNormal] = useState(true);
-  const [clip, setClip] = useState(true);
+  const [hideNormal, setHideNormal] = useState(false); // off: the pipeline tree shows the same cells as the Single-Cell tab
+  const [clip, setClip] = useState(siteFilter.clipBranches !== false); // same default as the Single-Cell tab
   const [cladogram, setCladogram] = useState(false);
   const [showMatrix, setShowMatrix] = useState(true);
   // heatmap layers under the trees: SNV matrices, copy number or both (URL: cmpheat=snv|cn|both)
@@ -217,12 +217,12 @@ export default function CompareTreesPanel() {
     const ra = prep(treeA.root);
     const rb = prep(treeB.root);
     if (!ra || !rb) return null;
-    return optimizeRotation(ra, rb);
-  }, [treeA.root, treeB.root, hideNormal, cladogram, cells]);
+    return optimizeRotation(ra, rb, 8, a === CURRENT_TREE); // the pipeline tree keeps the Single-Cell tab order; only B is rotated
+  }, [treeA.root, treeB.root, hideNormal, cladogram, cells, a]);
   const finish = (root) => {
     if (!root) return null;
     const l = layoutTree(root);
-    return clip && !cladogram ? clipLongBranches(l, longBranchCap(l, 1.5)) : l;
+    return clip && !cladogram ? clipLongBranches(l, longBranchCap(l)) : l;
   };
   const layoutA = useMemo(() => finish(prepared?.rootA), [prepared, clip, cladogram]); // eslint-disable-line react-hooks/exhaustive-deps
   const layoutB = useMemo(() => finish(prepared?.rootB), [prepared, clip, cladogram]); // eslint-disable-line react-hooks/exhaustive-deps
