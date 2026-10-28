@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Empty, Modal, Segmented, Space, Tag, Tooltip, Typography } from "antd";
-import { CompressOutlined, DownloadOutlined, LinkOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
+import { CompressOutlined, DownloadOutlined, LeftOutlined, LinkOutlined, RightOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import { navAction, neighbourKey } from "../../../helpers/singleCell/figureNav";
 import PanelDataTable from "./panelDataTable";
 import { bestImage, fitView, formatBuilt, panelTarget, zoomAt } from "../../../helpers/singleCell/paperManifest";
+import { neighbourPanelIndex, panelSequence, popupFit, popupKeyAction } from "../../../helpers/singleCell/paperPopup";
 
 const { Text } = Typography;
 const STATUS_COLOR = { ready: "green", partial: "orange", "not available": "default" };
@@ -167,12 +168,12 @@ export default function PaperFiguresViewer({ manifest, initialFigure = null, onO
           </div>
         </>
       )}
-      <PanelModal fig={fig} panel={panel} onClose={() => setPanel(null)} onOpenTarget={onOpenTarget} />
+      <PanelModal fig={fig} panel={panel} onClose={() => setPanel(null)} onOpenTarget={onOpenTarget} figures={manifest?.figures} onNavigate={(f, p) => { setFigId(f.id); setPanel(p); }} />
     </div>
   );
 }
 
-function PanelLarge({ panel }) {
+function PanelLarge({ panel, viewHeight }) {
   // natural size from the image itself, then fitted into the modal by ZoomPanImage
   const [size, setSize] = useState(null);
   const src = bestImage(panel);
@@ -183,23 +184,62 @@ function PanelLarge({ panel }) {
     im.src = src;
   }, [src]);
   if (!size) return <Text type="secondary">Loading…</Text>;
-  return <ZoomPanImage src={src} alt={`panel ${panel.letter}`} width={size.w} height={size.h} viewHeight={Math.min(720, Math.max(360, (window.innerHeight || 900) - 300))} />;
+  return <ZoomPanImage src={src} alt={`panel ${panel.letter}`} width={size.w} height={size.h} viewHeight={viewHeight} />;
 }
 
 /** A panel opened large: the exact panel image (zoom / pan), its build status and notes, panel PDF, link to its interactive view. */
-export function PanelModal({ fig, panel, onClose, onOpenTarget, tables = [], initialTab = "panel" }) {
+export function PanelModal({ fig, panel, onClose, onOpenTarget, tables = [], initialTab = "panel", figures = null, onNavigate = null }) {
   const target = panel ? panelTarget(panel.view) : null;
   const [tab, setTab] = useState(initialTab);
   useEffect(() => setTab(initialTab), [panel, initialTab]);
+  // size follows the window so the whole popup fits (no page scroll) at any browser size
+  const [win, setWin] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  useEffect(() => {
+    const on = () => setWin({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  const fit = popupFit(win.w, win.h, { hasTabs: tables.length > 0 });
+  // left / right: previous / next panel with an image, across the figures in order, wrapping at the ends
+  const seq = useMemo(() => panelSequence(figures), [figures]);
+  const step = useCallback(
+    (delta) => {
+      const j = neighbourPanelIndex(seq, { figId: fig?.id, letter: panel?.letter }, delta);
+      if (j < 0 || !onNavigate) return;
+      const f = figures[seq[j].figIdx];
+      onNavigate(f, f.panels[seq[j].panelIdx]);
+    },
+    [seq, fig, panel, figures, onNavigate]
+  );
+  const canStep = !!(panel && onNavigate && neighbourPanelIndex(seq, { figId: fig?.id, letter: panel.letter }, 1) >= 0);
+  useEffect(() => {
+    if (!panel || !canStep) return undefined;
+    const onKey = (e) => {
+      const a = popupKeyAction(e);
+      if (!a) return;
+      e.preventDefault();
+      e.stopPropagation();
+      step(a === "next" ? 1 : -1);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [panel, canStep, step]);
   return (
     <Modal
       open={!!panel}
       onCancel={onClose}
-      width="min(1200px, 96vw)"
+      width={fit.modalWidth}
+      style={{ top: 12, paddingBottom: 12 }}
       title={panel && fig ? `${fig.label}${panel.letter} · ${fig.title}` : ""}
       footer={
         panel ? (
           <Space>
+            {canStep && (
+              <>
+                <Button icon={<LeftOutlined />} aria-label="Previous panel" title="Previous panel (left arrow)" onClick={() => step(-1)} />
+                <Button icon={<RightOutlined />} aria-label="Next panel" title="Next panel (right arrow)" onClick={() => step(1)} />
+              </>
+            )}
             {panel.pdf && (
               <Button icon={<DownloadOutlined />} href={panel.pdf} target="_blank" rel="noopener noreferrer">
                 Panel PDF
@@ -220,11 +260,11 @@ export function PanelModal({ fig, panel, onClose, onOpenTarget, tables = [], ini
           {tab === "data" && tables.length > 0 ? (
             <PanelDataTable tables={tables} name={`${fig?.id || "figure"}_${panel.letter}`} />
           ) : bestImage(panel) ? (
-            <PanelLarge panel={panel} />
+            <PanelLarge panel={panel} viewHeight={fit.viewHeight} />
           ) : (
             <Empty description="No separate panel file: it is shown in the whole figure." />
           )}
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 8, maxHeight: 64, overflowY: "auto" }}>
             <Tag color={STATUS_COLOR[panel.status] || "default"}>{panel.status}</Tag>
             <Text style={{ fontSize: 12 }}>{panel.reason || "no notes"}</Text>
             {panel.source && <div><Text type="secondary" style={{ fontSize: 12 }}>{`Source: ${panel.source}`}</Text></div>}

@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
-import { Button, Empty, Modal, Space, Switch, Tag, Tooltip, Typography } from "antd";
+import { Button, Empty, Modal, Segmented, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import { CompressOutlined, DownloadOutlined, ExpandOutlined, LeftOutlined, LinkOutlined, RightOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import useCohortExport from "../cohort/useCohortExport";
 import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, formatBuilt, panelAt, panelRegions, panelTarget, parsePaperManifest, targetSearch } from "../../../helpers/singleCell/paperManifest";
 import { announceCohortView, requestHelpTarget } from "../../../helpers/singleCell/helpNav";
 import { PAPER_FIGURE_TABS } from "../../../helpers/singleCell/cohortViews";
+import { ORIGINAL_DIR, ORIGINAL_MANIFEST_FILE, isOriginalOnly, parseOriginalManifest } from "../../../helpers/singleCell/paperOriginal";
 import { counterText, navAction, neighbourKey } from "../../../helpers/singleCell/figureNav";
 import { PanelModal, STATUS_TAG_COLOR, ZoomPanImage, targetLabel } from "./paperFiguresViewer";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
@@ -128,7 +129,7 @@ const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y +
  * - walks of the figure (chips) select their carriers; drawers for patients and panel data tables.
  * label: "Fig 4" (manifest figure label).
  */
-export default function PaperFigurePage({ label }) {
+function PaperFigureInteractive({ label }) {
   const { status, manifest } = usePaperManifest();
   const fig = manifest?.figures.find((f) => f.label === label) || null;
   const [ref, measured] = useContainerWidth(1100);
@@ -137,6 +138,13 @@ export default function PaperFigurePage({ label }) {
   const [tip, setTip] = useState(null);
   const [open, setOpen] = useState(null);
   const [zoom, setZoom] = useState(false);
+  const [winH, setWinH] = useState(() => window.innerHeight || 900);
+  useEffect(() => {
+    const on = () => setWinH(window.innerHeight || 900);
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  const [openFig, setOpenFig] = useState(null); // figure of the open panel popup when stepped to another figure
   // live patient view of a panel (the patient's own gOS components, inline under the controls): { panel, patient } | null
   const [liveView, setLiveView] = useState(null);
   const liveRef = useRef(null);
@@ -1013,16 +1021,112 @@ export default function PaperFigurePage({ label }) {
         </React.Suspense>
       )}
       <PanelModal
-        fig={fig}
+        fig={openFig || fig}
         panel={open?.panel || open}
         initialTab={open?.tab || "panel"}
-        tables={open ? panelTables(sidecar, (open.panel || open).letter) : []}
-        onClose={() => setOpen(null)}
+        tables={open && !openFig ? panelTables(sidecar, (open.panel || open).letter) : []}
+        figures={manifest?.figures}
+        onNavigate={(f, p) => { setOpenFig(f.id === fig.id ? null : f); setOpen(p); }}
+        onClose={() => { setOpen(null); setOpenFig(null); }}
         onOpenTarget={(t) => (t.kind === "interactive" && t.panel === "patient-figure" && t.patient ? (setOpen(null), openLive(t.patient, t.letter || null)) : openPaperTarget(t))}
       />
-      <Modal open={zoom} onCancel={() => setZoom(false)} footer={null} width="96vw" title={`${fig.label} · ${fig.title}`}>
-        {zoom && <ZoomPanImage src={bestImage(fig)} alt={fig.label} width={natW} height={(fig.heightPt || 600) * PT_PX} viewHeight={Math.max(400, (window.innerHeight || 900) - 220)} />}
+      <Modal open={zoom} onCancel={() => setZoom(false)} footer={null} width="96vw" style={{ top: 12, paddingBottom: 12 }} title={`${fig.label} · ${fig.title}`}>
+        {zoom && <ZoomPanImage src={bestImage(fig)} alt={fig.label} width={natW} height={(fig.heightPt || 600) * PT_PX} viewHeight={Math.max(240, winH - 175)} />}
       </Modal>
+    </div>
+  );
+}
+
+/** The original (15 Oct) manuscript PDFs of the dataset: { status, original: { byLabel } | null }; "not available" when the manifest is absent. */
+export function useOriginalFigures() {
+  const dataset = useSelector((s) => s.Settings?.dataset);
+  const base = dataset?.dataPath ? `${dataset.dataPath}_cohort/${ORIGINAL_DIR}/` : "";
+  const ex = useCohortExport(dataset?.dataPath ? dataset : null, ORIGINAL_MANIFEST_FILE);
+  const original = useMemo(() => parseOriginalManifest(ex.data, base), [ex.data, base]);
+  return { status: ex.status, original };
+}
+
+function OriginalPdf({ item, label, height }) {
+  return (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ marginBottom: 4, fontSize: 12 }}>
+        <b>{`${label} · original manuscript figure (${item.dateLabel || "earlier set"})`}</b>{" "}
+        <a href={item.url} target="_blank" rel="noopener noreferrer">open the PDF in a new tab</a>
+      </div>
+      <iframe title={`${label} original`} src={`${item.url}#view=FitH`} style={{ width: "100%", height, border: "1px solid var(--sc-border, #e5e5e5)", borderRadius: 4, background: "#fff" }} />
+    </div>
+  );
+}
+
+/**
+ * One figure tab: the rebuilt interactive figure, with an Original (15 Oct) PDF to compare against (toggle: current /
+ * original / side by side). Figures that exist only as an original PDF (2, 7) show the PDF alone. Left / right arrows
+ * and the < > buttons step through the figure tabs in the PDF-only modes too.
+ */
+export default function PaperFigurePage({ label }) {
+  const { status, manifest } = usePaperManifest();
+  const { original } = useOriginalFigures();
+  const [mode, setMode] = useState("current");
+  const navKeys = useMemo(() => PAPER_FIGURE_TABS.map((n) => `paperfig${n}`), []);
+  const curKey = label ? `paperfig${`${label}`.replace(/^Fig /, "")}` : null;
+  const item = original?.byLabel?.[label] || null;
+  const only = status !== "loading" && isOriginalOnly(label, manifest?.figures, original);
+  const eff = only ? "original" : item ? mode : "current";
+  const go = useCallback(
+    (delta) => {
+      const next = neighbourKey(navKeys, curKey, delta);
+      if (!next) return;
+      const p = new URLSearchParams(window.location.search);
+      p.set("scview", next);
+      window.history.pushState(null, "", `${window.location.pathname}?${p.toString()}`);
+      announceCohortView(next);
+      requestHelpTarget({ scope: "cohort", view: next });
+    },
+    [navKeys, curKey]
+  );
+  useEffect(() => {
+    if (eff !== "original") return undefined;
+    const onKey = (e) => {
+      const a = navAction(e, { blocked: false });
+      if (a === "prev" || a === "next") {
+        e.preventDefault();
+        go(a === "next" ? 1 : -1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [eff, go]);
+  const pdfHeight = Math.max(480, (window.innerHeight || 900) - 160);
+  return (
+    <div>
+      {item && !only && (
+        <div style={{ marginBottom: 6 }}>
+          <Segmented
+            size="small"
+            value={eff}
+            onChange={setMode}
+            options={[{ value: "current", label: "Current (interactive)" }, { value: "original", label: `Original (${item.dateLabel})` }, { value: "side", label: "Side by side" }]}
+          />
+        </div>
+      )}
+      {eff === "original" && (
+        <>
+          <Space size={8} style={{ marginBottom: 6 }}>
+            <Button size="small" icon={<LeftOutlined />} aria-label="Previous figure" onClick={() => go(-1)} />
+            <Text type="secondary" style={{ fontSize: 12 }}>{counterText(navKeys, curKey)}</Text>
+            <Button size="small" icon={<RightOutlined />} aria-label="Next figure" onClick={() => go(1)} />
+            {only && <Text type="secondary" style={{ fontSize: 12 }}>PDF only: this figure has not been rebuilt as an interactive figure.</Text>}
+          </Space>
+          <OriginalPdf item={item} label={label} height={pdfHeight} />
+        </>
+      )}
+      {eff === "current" && <PaperFigureInteractive label={label} />}
+      {eff === "side" && (
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: 0, maxHeight: pdfHeight + 30, overflow: "auto" }}><PaperFigureInteractive label={label} /></div>
+          <OriginalPdf item={item} label={label} height={pdfHeight} />
+        </div>
+      )}
     </div>
   );
 }
