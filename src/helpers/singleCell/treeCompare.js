@@ -22,12 +22,24 @@ export function usableTrees(index) {
   return (Array.isArray(index) ? index : []).filter((t) => t && t.name && (t.name === CURRENT_TREE || t.n_matched >= 3));
 }
 
-/** Default pair: the pipeline tree against Jake's latest (else the first other tree). */
+/** Jake's 26 Oct 2026 TBE tree (all cells): default tree B. */
+export const JAKE_TBE_TREE = "jake_tbe_261026";
+
+/**
+ * Default tree B: Jake's 26 Oct TBE tree when this patient has it, else his older trees
+ * (jake_latest, else jake_old), else the first other tree.
+ */
+export function defaultTreeB(trees, a = CURRENT_TREE) {
+  const names = (trees || []).map((t) => t.name);
+  const pick = [JAKE_TBE_TREE, "jake_latest", "jake_old"].find((n) => names.includes(n) && n !== a);
+  return pick || names.find((n) => n !== a) || null;
+}
+
+/** Default pair: the pipeline tree (as drawn in the Single-Cell tab) against defaultTreeB. */
 export function defaultPair(trees) {
   const names = (trees || []).map((t) => t.name);
   const a = names.includes(CURRENT_TREE) ? CURRENT_TREE : names[0] || null;
-  const b = names.includes("jake_latest") && a !== "jake_latest" ? "jake_latest" : names.find((n) => n !== a) || null;
-  return [a, b];
+  return [a, defaultTreeB(trees, a)];
 }
 
 /** Tip-name key tolerant to the case / separator differences between trees (10A vs 10a, pool-Q vs pool_Q). */
@@ -387,10 +399,11 @@ export function stripLengths(root) {
 /**
  * Rotate both trees to minimise tanglegram crossings: alternately order B by
  * the barycentre of A's rows and A by B's, several sweeps, keeping the best
- * pair seen (the original orientation included).
+ * pair seen (the original orientation included). With `fixA` tree A keeps its
+ * own order (the Single-Cell tab's drawing of the pipeline tree) and only B is rotated.
  * @returns { rootA, rootB, before, after } crossings of the original / best orientation
  */
-export function optimizeRotation(rootA, rootB, sweeps = 8) {
+export function optimizeRotation(rootA, rootB, sweeps = 8, fixA = false) {
   const cross = (la, lb) => countCrossings(tanglegramLinks(la, lb));
   let la = layoutTree(rootA);
   let lb = layoutTree(rootB);
@@ -403,6 +416,7 @@ export function optimizeRotation(rootA, rootB, sweeps = 8) {
     lb = layoutTree(b);
     let c = cross(la, lb);
     if (c < best.c) best = { rootA: a, rootB: b, c };
+    if (fixA) break; // B is oriented to A's fixed order; nothing more to gain
     a = orientToReference(a, lb);
     la = layoutTree(a);
     c = cross(la, lb);
