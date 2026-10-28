@@ -10,7 +10,7 @@ describe("cohort views", () => {
     expect(order).toEqual(COHORT_VIEW_GROUPS);
   });
   it("leads with the paper's figure tabs, then the overview and the findings views", () => {
-    expect(COHORT_VIEWS.slice(0, 3).map((v) => v.key)).toEqual(["paperfig1", "paperfig3", "paperfig4"]);
+    expect(COHORT_VIEWS.slice(0, 3).map((v) => v.key)).toEqual(["paperfig1", "paperfig2", "paperfig3"]);
     const k = COHORT_VIEWS.findIndex((v) => v.group !== "paper");
     expect(COHORT_VIEWS.slice(k, k + 3).map((v) => v.key)).toEqual(["overview", "portrait", "reports"]);
     expect(paperFigureLabel("paperfigS1")).toBe("Fig S1");
