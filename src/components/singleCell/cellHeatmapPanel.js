@@ -1,4 +1,5 @@
 import { findEntryByKey } from "../../helpers/singleCell/complexFamilies";
+import { splitMissingGenomes } from "../../helpers/singleCell/missingGenomes";
 import { treeNoteDisplay, treeQualityNote } from "../../helpers/singleCell/compareChoices";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -1156,8 +1157,12 @@ export default function CellHeatmapPanel() {
       alerts.push({ key, message: t(`components.single-cell.errors.${key}`), description: s.error?.message });
     }
   });
-  const missingGenomes =
-    heatmapType === "cn" && cnSource.status === "ok" ? cnSource.data.rows.filter((r) => !r).length : 0;
+  const missingSplit =
+    heatmapType === "cn" && cnSource.status === "ok"
+      ? splitMissingGenomes(cnSource.data.rows, cnSource.data.cells, (id) => cellById.get(id)?.clone_id)
+      : { normal: 0, other: 0 };
+  const missingGenomes = missingSplit.other;
+  const missingNormals = missingSplit.normal;
 
   const treeNote =
     tree.status === "ok"
@@ -1602,6 +1607,12 @@ export default function CellHeatmapPanel() {
             <Text type="secondary" className="sc-hint">
               · <Provenance id="phylogeny">{treeNote}{treeQuality && (() => { const d = treeNoteDisplay(treeQuality); return <Tooltip title={d.tooltip}><Tag color={d.weak ? "warning" : "default"} style={{ marginLeft: 6 }}>{d.tag}</Tag></Tooltip>; })()}</Provenance>
             </Text>
+            {missingNormals > 0 && (
+              <span className="sc-note">
+                <InfoCircleOutlined />
+                {t("components.single-cell.heatmap.normal-no-graph", { count: missingNormals })}
+              </span>
+            )}
             {missingGenomes > 0 && (
               <span className="sc-note">
                 <InfoCircleOutlined />
