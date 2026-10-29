@@ -104,3 +104,14 @@ describe("static manifests", () => {
     ).toBe("json");
   });
 });
+
+describe("getManifestRequestConfig cache header", () => {
+  const { getManifestRequestConfig: cfg } = require("./staticManifests");
+  test("sends Cache-Control: no-cache and keeps existing headers/options", () => {
+    const c = cfg({ datafilesPath: "/x/datafiles.json" }, { headers: { Foo: "bar" }, timeout: 5 });
+    expect(c.headers).toEqual({ Foo: "bar", "Cache-Control": "no-cache" });
+    expect(c.timeout).toBe(5);
+    expect(c.responseType).toBe("json");
+    expect(cfg({}).headers["Cache-Control"]).toBe("no-cache");
+  });
+});

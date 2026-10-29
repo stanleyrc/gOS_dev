@@ -14,6 +14,8 @@ export const isArrowManifest = (dataset = {}) =>
 
 export const getManifestRequestConfig = (dataset = {}, options = {}) => ({
   ...options,
+  // revalidate (ETag -> cheap 304) instead of letting the browser reuse a heuristically cached, stale manifest
+  headers: { ...(options.headers || {}), "Cache-Control": "no-cache" },
   responseType: isArrowManifest(dataset) ? "arraybuffer" : "json",
 });
 
