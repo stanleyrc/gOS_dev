@@ -8,7 +8,7 @@ import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, form
 import { announceCohortView, requestHelpTarget } from "../../../helpers/singleCell/helpNav";
 import { PAPER_FIGURE_TABS } from "../../../helpers/singleCell/cohortViews";
 import { ORIGINAL_DIR, ORIGINAL_MANIFEST_FILE, isOriginalOnly, parseOriginalManifest } from "../../../helpers/singleCell/paperOriginal";
-import { counterText, navAction, neighbourKey } from "../../../helpers/singleCell/figureNav";
+import { counterText, framedFocus, navAction, neighbourKey } from "../../../helpers/singleCell/figureNav";
 import { PanelModal, STATUS_TAG_COLOR, ZoomPanImage, targetLabel } from "./paperFiguresViewer";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import CnZoomLayer from "./cnZoomLayer";
@@ -129,6 +129,8 @@ const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y +
  * - walks of the figure (chips) select their carriers; drawers for patients and panel data tables.
  * label: "Fig 4" (manifest figure label).
  */
+let keepZoom = false; // set when the whole-figure zoom steps to another figure, so the new figure opens zoomed too
+
 function PaperFigureInteractive({ label }) {
   const { status, manifest } = usePaperManifest();
   const fig = manifest?.figures.find((f) => f.label === label) || null;
@@ -137,7 +139,7 @@ function PaperFigureInteractive({ label }) {
   const [focusPanel, setFocusPanel] = useState(null); // panel letter whose toolbar group is hovered
   const [tip, setTip] = useState(null);
   const [open, setOpen] = useState(null);
-  const [zoom, setZoom] = useState(false);
+  const [zoom, setZoom] = useState(() => { const z = keepZoom; keepZoom = false; return z; });
   const [winH, setWinH] = useState(() => window.innerHeight || 900);
   useEffect(() => {
     const on = () => setWinH(window.innerHeight || 900);
@@ -342,6 +344,23 @@ function PaperFigureInteractive({ label }) {
   );
   const navRef = useRef({});
   navRef.current = { goFigure, blocked };
+  // whole-figure Zoom: left / right step to the previous / next figure (the zoom stays open), Esc closes; no click needed first
+  useEffect(() => {
+    if (!zoom) return undefined;
+    const onKey = (e) => {
+      const a = navAction(e, { blocked: false, canClose: true });
+      if (!a) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (a === "close") setZoom(false);
+      else {
+        keepZoom = true;
+        navRef.current.goFigure(a === "next" ? 1 : -1);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [zoom]);
   useEffect(() => {
     const onKey = (e) => {
       const a = navAction(e, { blocked: navRef.current.blocked });
@@ -1030,7 +1049,20 @@ function PaperFigureInteractive({ label }) {
         onClose={() => { setOpen(null); setOpenFig(null); }}
         onOpenTarget={(t) => (t.kind === "interactive" && t.panel === "patient-figure" && t.patient ? (setOpen(null), openLive(t.patient, t.letter || null)) : openPaperTarget(t))}
       />
-      <Modal open={zoom} onCancel={() => setZoom(false)} footer={null} width="96vw" style={{ top: 12, paddingBottom: 12 }} title={`${fig.label} · ${fig.title}`}>
+      <Modal
+        open={zoom}
+        onCancel={() => setZoom(false)}
+        width="96vw"
+        style={{ top: 12, paddingBottom: 12 }}
+        title={`${fig.label} · ${fig.title}`}
+        footer={
+          <Space>
+            <Button icon={<LeftOutlined />} aria-label="Previous figure" title="Previous figure (left arrow)" onClick={() => { keepZoom = true; goFigure(-1); }} />
+            <Text type="secondary" style={{ fontSize: 12 }}>{counterText(navKeys, curKey)}</Text>
+            <Button icon={<RightOutlined />} aria-label="Next figure" title="Next figure (right arrow)" onClick={() => { keepZoom = true; goFigure(1); }} />
+          </Space>
+        }
+      >
         {zoom && <ZoomPanImage src={bestImage(fig)} alt={fig.label} width={natW} height={(fig.heightPt || 600) * PT_PX} viewHeight={Math.max(240, winH - 175)} />}
       </Modal>
     </div>
@@ -1096,6 +1128,15 @@ export default function PaperFigurePage({ label }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [eff, go]);
+  // a PDF <iframe> (browser PDF viewer) swallows key events once it has focus (after a click in it): hand focus back to the page
+  // as soon as the frame takes it, so left / right keep stepping figures; wheel scrolling inside the PDF is unaffected
+  useEffect(() => {
+    if (eff === "current") return undefined;
+    const back = () => setTimeout(() => { const f = framedFocus(document); if (f && f.blur) f.blur(); }, 0);
+    window.addEventListener("blur", back);
+    const t = setInterval(back, 400);
+    return () => { window.removeEventListener("blur", back); clearInterval(t); };
+  }, [eff]);
   const pdfHeight = Math.max(480, (window.innerHeight || 900) - 160);
   return (
     <div>

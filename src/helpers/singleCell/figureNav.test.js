@@ -32,3 +32,14 @@ describe("figureNav", () => {
     expect(isTypingTarget({ tagName: "DIV", isContentEditable: true })).toBe(true);
   });
 });
+
+describe("framedFocus", () => {
+  const { framedFocus } = require("./figureNav");
+  test("iframe focus detected", () => {
+    const f = { tagName: "IFRAME" };
+    expect(framedFocus({ activeElement: f })).toBe(f);
+    expect(framedFocus({ activeElement: { tagName: "embed" } })).toBeTruthy();
+    expect(framedFocus({ activeElement: { tagName: "BODY" } })).toBeNull();
+    expect(framedFocus(null)).toBeNull();
+  });
+});
