@@ -21,6 +21,8 @@ const TYPING = new Set(["INPUT", "SELECT", "TEXTAREA"]);
 export function isTypingTarget(target) {
   if (!target) return false;
   const tag = `${target.tagName || ""}`.toUpperCase();
+  // radio / checkbox / button inputs (the Current / Original / Side by side switch after a click) take no typed text
+  if (tag === "INPUT" && ["radio", "checkbox", "button", "submit"].includes(`${target.type || ""}`)) return false;
   if ((tag === "INPUT" || tag === "TEXTAREA") && `${target.type || "text"}` !== "range" && !target.value) return false;
   return TYPING.has(tag) || !!target.isContentEditable || target.getAttribute?.("role") === "slider";
 }
