@@ -43,3 +43,8 @@ describe("framedFocus", () => {
     expect(framedFocus(null)).toBeNull();
   });
 });
+
+test("radio inputs are not typing targets", () => {
+  expect(isTypingTarget({ tagName: "INPUT", type: "radio", value: "original" })).toBe(false);
+  expect(isTypingTarget({ tagName: "INPUT", type: "text", value: "abc" })).toBe(true);
+});
