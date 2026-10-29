@@ -45,3 +45,10 @@ export function counterText(keys, current) {
   const i = (keys || []).indexOf(current);
   return i < 0 ? "" : `${i + 1} / ${keys.length}`;
 }
+
+/** The embedded-document element (iframe / embed / object) that currently holds keyboard focus, else null. Such elements swallow key events. */
+export function framedFocus(doc) {
+  const a = doc && doc.activeElement;
+  const t = a && a.tagName ? `${a.tagName}`.toUpperCase() : "";
+  return t === "IFRAME" || t === "EMBED" || t === "OBJECT" ? a : null;
+}
