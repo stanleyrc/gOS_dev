@@ -1145,6 +1145,8 @@
         "missing-genomes": "{{count}} cell has no copy-number profile and is shown blank",
         "missing-genomes_plural": "{{count}} cells have no copy-number profile and are shown blank",
         "hint": "Click a cell to pull it up · ⌘/Ctrl-click to add or remove · Shift-click for a range · click a tree node for its clade · drag to pan, ⌘/Ctrl/Alt-scroll to zoom · brush regions in the bar above to compare them side by side",
+        "normal-no-graph": "{{count}} normal cell (no copy-number graph)",
+        "normal-no-graph_plural": "{{count}} normal cells (no copy-number graph)",
         "missing-allelic": "{{count}} cell has no allelic copy number and is shown blank",
         "missing-allelic_plural": "{{count}} cells have no allelic copy number and are shown blank",
         "loading-allelic": "Loading allelic copy number…",
