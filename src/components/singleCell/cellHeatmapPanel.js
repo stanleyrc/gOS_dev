@@ -30,6 +30,7 @@ import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
+import { effectiveSnvMetric } from "../../helpers/singleCell/snvBinning";
 import { appendSnv } from "../../helpers/singleCell/snvColumnar";
 import { CN_MAPPED_PARAM, cnMappedSummary } from "../../helpers/singleCell/cnMapped";
 import { SnvTrackControls, useSnvAnnot, useSnvTracks, useTreeSiteFit } from "./snvAnnotTracks";
@@ -198,7 +199,7 @@ export default function CellHeatmapPanel() {
     junctions,
     heatmapType,
     snvOrder,
-    snvMetric,
+    snvMetric: snvMetricChoice,
     cnMode,
     palette,
     sidePanel,
@@ -273,6 +274,8 @@ export default function CellHeatmapPanel() {
     : 0;
   const treeBlock = hasTree ? treeWidth + HANDLE_WIDTH : 0;
   const snvReady = snv.status === "ok";
+  // GT (PL genotype call) is the default; a matrix without calls falls back to VAF
+  const snvMetric = effectiveSnvMetric(snvMetricChoice, snvReady ? snv.data : null);
   const showSide = sidePanel && snvReady && heatmapType !== "snv" && heatmapType !== "drivers";
   const driverLayer = useDriverLayer();
   const driverEntries = driverLayer.columns; // display columns (redundant CN events collapsed); .entry is the representative driver

@@ -19,7 +19,7 @@ import {
   snvMetricValue,
   setSnvNaMode,
 } from "../../helpers/singleCell/matrix";
-import { binLegendText, snvBinRGBA } from "../../helpers/singleCell/snvBinning";
+import { binLegendText, gtBinRGBA, snvBinRGBA } from "../../helpers/singleCell/snvBinning";
 import { siteDetail } from "../../helpers/singleCell/snvAnnot";
 import { placeLabels, siteLabel } from "../../helpers/singleCell/snvLabels";
 
@@ -179,7 +179,8 @@ export default function MutationSidePanel({
       const a = bins.binStart[x];
       const b = bins.binEnd[x];
       if (b - a > 1) {
-        const { positive, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
+        const { positive, zero, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
+        if (metric === "gt") return gtBinRGBA(positive, zero);
         return snvBinRGBA(positive, b - a, missing); // plain fraction, no pale-grey floor (helpers/singleCell/snvBinning.js)
       }
       return snvMetricRGBA(snvMetricValue(snv, p, columnOrder[a], metric), metric, max);
