@@ -25,3 +25,27 @@ describe("snvBinning", () => {
     expect(binLegendText(columnBins(100, 10))).toContain("~10 sites per pixel");
   });
 });
+
+import { effectiveSnvMetric, gtBinRGB } from "./snvBinning";
+import { GT_MATRIX, snvMetricRGBA } from "./matrix";
+
+describe("genotype colours", () => {
+  it("gt bins: all REF pure white, all ALT the alt colour, no calls grey, same ramp as single sites", () => {
+    expect(gtBinRGB(0, 8)).toEqual([255, 255, 255]);
+    expect(gtBinRGB(8, 0)).toEqual(hexToRgb(GT_MATRIX.alt));
+    expect(gtBinRGB(0, 0)).toEqual(hexToRgb(GT_MATRIX.nocall));
+    expect(gtBinRGB(1, 1)[1]).toBeLessThan(255);
+    expect(gtBinRGB(1, 1)[1]).toBeGreaterThan(gtBinRGB(8, 0)[1]);
+  });
+  it("single-site GT: REF is white (not blue)", () => {
+    const px = snvMetricRGBA(0, "gt", 1);
+    expect(px).toBe(0xffffffff);
+    expect(snvMetricRGBA(1, "gt", 1)).not.toBe(px);
+    expect(snvMetricRGBA(null, "gt", 1)).not.toBe(px);
+  });
+  it("falls back to VAF without calls", () => {
+    expect(effectiveSnvMetric("gt", { gt: null })).toBe("vaf");
+    expect(effectiveSnvMetric("gt", { gt: [] })).toBe("gt");
+    expect(effectiveSnvMetric("alt", { gt: null })).toBe("alt");
+  });
+});

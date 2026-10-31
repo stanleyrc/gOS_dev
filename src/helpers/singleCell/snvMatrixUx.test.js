@@ -22,7 +22,7 @@ describe("missing colour option", () => {
     expect(snvNaMode()).toBe("white");
     expect(snvMissingColor()).toBe(SNV_NO_READS_BLUE);
     const white = countRGBA(null, 6, "alt");
-    expect(snvMetricRGBA(null, "gt", 1)).toBe(white);
+    expect(snvMetricRGBA(null, "gt", 1)).not.toBe(white); // GT no-call is light grey (2026-10-31), distinct from REF white and from the blue of the other metrics
     setSnvNaMode("grey");
     expect(snvNaMode()).toBe("grey");
     expect(countRGBA(null, 6, "alt")).not.toBe(white);

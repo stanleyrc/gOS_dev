@@ -642,7 +642,9 @@ export function cnColorer(palette, mode = "total") {
 
 export const SNV_METRICS = ["vaf", "alt", "depth", "gt"];
 // genotype calls: no call / ref / alt
-export const GT_COLORS = { nocall: "#D9D9D9", ref: "#9ECAE1", alt: "#B2182B" };
+export const GT_COLORS = { nocall: "#D9D9D9", ref: "#9ECAE1", alt: "#B2182B" }; // driver strips
+/** Genotype matrix colours, the same zoomed in and out: REF white, ALT one colour, no call light grey. */
+export const GT_MATRIX = { ref: "#FFFFFF", alt: "#B2182B", nocall: "#D9D9D9" };
 export const SNV_MISSING_COLOR = "#ADB5BD";
 
 /** Value of a metric for matrix row p, variant c; null when the site has no reads. */
@@ -753,9 +755,9 @@ export function snvMetricMax(snv, metric) {
 
 export function snvMetricRGBA(value, metric, max) {
   if (metric === "gt") {
-    if (value === 1) return packRGBA(hexToRgb(GT_COLORS.alt));
-    if (value === 0) return packRGBA(hexToRgb(GT_COLORS.ref));
-    return packRGBA(hexToRgb(isDarkPlots() ? SNV_DARK.missing : snvNaWhite ? SNV_NO_READS_BLUE : GT_COLORS.nocall));
+    if (value === 1) return packRGBA(hexToRgb(GT_MATRIX.alt));
+    if (value === 0) return packRGBA(hexToRgb(isDarkPlots() ? "#2a2a2a" : GT_MATRIX.ref));
+    return packRGBA(hexToRgb(isDarkPlots() ? SNV_DARK.missing : GT_MATRIX.nocall));
   }
   return metric === "vaf" ? vafRGBA(value) : countRGBA(value, max, metric);
 }

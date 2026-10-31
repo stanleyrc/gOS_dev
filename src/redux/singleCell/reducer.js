@@ -127,7 +127,7 @@ const initState = {
   hetMode: linkedHetMode(), // ?hets=blocks
   heatmapType: "cn",
   snvOrder: "tree",
-  snvMetric: "vaf",
+  snvMetric: "gt",
   cnMode: "total",
   palette: storedPalette(),
   sidePanel: true,

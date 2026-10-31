@@ -10,7 +10,7 @@ import {
   snvMissingColor,
   snvNaMode,
   ALT_BINS,
-  GT_COLORS,
+  GT_MATRIX,
   depthColor,
   vafRGB,
 } from "../../helpers/singleCell/matrix";
@@ -108,10 +108,10 @@ export default function HeatmapLegend({
     if (snvMetric === "vaf") items = [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: v === 0 && naMode === "white" ? "0 (ref reads only)" : `${v}` }));
     else if (snvMetric === "gt") {
       items = [
-        { color: GT_COLORS.alt, label: "alt" },
-        { color: GT_COLORS.ref, label: "ref" },
+        { color: GT_MATRIX.alt, label: "alt call" },
+        { color: GT_MATRIX.ref, label: "ref call (white)" },
       ];
-      note = "zoomed out: grey = fraction of sites in the pixel with an alt genotype call";
+      note = "same colours at every zoom; zoomed out a pixel shades white to red by the fraction of its called sites that are alt";
     } else if (snvMetric === "alt") {
       items = ALT_BINS.map((b) => ({ color: b.color, label: b.label }));
       note = `zoomed in: ALT reads per cell in bins; zoomed out: grey = fraction of sites in the pixel with alt reads`;
@@ -123,7 +123,7 @@ export default function HeatmapLegend({
     groups.push({
       key: "snv",
       title: t(`components.single-cell.metric.${snvMetric}`),
-      items: [...items, { color: snvMissingColor(), label: naMode === "white" ? "no reads = blue" : `${t("components.single-cell.side.no-reads")} (missing, grey)` }],
+      items: [...items, { color: snvMetric === "gt" ? GT_MATRIX.nocall : snvMissingColor(), label: snvMetric === "gt" ? "no call = grey" : naMode === "white" ? "no reads = blue" : `${t("components.single-cell.side.no-reads")} (missing, grey)` }],
       note,
     });
   }
