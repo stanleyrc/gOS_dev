@@ -47,18 +47,18 @@ describe("tip matching", () => {
     expect(treeFromNewick("(a:1,B:1);", ["A", "b"]).matched).toBe(2);
   });
   it("lists usable trees and a default pair", () => {
-    const idx = [{ name: "gos", n_matched: 10 }, { name: "jake_old", n_matched: 2 }, { name: "jake_latest", n_matched: 9 }];
-    expect(usableTrees(idx).map((t) => t.name)).toEqual(["gos", "jake_latest"]);
-    expect(defaultPair(usableTrees(idx))).toEqual(["gos", "jake_latest"]);
+    const idx = [{ name: "gos", n_matched: 10 }, { name: "Collaborator_old", n_matched: 2 }, { name: "Collaborator_latest", n_matched: 9 }];
+    expect(usableTrees(idx).map((t) => t.name)).toEqual(["gos", "Collaborator_latest"]);
+    expect(defaultPair(usableTrees(idx))).toEqual(["gos", "Collaborator_latest"]);
     expect(defaultPair([{ name: "a" }, { name: "b" }])).toEqual(["a", "b"]);
     expect(usableTrees(null)).toEqual([]);
   });
-  it("defaults tree B to Jake's 26 Oct TBE tree, else his older trees", () => {
+  it("defaults tree B to the 26 Oct TBE tree, else the older trees", () => {
     const t = (...n) => n.map((name) => ({ name, n_matched: 9 }));
-    expect(defaultPair(t("gos", "jake_latest", "jake_old", "jake_tbe_261026", "jake_tbe_tumour_261026"))).toEqual(["gos", "jake_tbe_261026"]);
-    expect(defaultPair(t("gos", "jake_old", "jake_latest"))).toEqual(["gos", "jake_latest"]);
-    expect(defaultPair(t("gos", "jake_old", "strict"))).toEqual(["gos", "jake_old"]);
-    expect(defaultTreeB(t("gos", "jake_tbe_261026", "jake_latest"), "jake_tbe_261026")).toBe("jake_latest");
+    expect(defaultPair(t("gos", "Collaborator_latest", "Collaborator_old", "Collaborator_tbe_261026", "Collaborator_tbe_tumour_261026"))).toEqual(["gos", "Collaborator_tbe_261026"]);
+    expect(defaultPair(t("gos", "Collaborator_old", "Collaborator_latest"))).toEqual(["gos", "Collaborator_latest"]);
+    expect(defaultPair(t("gos", "Collaborator_old", "strict"))).toEqual(["gos", "Collaborator_old"]);
+    expect(defaultTreeB(t("gos", "Collaborator_tbe_261026", "Collaborator_latest"), "Collaborator_tbe_261026")).toBe("Collaborator_latest");
     expect(defaultPair(t("gos"))).toEqual(["gos", null]);
   });
 });

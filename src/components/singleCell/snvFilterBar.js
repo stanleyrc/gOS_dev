@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Button, Checkbox, InputNumber, Popover, Select, Slider, Space, Tag, Tooltip, Typography } from "antd";
+import { Button, Checkbox, InputNumber, Popover, Select, Slider, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import singleCellActions from "../../redux/singleCell/actions";
 import { REGION_CLASSES, catLegend, finiteRange, describeFilter, removeFilterKey, setRange, setValues } from "../../helpers/singleCell/snvAnnot";
@@ -212,6 +212,12 @@ export default function SnvFilterBar({ annot, nShown, onIsolate = null, fitBusy 
           <Text type="secondary">Missing (no coverage)</Text>
         </Tooltip>
         <Select size="small" style={{ width: 76 }} value={layout.snvNaColor === "grey" ? "grey" : "white"} onChange={(v) => update({ snvNaColor: v === "grey" ? "grey" : null })} options={[{ value: "grey", label: "grey" }, { value: "white", label: "blue" }]} />
+      </Space>
+      <Space size={4}>
+        <Tooltip title="Genotype matrix: sites with no reads are white, like REF. Tick to draw them pale blue so dropout stays visible. Zoomed-out pixels average only the sites with reads.">
+          <Text type="secondary">Mark no-read sites</Text>
+        </Tooltip>
+        <Switch size="small" checked={Boolean(layout.snvMarkNoRead)} onChange={(v) => update({ snvMarkNoRead: v ? true : null })} />
       </Space>
     </div>
   );

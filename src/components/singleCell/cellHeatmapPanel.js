@@ -1502,7 +1502,7 @@ export default function CellHeatmapPanel() {
                 style={{ width: 120 }}
                 value={snvMetric}
                 onChange={(value) => dispatch(singleCellActions.updateSnvMetric(value))}
-                options={["vaf", "alt", "depth", ...(snv.data?.gt ? ["gt"] : [])].map((value) => ({
+                options={["vaf", "alt", "depth", ...(snv.data?.gt || snv.data?.pl ? ["gt"] : [])].map((value) => ({
                   value,
                   label: t(`components.single-cell.metric.${value}`),
                 }))}
@@ -1793,7 +1793,7 @@ export default function CellHeatmapPanel() {
           style={{ width: 110 }}
           value={snvMetric}
           onChange={(value) => dispatch(singleCellActions.updateSnvMetric(value))}
-          options={["vaf", "alt", "depth", ...(snv.data?.gt ? ["gt"] : [])].map((value) => ({ value, label: t(`components.single-cell.metric.${value}`) }))}
+          options={["vaf", "alt", "depth", ...(snv.data?.gt || snv.data?.pl ? ["gt"] : [])].map((value) => ({ value, label: t(`components.single-cell.metric.${value}`) }))}
         />
       )}
       {heatmapType === "drivers" && (
@@ -2191,6 +2191,7 @@ export default function CellHeatmapPanel() {
               cnMode={cnMode}
               palette={palette}
               snvMetric={showSnvControls ? snvMetric : null}
+              snvPl={Boolean(snvReady && snv.data?.pl)}
               snvMax={snvMax}
               maxJunctionCn={junctions.data?.maxCn}
               cloneColors={cloneColors}

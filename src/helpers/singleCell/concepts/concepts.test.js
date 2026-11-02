@@ -107,11 +107,11 @@ describe("catalog and Figure 2 reader", () => {
     expect(patientHref("P1", 7, { heatmap: "junctions" })).toBe("?dataset=gbm-sc&report=P1&tab=7&heatmap=junctions");
   });
   it("parses the Moran table (synthetic rows)", () => {
-    const rows = parseTsv("patient\tsrc\tstate\tI\tZ\tn\nP1\tNew tree\tAC\t0.1\t2.5\t10\nP1\tJake tree\tAC\tNA\t1\t10\n");
+    const rows = parseTsv("patient\tsrc\tstate\tI\tZ\tn\nP1\tNew tree\tAC\t0.1\t2.5\t10\nP1\tCollaborator tree\tAC\tNA\t1\t10\n");
     const m = fig2Moran(rows);
     expect(m.ok).toBe(true);
     expect(m.get("P1", "AC", "New tree").Z).toBe(2.5);
-    expect(m.get("P1", "AC", "Jake tree").I).toBeNull();
+    expect(m.get("P1", "AC", "Collaborator tree").I).toBeNull();
     expect(fig2Moran([]).ok).toBe(false);
   });
 });

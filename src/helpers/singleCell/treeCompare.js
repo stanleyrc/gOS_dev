@@ -22,16 +22,16 @@ export function usableTrees(index) {
   return (Array.isArray(index) ? index : []).filter((t) => t && t.name && (t.name === CURRENT_TREE || t.n_matched >= 3));
 }
 
-/** Jake's 26 Oct 2026 TBE tree (all cells): default tree B. */
-export const JAKE_TBE_TREE = "jake_tbe_261026";
+/** The collaborator's 26 Oct 2026 TBE tree (all cells): default tree B. */
+export const COLLAB_TBE_TREE = "Collaborator_tbe_261026";
 
 /**
- * Default tree B: Jake's 26 Oct TBE tree when this patient has it, else his older trees
- * (jake_latest, else jake_old), else the first other tree.
+ * Default tree B: the 26 Oct TBE tree when this patient has it, else the older trees
+ * (Collaborator_latest, else Collaborator_old), else the first other tree.
  */
 export function defaultTreeB(trees, a = CURRENT_TREE) {
   const names = (trees || []).map((t) => t.name);
-  const pick = [JAKE_TBE_TREE, "jake_latest", "jake_old"].find((n) => names.includes(n) && n !== a);
+  const pick = [COLLAB_TBE_TREE, "Collaborator_latest", "Collaborator_old"].find((n) => names.includes(n) && n !== a);
   return pick || names.find((n) => n !== a) || null;
 }
 

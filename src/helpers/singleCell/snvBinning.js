@@ -42,7 +42,7 @@ export function binLegendText(bins) {
 }
 
 /** The metric to draw: GT (the default) needs PL calls in the matrix, else VAF. */
-export const effectiveSnvMetric = (choice, snv) => (choice === "gt" && snv && !snv.gt ? "vaf" : choice || "gt");
+export const effectiveSnvMetric = (choice, snv) => (choice === "gt" && snv && !snv.gt && !snv.pl ? "vaf" : choice || "gt");
 
 const mixHex = (hex, f) => {
   const [r, g, b] = hexToRgb(hex);
@@ -59,3 +59,55 @@ export function gtBinRGB(positive, zero) {
   return mixHex(GT_MATRIX.alt, positive / called);
 }
 export const gtBinRGBA = (positive, zero) => packRGBA(gtBinRGB(positive, zero));
+
+/* ----------------------------------------------------------------------- */
+/* PL confidence greyscale (snv.pl: Uint8Array per cell, see skilift gos_sc_snv_columnar.pl_byte)   */
+/* ----------------------------------------------------------------------- */
+
+export const PL_NONE = 0; // no PL data for this cell/site
+export const PL_FLAT = 255; // PL present but flat: no read evidence
+/** Very pale blue (not a grey): no-read sites when "Mark no-read sites" is on (default off: they are white like REF). Dark plots use a dark blue. */
+export const PL_NO_EVIDENCE = { light: "#D4E6F6", dark: "#27394a" };
+let plMarkNoRead = false;
+/** Module setting (layout.snvMarkNoRead), read by the colour functions and the legend, like setSnvNaMode. */
+export const setPlMarkNoRead = (on) => {
+  plMarkNoRead = Boolean(on);
+};
+export const plMarkNoReadOn = () => plMarkNoRead;
+
+/** P(ALT) of a PL confidence byte (1..250 = 1 + round(249 P)); null when there is no evidence or no PL. */
+export const plProb = (b) => (b >= 1 && b <= 250 ? (b - 1) / 249 : null);
+
+/** Greyscale for P(ALT): 0 white (confident REF), 1 black (confident ALT), mid = uncertain. Null = no read evidence: white like REF, or the pale tint when marked. */
+export function plRGB(p) {
+  const dark = isDarkPlots();
+  if (p == null || !Number.isFinite(p)) {
+    if (!plMarkNoRead) return plRGB(0);
+    return hexToRgb(dark ? PL_NO_EVIDENCE.dark : PL_NO_EVIDENCE.light);
+  }
+  const f = Math.max(0, Math.min(1, p));
+  const v = dark ? Math.round(42 + 213 * f) : Math.round(255 * (1 - f));
+  return [v, v, v];
+}
+export const plRGBA = (p) => packRGBA(plRGB(p));
+
+/** Sum of P(ALT) and number of sites with evidence in columns[start, end) of matrix row p (p < 0: none). */
+export function plBinSummary(snv, p, columns, start, end) {
+  const row = p < 0 || !snv?.pl ? null : snv.pl[p];
+  let sum = 0;
+  let n = 0;
+  for (let k = start; k < end; k += 1) {
+    const q = row ? plProb(row[columns[k]]) : null;
+    if (q != null) {
+      sum += q;
+      n += 1;
+    }
+  }
+  return { sum, n, sites: end - start };
+}
+
+/** Pixel colour of a bin: mean P(ALT) over the sites with evidence; no evidence anywhere = white (or the pale tint when marked). */
+export const plBinRGBA = ({ sum, n }) => plRGBA(n ? sum / n : null);
+
+/** True when the matrix has PL confidence bytes (else the genotype view falls back to hard calls). */
+export const hasPl = (snv) => Boolean(snv?.pl);

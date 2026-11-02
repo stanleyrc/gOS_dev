@@ -19,7 +19,7 @@ import {
   snvMetricValue,
   setSnvNaMode,
 } from "../../helpers/singleCell/matrix";
-import { binLegendText, gtBinRGBA, snvBinRGBA } from "../../helpers/singleCell/snvBinning";
+import { setPlMarkNoRead, binLegendText, gtBinRGBA, plBinRGBA, plBinSummary, plRGBA, snvBinRGBA } from "../../helpers/singleCell/snvBinning";
 import { siteDetail } from "../../helpers/singleCell/snvAnnot";
 import { placeLabels, siteLabel } from "../../helpers/singleCell/snvLabels";
 
@@ -101,6 +101,8 @@ export default function MutationSidePanel({
   const layoutState = useSelector((st) => st.SingleCell.layout) || {};
   const naMode = layoutState.snvNaColor === "grey" ? "grey" : "white"; // white unless the user chose grey
   setSnvNaMode(naMode); // module setting read by the colour functions and the legend
+  const markNoRead = Boolean(layoutState.snvMarkNoRead);
+  setPlMarkNoRead(markNoRead);
   const labelMode = layoutState.snvLabel || "protein";
   const dispatch = useDispatch();
   const total = columnOrder.length;
@@ -178,6 +180,11 @@ export default function MutationSidePanel({
       const p = rows[r];
       const a = bins.binStart[x];
       const b = bins.binEnd[x];
+      if (metric === "gt" && snv.pl) {
+        // PL confidence greyscale, identical at every zoom: a pixel is the mean P(ALT) of its sites with read evidence
+        if (b - a > 1) return plBinRGBA(plBinSummary(snv, p, columnOrder, a, b));
+        return plRGBA(snvMetricValue(snv, p, columnOrder[a], "gt"));
+      }
       if (b - a > 1) {
         const { positive, zero, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
         if (metric === "gt") return gtBinRGBA(positive, zero);
@@ -185,7 +192,7 @@ export default function MutationSidePanel({
       }
       return snvMetricRGBA(snvMetricValue(snv, p, columnOrder[a], metric), metric, max);
     },
-    [rows, bins, snv, columnOrder, metric, max, naMode]
+    [rows, bins, snv, columnOrder, metric, max, naMode, markNoRead]
   );
 
   const describe = (r, x) => {
@@ -193,6 +200,16 @@ export default function MutationSidePanel({
     const a = bins.binStart[x];
     const b = bins.binEnd[x];
     if (a < 0) return [];
+    if (b - a > 1 && metric === "gt" && snv.pl) {
+      const first = snv.variants[columnOrder[a]];
+      const last = snv.variants[columnOrder[b - 1]];
+      const { sum, n } = plBinSummary(snv, p, columnOrder, a, b);
+      return [
+        [t("components.single-cell.side.sites"), `${b - a} (${first.id} … ${last.id})`],
+        ["Sites with read evidence", n],
+        ["Mean P(ALT)", n ? (sum / n).toFixed(3) : "no read evidence"],
+      ];
+    }
     if (b - a > 1) {
       const first = snv.variants[columnOrder[a]];
       const last = snv.variants[columnOrder[b - 1]];
@@ -210,7 +227,9 @@ export default function MutationSidePanel({
     const altN = snvMetricValue(snv, p, c, "alt");
     const noReads = t("components.single-cell.side.no-reads");
     const covered = p >= 0 && snv.status[p][c] >= 0;
+    const pAlt = snv.pl && p >= 0 ? snvMetricValue(snv, p, c, "gt") : undefined;
     const cellRows = [
+      ...(pAlt === undefined ? [] : [["P(ALT) from PL", pAlt == null ? "no read evidence (flat PL)" : pAlt.toFixed(3)]]),
       ["Cell VAF", vaf == null ? noReads : vaf.toFixed(3)],
       ["Cell ALT reads", altN == null ? (covered && snv.status[p][c] === 1 ? "alt present (count n/a)" : noReads) : altN],
       ["Cell depth", snvMetricValue(snv, p, c, "depth") ?? noReads],

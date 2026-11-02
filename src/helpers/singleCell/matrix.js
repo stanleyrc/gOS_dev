@@ -650,6 +650,10 @@ export const SNV_MISSING_COLOR = "#ADB5BD";
 /** Value of a metric for matrix row p, variant c; null when the site has no reads. */
 export function snvMetricValue(snv, p, c, metric) {
   if (metric === "gt") {
+    if (p >= 0 && snv.pl) {
+      const b = snv.pl[p][c]; // PL confidence byte: 1..250 = 1 + round(249 P(ALT)); 0 none, 255 flat PL (no evidence)
+      return b >= 1 && b <= 250 ? (b - 1) / 249 : null;
+    }
     if (p < 0 || !snv.gt) return null;
     const g = snv.gt[p][c];
     return g === 1 || g === 0 ? g : null; // 1 alt, 0 ref, null = no call

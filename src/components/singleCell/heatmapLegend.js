@@ -14,6 +14,7 @@ import {
   depthColor,
   vafRGB,
 } from "../../helpers/singleCell/matrix";
+import { PL_NO_EVIDENCE, plMarkNoReadOn, plRGB } from "../../helpers/singleCell/snvBinning";
 
 const { Text } = Typography;
 
@@ -31,6 +32,7 @@ export default function HeatmapLegend({
   cnMode = "total",
   palette = null,
   snvMetric = null,
+  snvPl = false,
   snvMax = 1,
   maxJunctionCn = 1,
   cloneColors = {},
@@ -106,7 +108,10 @@ export default function HeatmapLegend({
     let items;
     let note = t("components.single-cell.legend.binned");
     if (snvMetric === "vaf") items = [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: v === 0 && naMode === "white" ? "0 (ref reads only)" : `${v}` }));
-    else if (snvMetric === "gt") {
+    else if (snvMetric === "gt" && snvPl) {
+      items = [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: `rgb(${plRGB(v).join(",")})`, label: v === 0 ? "0 (confident REF or no reads: white)" : v === 1 ? "1 (confident ALT, black)" : `${v}` }));
+      note = "P(ALT) from the genotype likelihoods (PL); mid grey = uncertain. White = REF or no reads (\"Mark no-read sites\" tints the no-read ones pale blue). Same shading at every zoom; zoomed out a pixel is the mean P(ALT) of its sites that have read evidence";
+    } else if (snvMetric === "gt") {
       items = [
         { color: GT_MATRIX.alt, label: "alt call" },
         { color: GT_MATRIX.ref, label: "ref call (white)" },
@@ -123,7 +128,7 @@ export default function HeatmapLegend({
     groups.push({
       key: "snv",
       title: t(`components.single-cell.metric.${snvMetric}`),
-      items: [...items, { color: snvMetric === "gt" ? GT_MATRIX.nocall : snvMissingColor(), label: snvMetric === "gt" ? "no call = grey" : naMode === "white" ? "no reads = blue" : `${t("components.single-cell.side.no-reads")} (missing, grey)` }],
+      items: [...items, ...(snvMetric === "gt" && snvPl ? (plMarkNoReadOn() ? [{ color: PL_NO_EVIDENCE.light, label: "no reads (marked): pale blue" }] : []) : snvMetric === "gt" ? [{ color: GT_MATRIX.nocall, label: "no call = grey (this matrix has no PL confidence: hard calls only)" }] : [{ color: snvMissingColor(), label: naMode === "white" ? "no reads = blue" : `${t("components.single-cell.side.no-reads")} (missing, grey)` }])],
       note,
     });
   }
