@@ -4,7 +4,7 @@
 // reuse that floor: with ~10 sites per pixel, 1 carrier site out of 10 would paint the whole pixel "alt-positive" and a
 // neighbouring cell's private SNV would look shared. The bin colour is the plain fraction of its sites with alt reads
 // (white 0 to black 1, no floor), so 1/10 is nearly white and a pixel is dark only when most of its sites are present.
-import { GT_MATRIX, hexToRgb, isDarkPlots, packRGBA, plReadCap, snvMissingColor, vafRGB } from "./matrix";
+import { GT_MATRIX, SNV_VAF_FULL, hexToRgb, isDarkPlots, packRGBA, plReadCap, snvMissingColor, vafRGB } from "./matrix";
 
 /** [r, g, b] of a bin with `positive` of `sites` sites carrying alt reads, or the no-reads colour when `missing` === `sites`. */
 export function snvBinRGB(positive, sites, missing = 0) {
@@ -92,9 +92,10 @@ export function plRGB(p) {
 export const plRGBA = (p) => packRGBA(plRGB(p));
 
 /** P(ALT) of matrix row p, variant c: a covered cell with zero ALT reads is 0 (never signal); null = no read evidence. */
-export function plSiteProb(snv, p, c) {
+export function plSiteProb(snv, p, c, lone = null) {
   if (p < 0 || !snv?.pl) return null;
   if (snv.status?.[p]?.[c] === 0) return 0;
+  if (lone && lone(c)) return 0; // lone-read rule (optional toggle): drawn white
   const q = plProb(snv.pl[p][c]);
   return q == null ? null : Math.min(q, plReadCap(snv.alt?.[p]?.[c], snv.depth?.[p]?.[c])); // display cap by read support, see plReadCap
 }
@@ -107,13 +108,13 @@ export function homProb(snv, p, c) {
 }
 
 /** Sum of P(ALT), number of sites with evidence, and the P(ALT)-weighted sum of P(hom|ALT) in columns[start, end) of matrix row p (p < 0: none). */
-export function plBinSummary(snv, p, columns, start, end) {
+export function plBinSummary(snv, p, columns, start, end, lone = null) {
   let sum = 0;
   let n = 0;
   let hSum = 0;
   let hW = 0;
   for (let k = start; k < end; k += 1) {
-    const q = plSiteProb(snv, p, columns[k]);
+    const q = plSiteProb(snv, p, columns[k], lone);
     if (q != null) {
       sum += q;
       n += 1;
@@ -148,3 +149,46 @@ export const plBinRGBA = ({ sum, n, hSum = 0, hW = 0 }) => plHomRGBA(n ? sum / n
 
 /** True when the matrix has PL confidence bytes (else the genotype view falls back to hard calls). */
 export const hasPl = (snv) => Boolean(snv?.pl);
+
+/**
+ * VAF-view bin intensity: sum over the bin's sites with ALT reads of min(1, VAF / SNV_VAF_FULL) (a site whose count is unknown counts 1).
+ * The zoomed-out pixel is intensity / sites, a MEAN (never a max), so a lone read among deep REF reads adds ~0.1 of a site, not a whole one.
+ */
+export function snvBinIntensity(snv, p, columns, start, end) {
+  if (p < 0) return 0;
+  let sum = 0;
+  for (let k = start; k < end; k += 1) {
+    const c = columns[k];
+    if (snv.status[p][c] !== 1) continue;
+    const a = snv.alt?.[p]?.[c];
+    const d = snv.depth?.[p]?.[c];
+    sum += Number.isFinite(a) && Number.isFinite(d) && d > 0 ? Math.min(1, a / d / SNV_VAF_FULL) : 1;
+  }
+  return sum;
+}
+
+/* ---- genotype view: optional "lone ALT read = white" rule ---- */
+
+/**
+ * Per clone key, a Uint16Array over sites: the number of cells of that clone with at least 2 ALT reads at the site.
+ * rows: matrix row per displayed row; rowClone: clone key per displayed row (null = one shared group).
+ */
+export function strongCarriers(snv, rows, rowClone) {
+  const n = snv.variants.length;
+  const out = new Map();
+  rows.forEach((p, r) => {
+    if (p < 0) return;
+    const key = rowClone?.[r] ?? "";
+    let arr = out.get(key);
+    if (!arr) {
+      arr = new Uint16Array(n);
+      out.set(key, arr);
+    }
+    const alt = snv.alt[p];
+    for (let c = 0; c < n; c += 1) if (alt[c] >= 2 && arr[c] < 65535) arr[c] += 1;
+  });
+  return out;
+}
+
+/** True for a cell with exactly 1 ALT read and no cell of its clone with 2+ ALT reads at the site: drawn white when the toggle is on. */
+export const isLoneRead = (snv, p, c, key, strong) => p >= 0 && snv.alt?.[p]?.[c] === 1 && !(strong?.get(key ?? "")?.[c] > 0);

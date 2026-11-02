@@ -738,9 +738,14 @@ export const snvNaMode = () => (snvNaWhite ? "white" : "grey");
 export const SNV_NO_READS_BLUE = "#a9cbe8";
 /** Covered site with reference reads only (VAF 0): white. */
 export const SNV_REF_COLOR = "#ffffff";
-/** Grey level of an alt VAF f in (0, 1] in white-NA mode: 205 (lightest alt, clearly off-white) down to 0. */
-export const SNV_ALT_TOP = 205;
-export const snvAltLevel = (f) => Math.round(SNV_ALT_TOP * (1 - Math.max(0, Math.min(1, f))));
+/**
+ * Grey level of an alt VAF f in white-NA mode. No floor: the old floor (every ALT read at least grey 205) drew 1 ALT read against 15, 16
+ * and 20 REF reads (VAF 6.3%, 5.9%, 4.8%) as the same visible grey, which read as leakage. The ramp is linear white (VAF 0) to black
+ * at SNV_VAF_FULL (60%, above any plausible clonal het VAF in single cells), so VAF 5% is near white (236) and real VAFs are strong.
+ */
+export const SNV_VAF_FULL = 0.6;
+export const SNV_ALT_TOP = 255; // kept for older imports: the lightest ALT level is now the VAF -> 0 limit, white
+export const snvAltLevel = (f) => Math.round(255 * (1 - Math.max(0, Math.min(1, f / SNV_VAF_FULL))));
 /**
  * [r, g, b] of a VAF cell in light theme with blue = no reads: ref (VAF 0) white, alt grey 205 -> black,
  * missing (null) blue. Used by the patient heatmaps and the paper-figure SNV panels so the conventions match.

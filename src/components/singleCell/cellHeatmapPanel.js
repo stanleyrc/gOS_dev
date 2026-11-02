@@ -1256,6 +1256,7 @@ export default function CellHeatmapPanel() {
     onSiteClick: (row, c) => setSiteDrawer({ c, row }),
     onHover: (row, lines, event) => hoverCell(row, lines, event),
     onLeave: clearHover,
+    rowClone: order.map((id) => cellById.get(id)?.clone_id ?? null),
   };
 
   const selectionBar = (
