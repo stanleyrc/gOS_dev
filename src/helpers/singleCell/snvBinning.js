@@ -151,8 +151,8 @@ export const plBinRGBA = ({ sum, n, hSum = 0, hW = 0 }) => plHomRGBA(n ? sum / n
 export const hasPl = (snv) => Boolean(snv?.pl);
 
 /**
- * VAF-view bin intensity: sum over the bin's sites with ALT reads of min(1, VAF / SNV_VAF_FULL) (a site whose count is unknown counts 1).
- * The zoomed-out pixel is intensity / sites, a MEAN (never a max), so a lone read among deep REF reads adds ~0.1 of a site, not a whole one.
+ * VAF-view bin intensity: sum over the bin's sites with ALT reads of VAF (alt / depth) (a site whose count is unknown counts 1).
+ * The zoomed-out pixel is the mean VAF over the bin's sites (sites without ALT reads count 0), a MEAN (never a max), so a lone read among deep REF reads adds ~0.1 of a site, not a whole one.
  */
 export function snvBinIntensity(snv, p, columns, start, end) {
   if (p < 0) return 0;

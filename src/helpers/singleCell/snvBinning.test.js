@@ -163,7 +163,10 @@ describe("VAF view: no floor, mean-based bins", () => {
     expect(l(15)).toBeGreaterThan(225);
     expect(l(20)).toBeGreaterThan(l(16));
     expect(l(16)).toBeGreaterThan(l(15));
-    expect(snvWhiteNaRGB(0.3)[0]).toBeLessThan(140); // real VAFs stay strong
+    expect(snvWhiteNaRGB(0.5)[0]).toBeGreaterThan(110); // het near 50%: mid-grey
+    expect(snvWhiteNaRGB(0.5)[0]).toBeLessThan(145);
+    expect(snvWhiteNaRGB(1)[0]).toBe(0); // hom ALT: black
+    expect(snvWhiteNaRGB(0.5)[0] - snvWhiteNaRGB(1)[0]).toBeGreaterThan(100);
   });
   it("a bin is the mean intensity: nine lone reads in deep REF do not paint it, true carriers do", () => {
     const lone = mk(Array(10).fill(1), Array(10).fill(21));
@@ -172,7 +175,7 @@ describe("VAF view: no floor, mean-based bins", () => {
     const lv = snvBinRGB(snvBinIntensity(lone, 0, cols, 0, 10), 10)[0];
     const rv = snvBinRGB(snvBinIntensity(real, 0, cols, 0, 10), 10)[0];
     expect(lv).toBeGreaterThan(225);
-    expect(rv).toBeLessThan(10);
+    expect(rv).toBeLessThan(110); // 8/12 reads: VAF 0.67, mean-VAF grey
   });
 });
 

@@ -194,7 +194,7 @@ export default function MutationSidePanel({
       if (b - a > 1) {
         const { positive, zero, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
         if (metric === "gt") return gtBinRGBA(positive, zero);
-        // VAF: mean per-site intensity (VAF / 60%, capped at 1), so a lone read among deep REF reads is faint; other metrics: plain fraction
+        // VAF: mean VAF over the bin's sites, so a lone read among deep REF reads is faint; other metrics: plain fraction
         if (metric === "vaf") return snvBinRGBA(snvBinIntensity(snv, p, columnOrder, a, b), b - a, missing);
         return snvBinRGBA(positive, b - a, missing);
       }
