@@ -1122,7 +1122,7 @@ export default function CellHeatmapPanel() {
     setHoverRange(null);
     shareHover(null);
   };
-  const hoverCell = (row, extra, event) => {
+  const hoverCell = (row, extra, event, compact = false) => {
     if (row == null || row < 0) return clearHover();
     shareHover(order[row]);
     const cell = cellById.get(order[row]);
@@ -1134,9 +1134,9 @@ export default function CellHeatmapPanel() {
       lines: [
         [t("components.single-cell.tooltip.cell"), cellLabels.full(order[row])],
         ...(cell?.clone_id != null ? [[t("components.single-cell.tooltip.clone"), cell.clone_id]] : []),
-        ...annotationFields.filter((f) => cell?.[f] != null).map((f) => [f, cell[f]]),
-        ...(showSignature ? signatureTooltip(signatureFits.get(order[row]), signatureUnavailable) : []),
-        ...(showExpression
+        ...(compact ? [] : annotationFields.filter((f) => cell?.[f] != null).map((f) => [f, cell[f]])),
+        ...(showSignature && !compact ? signatureTooltip(signatureFits.get(order[row]), signatureUnavailable) : []),
+        ...(showExpression && !compact
           ? [[
               expression.gene,
               expression.values[order[row]] == null
@@ -1144,8 +1144,8 @@ export default function CellHeatmapPanel() {
                 : expression.values[order[row]],
             ]]
           : []),
-        ...(showPloidy ? ploidyTooltipLines(cell, modalPl) : []),
-        ...(showTmb ? tmbTooltipLines(tmbMap.get(order[row])) : []),
+        ...(showPloidy && !compact ? ploidyTooltipLines(cell, modalPl) : []),
+        ...(showTmb && !compact ? tmbTooltipLines(tmbMap.get(order[row])) : []),
         ...(extra || []),
       ],
     });
@@ -1254,7 +1254,8 @@ export default function CellHeatmapPanel() {
     onRowClick: handleRowClick,
     // a site: drawer with its annotation and every cell's reads, IGV for several cells
     onSiteClick: (row, c) => setSiteDrawer({ c, row }),
-    onHover: (row, lines, event) => hoverCell(row, lines, event),
+    // SNV matrix hover: cell + clone + the short site lines; Shift while hovering adds the per-cell annotation, signature and ploidy lines
+    onHover: (row, lines, event) => hoverCell(row, lines, event, !event?.shiftKey),
     onLeave: clearHover,
     rowClone: order.map((id) => cellById.get(id)?.clone_id ?? null),
   };
