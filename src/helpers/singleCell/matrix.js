@@ -689,13 +689,22 @@ export const GT_COLORS = { nocall: "#D9D9D9", ref: "#9ECAE1", alt: "#B2182B" }; 
 export const GT_MATRIX = { ref: "#FFFFFF", alt: "#B2182B", nocall: "#D9D9D9" };
 export const SNV_MISSING_COLOR = "#ADB5BD";
 
+/**
+ * Display cap of the genotype view: P(ALT) can never be drawn darker than the read support allows.
+ * cap = min(1, 2 a^2 / (a + r)) = min(1, 2 a VAF) for a ALT and r REF reads. The PL model allows PTA allelic dropout, so 1 ALT read
+ * against 5 REF reads still has P(ALT) ~ 0.5 and, at a clonal site, the per-site prior lifts a lone read at 15-20 REF reads further.
+ * The cap keeps a lone read near white and falling with REF depth (1/2 .67, 1/5 .33, 1/10 .18, 1/15 .125, 1/20 .095) while
+ * 2 ALT reads reach 1 up to 4 REF reads and 3 ALT reads up to ~11 REF. Display only: the stored PLs and bytes are untouched.
+ */
+export const plReadCap = (alt, depth) => (Number.isFinite(alt) && Number.isFinite(depth) && alt > 0 && depth >= alt ? Math.min(1, (2 * alt * alt) / depth) : 1);
+
 /** Value of a metric for matrix row p, variant c; null when the site has no reads. */
 export function snvMetricValue(snv, p, c, metric) {
   if (metric === "gt") {
     if (p >= 0 && snv.pl) {
       const b = snv.pl[p][c]; // PL confidence byte: 1..250 = 1 + round(249 P(ALT)); 0 none, 255 flat PL (no evidence)
       if (snv.status?.[p]?.[c] === 0) return 0; // covered, zero ALT reads: never signal, whatever the per-site prior says
-      return b >= 1 && b <= 250 ? (b - 1) / 249 : null;
+      return b >= 1 && b <= 250 ? Math.min((b - 1) / 249, plReadCap(snv.alt?.[p]?.[c], snv.depth?.[p]?.[c])) : null;
     }
     if (p < 0 || !snv.gt) return null;
     const g = snv.gt[p][c];

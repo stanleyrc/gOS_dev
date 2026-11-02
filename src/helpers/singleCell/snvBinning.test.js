@@ -27,7 +27,7 @@ describe("snvBinning", () => {
 });
 
 import { effectiveSnvMetric, gtBinRGB, homProb, plBinRGBA, plBinSummary, plHomRGB, plProb, plRGB, PL_NO_EVIDENCE, setPlMarkNoRead } from "./snvBinning";
-import { snvMetricValue } from "./matrix";
+import { plReadCap, snvMetricValue } from "./matrix";
 import { GT_MATRIX, snvMetricRGBA } from "./matrix";
 
 describe("genotype colours", () => {
@@ -132,5 +132,21 @@ describe("het vs hom-ALT colouring", () => {
   });
   it("VAF is the default metric", () => {
     expect(effectiveSnvMetric(undefined, { gt: null, pl: [] })).toBe("vaf");
+  });
+
+  it("display is capped by read support: a lone ALT read fades with REF depth, multi-read support stays dark", () => {
+    const hi = byte(0.99); // PL (dropout model / clonal prior) says ALT
+    const mk = (a, r) => ({ status: [Int8Array.of(1)], alt: [Float32Array.of(a)], depth: [Float32Array.of(a + r)], pl: [Uint8Array.of(hi)] });
+    const v = (a, r) => snvMetricValue(mk(a, r), 0, 0, "gt");
+    expect(v(1, 15)).toBeLessThan(0.15);
+    expect(v(1, 20)).toBeLessThan(v(1, 16));
+    expect(v(1, 16)).toBeLessThan(v(1, 15));
+    expect(v(1, 5)).toBeGreaterThan(v(1, 10));
+    expect(v(3, 5)).toBeCloseTo(0.99, 2);
+    expect(v(2, 3)).toBeCloseTo(0.99, 2);
+    expect(plReadCap(1, 1)).toBe(1);
+    expect(plReadCap(undefined, 10)).toBe(1); // counts unknown: no cap, PL as stored
+    const low = { status: [Int8Array.of(1)], alt: [Float32Array.of(2)], depth: [Float32Array.of(3)], pl: [Uint8Array.of(byte(0.1))] };
+    expect(snvMetricValue(low, 0, 0, "gt")).toBeCloseTo(0.1, 2); // never raised above the PL
   });
 });
