@@ -47,7 +47,8 @@ describe("missing colour option", () => {
     expect(vafRGB(1)).toEqual([0, 0, 0]);
     expect(vafRGB(0.25)[0]).toBeGreaterThan(vafRGB(0.5)[0]);
     expect(vafRGB(0.05)[0]).toBeGreaterThan(225); // 1 ALT read in ~20: near white, not the old grey floor
-    expect(vafRGB(0.6)[0]).toBe(0);
+    expect(vafRGB(0.5)[0]).toBeGreaterThan(110);
+    expect(vafRGB(0.5)[0]).toBeLessThan(145);
     expect(snvWhiteNaRGB(null)).toEqual(hexToRgb(SNV_NO_READS_BLUE));
     expect(snvWhiteNaRGB(0)).toEqual([255, 255, 255]);
     setSnvNaMode("grey");

@@ -108,7 +108,8 @@ export default function HeatmapLegend({
     const naMode = snvNaMode();
     let items;
     let note = t("components.single-cell.legend.binned");
-    if (snvMetric === "vaf") items = [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: v === 0 && naMode === "white" ? "0 (ref reads only)" : `${v}` }));
+    if (snvMetric === "vaf") items = [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: grey(v), label: v === 0 && naMode === "white" ? "0 (ref reads only)" : v === 0.5 ? "0.5 (het)" : v === 1 ? "1 (hom ALT, black)" : `${v}` }));
+    if (snvMetric === "vaf") note = "VAF white (0) to black (1), linear: a het near 0.5 is mid-grey, hom ALT is black; zoomed out a pixel is the mean VAF of its sites";
     else if (snvMetric === "gt" && snvPl) {
       items = [0, 0.25, 0.5, 0.75, 1].map((v) => ({ color: `rgb(${plRGB(v).join(",")})`, label: v === 0 ? "0 (confident REF, 0 ALT reads or no reads: white)" : v === 1 ? "1 (confident ALT, black)" : `${v}` }));
       if (snvHom) {

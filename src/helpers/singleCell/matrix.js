@@ -741,9 +741,9 @@ export const SNV_REF_COLOR = "#ffffff";
 /**
  * Grey level of an alt VAF f in white-NA mode. No floor: the old floor (every ALT read at least grey 205) drew 1 ALT read against 15, 16
  * and 20 REF reads (VAF 6.3%, 5.9%, 4.8%) as the same visible grey, which read as leakage. The ramp is linear white (VAF 0) to black
- * at SNV_VAF_FULL (60%, above any plausible clonal het VAF in single cells), so VAF 5% is near white (236) and real VAFs are strong.
+ * at SNV_VAF_FULL (100%), so VAF 5% is near white (242), a het near 50% is mid-grey and homozygous ALT is black.
  */
-export const SNV_VAF_FULL = 0.6;
+export const SNV_VAF_FULL = 1;
 export const SNV_ALT_TOP = 255; // kept for older imports: the lightest ALT level is now the VAF -> 0 limit, white
 export const snvAltLevel = (f) => Math.round(255 * (1 - Math.max(0, Math.min(1, f / SNV_VAF_FULL))));
 /**
