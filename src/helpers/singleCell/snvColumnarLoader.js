@@ -40,7 +40,7 @@ self.onmessage = function (e) {
       });
   p.then(function (out) {
     out.ms = Date.now() - t0;
-    self.postMessage({ ok: true, out: out }, [out.status.buffer, out.alt.buffer, out.depth.buffer, out.gt.buffer]);
+    self.postMessage({ ok: true, out: out }, [out.status.buffer, out.alt.buffer, out.depth.buffer, out.gt.buffer, out.pl.buffer]);
   }).catch(function (err) {
     self.postMessage({ ok: false, error: String(err && err.message ? err.message : err) });
   });

@@ -22,11 +22,11 @@ export function usableTrees(index) {
   return (Array.isArray(index) ? index : []).filter((t) => t && t.name && (t.name === CURRENT_TREE || t.n_matched >= 3));
 }
 
-/** the collaborator's 26 Oct 2026 TBE tree (all cells): default tree B. */
+/** The collaborator's 26 Oct 2026 TBE tree (all cells): default tree B. */
 export const COLLAB_TBE_TREE = "Collaborator_tbe_261026";
 
 /**
- * Default tree B: the collaborator's 26 Oct TBE tree when this patient has it, else his older trees
+ * Default tree B: the 26 Oct TBE tree when this patient has it, else the older trees
  * (Collaborator_latest, else Collaborator_old), else the first other tree.
  */
 export function defaultTreeB(trees, a = CURRENT_TREE) {

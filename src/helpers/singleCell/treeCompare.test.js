@@ -53,7 +53,7 @@ describe("tip matching", () => {
     expect(defaultPair([{ name: "a" }, { name: "b" }])).toEqual(["a", "b"]);
     expect(usableTrees(null)).toEqual([]);
   });
-  it("defaults tree B to the collaborator's 26 Oct TBE tree, else his older trees", () => {
+  it("defaults tree B to the 26 Oct TBE tree, else the older trees", () => {
     const t = (...n) => n.map((name) => ({ name, n_matched: 9 }));
     expect(defaultPair(t("gos", "Collaborator_latest", "Collaborator_old", "Collaborator_tbe_261026", "Collaborator_tbe_tumour_261026"))).toEqual(["gos", "Collaborator_tbe_261026"]);
     expect(defaultPair(t("gos", "Collaborator_old", "Collaborator_latest"))).toEqual(["gos", "Collaborator_latest"]);

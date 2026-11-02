@@ -1695,7 +1695,7 @@
         "vaf": "VAF",
         "alt": "Alt reads",
         "depth": "Total reads",
-        "gt": "Genotype call"
+        "gt": "Genotype (P(ALT) from PL)"
       },
       "side": {
         "sites": "Sites",
