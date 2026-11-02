@@ -30,6 +30,7 @@ import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
+import { ampliconRegions } from "../../helpers/singleCell/ampliconRegions";
 import { effectiveSnvMetric } from "../../helpers/singleCell/snvBinning";
 import { appendSnv } from "../../helpers/singleCell/snvColumnar";
 import { CN_MAPPED_PARAM, cnMappedSummary } from "../../helpers/singleCell/cnMapped";
@@ -782,6 +783,26 @@ export default function CellHeatmapPanel() {
   const jSort = layout.junctionSort === "carriers" ? "carriers" : "pos";
   const walkList = sc.walks?.status === "ok" ? sc.walks.data.walks || [] : [];
   const jWalkOptions = useMemo(() => walkOptions(walkList), [walkList]);
+  /* ---- "Zoom to amplicons": the walks' intervals as side-by-side domains (layout.ampZoom, URL ampzoom=1); off restores the earlier range ---- */
+  const ampRegions = useMemo(
+    () => (sc.walks?.status === "ok" ? ampliconRegions(sc.walks.data.walks, chromoBins) : { domains: [], regions: [], reason: sc.walks?.status === "missing" ? "walks.json is not exported for this report" : "amplicon walks not loaded" }),
+    [sc.walks, chromoBins]
+  );
+  const ampKey = JSON.stringify(ampRegions.domains);
+  const ampZoom = Boolean(layout.ampZoom) && ampRegions.domains.length > 0;
+  const savedDomains = useRef(null);
+  useEffect(() => {
+    if (ampZoom) {
+      if (!savedDomains.current) savedDomains.current = domains;
+      dispatch(settingsActions.updateDomains(ampRegions.domains));
+    } else if (savedDomains.current) {
+      dispatch(settingsActions.updateDomains(savedDomains.current));
+      savedDomains.current = null;
+    }
+    // domains deliberately not a dependency: panning inside the amplicon view must not reset it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ampZoom, ampKey]);
+  const toggleAmpZoom = () => dispatch(singleCellActions.updateLayout({ ampZoom: ampZoom ? null : true }));
   const jStats = useMemo(() => (junctions.status === "ok" ? junctionStats(junctions.data) : []), [junctions]);
   const jZoomed = isZoomed(domains, defaultDomain);
   const jChoiceOk = jFilterChoice && (jFilterChoice.mode !== "walk" || walkList.some((w) => `${w.id}` === `${jFilterChoice.walkId}`));
@@ -1178,7 +1199,8 @@ export default function CellHeatmapPanel() {
     () => (heatmapType === "cn" && chromoBins ? genomicTicks(chromoBins, domainExtents(domains, heatWidth, DOMAIN_GAP)) : []),
     [heatmapType, chromoBins, domains, heatWidth]
   );
-  const axisHeight = ticks.length ? AXIS_HEIGHT + TICK_HEIGHT : AXIS_HEIGHT;
+  const ampLabelRow = ampZoom && (heatmapType === "cn" || heatmapType === "junctions") ? 16 : 0;
+  const axisHeight = (ticks.length ? AXIS_HEIGHT + TICK_HEIGHT : AXIS_HEIGHT) + ampLabelRow;
 
   const isolating = Boolean(layout.snvIsolate) && snvReady && heatmapType === "snv";
   const isolateRows = useMemo(() => (isolating ? carrierRows(snv.data, snvColumns, snvRows) : null), [isolating, snv, snvColumns, snvRows]);
@@ -1702,6 +1724,13 @@ export default function CellHeatmapPanel() {
               </Tooltip>
             )}
             {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={ampRegions.domains.length ? `Zoom to the ${ampRegions.domains.length} amplicon region${ampRegions.domains.length > 1 ? "s" : ""} of this report (${ampRegions.regions.map((r) => r.label).join("; ")}), side by side. Copy-number and junction views follow; the SNV columns and the drivers view are unaffected.` : `Zoom to amplicons: not available (${ampRegions.reason})`}>
+                <Button size="small" type={ampZoom ? "primary" : "default"} disabled={!ampRegions.domains.length} onClick={toggleAmpZoom} data-amp-zoom>
+                  Zoom to amplicons
+                </Button>
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
               <Tooltip title={t("components.single-cell.heatmap.whole-genome")}>
                 <Button
                   size="small"
@@ -1742,6 +1771,13 @@ export default function CellHeatmapPanel() {
                     heatmapType === "cn" ? zoomAll(2) : junctionWheel({ x: heatWidth / 2, deltaY: 500, deltaMode: 0 })
                   }
                 />
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={ampRegions.domains.length ? `Zoom to the ${ampRegions.domains.length} amplicon region${ampRegions.domains.length > 1 ? "s" : ""} of this report (${ampRegions.regions.map((r) => r.label).join("; ")}), side by side. Copy-number and junction views follow; the SNV columns and the drivers view are unaffected.` : `Zoom to amplicons: not available (${ampRegions.reason})`}>
+                <Button size="small" type={ampZoom ? "primary" : "default"} disabled={!ampRegions.domains.length} onClick={toggleAmpZoom} data-amp-zoom>
+                  Zoom to amplicons
+                </Button>
               </Tooltip>
             )}
             {(heatmapType === "cn" || heatmapType === "junctions") && (
@@ -2040,6 +2076,12 @@ export default function CellHeatmapPanel() {
                         {tk.label}
                       </span>
                     ))}
+                    {ampLabelRow > 0 &&
+                      domainExtents(domains, heatWidth, DOMAIN_GAP).map(([px0, px1], k) => (
+                        <span key={`amp-${k}`} className="sc-axis-label" style={{ left: px0, width: px1 - px0, top: axisHeight - ampLabelRow, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ampRegions.regions[k] ? `${ampRegions.regions[k].label} (chr${ampRegions.regions[k].chr}:${Math.round(ampRegions.regions[k].start / 1e3)}-${Math.round(ampRegions.regions[k].end / 1e3)} kb)` : ""}>
+                          {ampRegions.regions[k]?.label}
+                        </span>
+                      ))}
                     {active.axis.spans
                       .filter((s) => s.x1 - s.x0 >= 14)
                       .map((s, k) => (
