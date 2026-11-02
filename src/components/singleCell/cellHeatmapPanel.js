@@ -30,7 +30,8 @@ import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
-import { ampliconRegions } from "../../helpers/singleCell/ampliconRegions";
+import { ampliconRegions, labelRegions } from "../../helpers/singleCell/ampliconRegions";
+import { useGeneModels } from "../genes/useGeneModels";
 import { effectiveSnvMetric } from "../../helpers/singleCell/snvBinning";
 import { appendSnv } from "../../helpers/singleCell/snvColumnar";
 import { CN_MAPPED_PARAM, cnMappedSummary } from "../../helpers/singleCell/cnMapped";
@@ -784,10 +785,14 @@ export default function CellHeatmapPanel() {
   const walkList = sc.walks?.status === "ok" ? sc.walks.data.walks || [] : [];
   const jWalkOptions = useMemo(() => walkOptions(walkList), [walkList]);
   /* ---- "Zoom to amplicons": the walks' intervals as side-by-side domains (layout.ampZoom, URL ampzoom=1); off restores the earlier range ---- */
-  const ampRegions = useMemo(
+  const ampBase = useMemo(
     () => (sc.walks?.status === "ok" ? ampliconRegions(sc.walks.data.walks, chromoBins) : { domains: [], regions: [], reason: sc.walks?.status === "missing" ? "walks.json is not exported for this report" : "amplicon walks not loaded" }),
     [sc.walks, chromoBins]
   );
+  // region labels: candidate genes whose coordinates (hg38 gene models) fall inside the region; locus text without models
+  const ampChroms = useMemo(() => [...new Set(ampBase.regions.map((r) => r.chr))].filter((c) => chromoBins?.[c]).map((c) => ({ chromosome: c, startPlace: chromoBins[c].startPlace })), [ampBase, chromoBins]);
+  const ampModels = useGeneModels(layout.ampZoom ? ampChroms : [], "hg38");
+  const ampRegions = useMemo(() => ({ ...ampBase, regions: labelRegions(ampBase.regions, ampModels.genes) }), [ampBase, ampModels.genes]);
   const ampKey = JSON.stringify(ampRegions.domains);
   const ampZoom = Boolean(layout.ampZoom) && ampRegions.domains.length > 0;
   const savedDomains = useRef(null);
