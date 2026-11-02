@@ -61,6 +61,7 @@ import {
   domainExtents,
   expressionRGBA,
   genomicColumnLookup,
+  genomicColumnLookupMax,
   genomicTicks,
   hexToRgb,
   junctionRGBA,
@@ -939,7 +940,13 @@ export default function CellHeatmapPanel() {
         const p = map[r];
         if (p < 0 || !rows[p]) return null;
         if (!lookups.has(p)) {
-          lookups.set(p, genomicColumnLookup(rows[p].binIndex, domains, devWidth, DOMAIN_GAP * pixelRatio).cols);
+          lookups.set(
+            p,
+            // amplicon zoom: a pixel shows the highest copy number of the segments it covers, so a focal segment narrower than a pixel stays visible
+            ampZoom
+              ? genomicColumnLookupMax(rows[p].binIndex, valuesOf(rows[p]), domains, devWidth, DOMAIN_GAP * pixelRatio).cols
+              : genomicColumnLookup(rows[p].binIndex, domains, devWidth, DOMAIN_GAP * pixelRatio).cols
+          );
         }
         return lookups.get(p);
       };
@@ -995,7 +1002,7 @@ export default function CellHeatmapPanel() {
     if (heatmapType === "drivers" && driverMatrix) return driverMatrix;
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, jCols, jStats, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverMatrix, snv, snvRows, cn, stripBlank]);
+  }, [ampZoom, heatmapType, cnSource, cnMode, cnColor, junctions, jRange, jCols, jStats, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverMatrix, snv, snvRows, cn, stripBlank]);
 
   const annotationCols = useMemo(() => {
     const stacked = showSignature && signatureMode === "stacked";
@@ -1204,7 +1211,7 @@ export default function CellHeatmapPanel() {
     () => (heatmapType === "cn" && chromoBins ? genomicTicks(chromoBins, domainExtents(domains, heatWidth, DOMAIN_GAP)) : []),
     [heatmapType, chromoBins, domains, heatWidth]
   );
-  const ampLabelRow = ampZoom && (heatmapType === "cn" || heatmapType === "junctions") ? 16 : 0;
+  const ampLabelRow = ampZoom && (heatmapType === "cn" || heatmapType === "junctions") ? 30 : 0;
   const axisHeight = (ticks.length ? AXIS_HEIGHT + TICK_HEIGHT : AXIS_HEIGHT) + ampLabelRow;
 
   const isolating = Boolean(layout.snvIsolate) && snvReady && heatmapType === "snv";
@@ -2081,6 +2088,12 @@ export default function CellHeatmapPanel() {
                         {tk.label}
                       </span>
                     ))}
+                    {ampLabelRow > 0 &&
+                      heatmapType === "cn" && (
+                        <span className="sc-axis-label" style={{ left: 0, width: heatWidth, top: axisHeight - 14, fontSize: 11, opacity: 0.75 }}>
+                          Amplicon zoom: each pixel shows the highest copy number of the segments it covers
+                        </span>
+                      )}
                     {ampLabelRow > 0 &&
                       domainExtents(domains, heatWidth, DOMAIN_GAP).map(([px0, px1], k) => (
                         <span key={`amp-${k}`} className="sc-axis-label" style={{ left: px0, width: px1 - px0, top: axisHeight - ampLabelRow, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ampRegions.regions[k] ? `${ampRegions.regions[k].label} (chr${ampRegions.regions[k].chr}:${Math.round(ampRegions.regions[k].start / 1e3)}-${Math.round(ampRegions.regions[k].end / 1e3)} kb)` : ""}>
