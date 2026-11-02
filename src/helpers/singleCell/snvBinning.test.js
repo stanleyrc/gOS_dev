@@ -5,7 +5,7 @@ describe("snvBinning", () => {
   it("one carrier among many sites stays near white, unlike the single-site floor", () => {
     const bin = snvBinRGB(1, 20)[0];
     expect(bin).toBeGreaterThan(240);
-    expect(snvWhiteNaRGB(0.05)[0]).toBeLessThanOrEqual(205);
+    expect(snvWhiteNaRGB(0.05)[0]).toBeGreaterThan(225);
   });
   it("is linear from white to black and never lighter for more carriers", () => {
     const levels = [0, 5, 10, 20].map((p) => snvBinRGB(p, 20)[0]);
@@ -26,7 +26,7 @@ describe("snvBinning", () => {
   });
 });
 
-import { effectiveSnvMetric, gtBinRGB, homProb, plBinRGBA, plBinSummary, plHomRGB, plProb, plRGB, PL_NO_EVIDENCE, setPlMarkNoRead } from "./snvBinning";
+import { isLoneRead, snvBinIntensity, strongCarriers, snvBinRGB as _bin, effectiveSnvMetric, gtBinRGB, homProb, plBinRGBA, plBinSummary, plHomRGB, plProb, plRGB, PL_NO_EVIDENCE, setPlMarkNoRead } from "./snvBinning";
 import { plReadCap, snvMetricValue } from "./matrix";
 import { GT_MATRIX, snvMetricRGBA } from "./matrix";
 
@@ -148,5 +148,47 @@ describe("het vs hom-ALT colouring", () => {
     expect(plReadCap(undefined, 10)).toBe(1); // counts unknown: no cap, PL as stored
     const low = { status: [Int8Array.of(1)], alt: [Float32Array.of(2)], depth: [Float32Array.of(3)], pl: [Uint8Array.of(byte(0.1))] };
     expect(snvMetricValue(low, 0, 0, "gt")).toBeCloseTo(0.1, 2); // never raised above the PL
+  });
+});
+
+describe("VAF view: no floor, mean-based bins", () => {
+  const mk = (alts, depths) => ({
+    variants: alts.map(() => ({})),
+    status: [Int8Array.from(alts.map((a) => (a > 0 ? 1 : 0)))],
+    alt: [Float32Array.from(alts)],
+    depth: [Float32Array.from(depths)],
+  });
+  it("1 ALT in 15, 16 and 20 REF reads is near white and ordered by depth", () => {
+    const l = (r) => snvWhiteNaRGB(1 / (1 + r))[0];
+    expect(l(15)).toBeGreaterThan(225);
+    expect(l(20)).toBeGreaterThan(l(16));
+    expect(l(16)).toBeGreaterThan(l(15));
+    expect(snvWhiteNaRGB(0.3)[0]).toBeLessThan(140); // real VAFs stay strong
+  });
+  it("a bin is the mean intensity: nine lone reads in deep REF do not paint it, true carriers do", () => {
+    const lone = mk(Array(10).fill(1), Array(10).fill(21));
+    const real = mk(Array(10).fill(8), Array(10).fill(12));
+    const cols = [...Array(10).keys()];
+    const lv = snvBinRGB(snvBinIntensity(lone, 0, cols, 0, 10), 10)[0];
+    const rv = snvBinRGB(snvBinIntensity(real, 0, cols, 0, 10), 10)[0];
+    expect(lv).toBeGreaterThan(225);
+    expect(rv).toBeLessThan(10);
+  });
+});
+
+describe("lone-read rule", () => {
+  const snv = { variants: [{}, {}], alt: [Float32Array.of(1, 1), Float32Array.of(3, 1)] };
+  it("a 1-ALT cell is lone unless its clone has a 2+ ALT cell at the site", () => {
+    const strong = strongCarriers(snv, [0, 1], ["A", "A"]);
+    expect(isLoneRead(snv, 0, 0, "A", strong)).toBe(false); // clone-mate has 3 ALT reads at site 0
+    expect(isLoneRead(snv, 0, 1, "A", strong)).toBe(true);
+    expect(isLoneRead(snv, 1, 0, "A", strong)).toBe(false); // 3 reads is not lone
+    const other = strongCarriers(snv, [0, 1], ["A", "B"]);
+    expect(isLoneRead(snv, 0, 0, "A", other)).toBe(true); // supporter is in another clone
+  });
+  it("plBinSummary treats lone cells as P = 0 only when the rule is passed", () => {
+    const s2 = { pl: [Uint8Array.of(250, 250)], status: [Int8Array.of(1, 1)] };
+    expect(plBinSummary(s2, 0, [0, 1], 0, 2).sum).toBe(2);
+    expect(plBinSummary(s2, 0, [0, 1], 0, 2, (c) => c === 0).sum).toBe(1);
   });
 });

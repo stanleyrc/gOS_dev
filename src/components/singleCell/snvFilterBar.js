@@ -214,6 +214,12 @@ export default function SnvFilterBar({ annot, nShown, onIsolate = null, fitBusy 
         <Select size="small" style={{ width: 76 }} value={layout.snvNaColor === "grey" ? "grey" : "white"} onChange={(v) => update({ snvNaColor: v === "grey" ? "grey" : null })} options={[{ value: "grey", label: "grey" }, { value: "white", label: "blue" }]} />
       </Space>
       <Space size={4}>
+        <Tooltip title="Genotype matrix: draw a cell with exactly 1 ALT read as white unless a cell of the same clone has 2 or more ALT reads at that site. Off by default; hover still reports the reads.">
+          <Text type="secondary">Lone ALT read = white</Text>
+        </Tooltip>
+        <Switch size="small" checked={Boolean(layout.snvLoneWhite)} onChange={(v) => update({ snvLoneWhite: v ? true : null })} />
+      </Space>
+      <Space size={4}>
         <Tooltip title="Genotype matrix: sites with no reads are white, like REF. Tick to draw them pale blue so dropout stays visible. Zoomed-out pixels average only the sites with reads.">
           <Text type="secondary">Mark no-read sites</Text>
         </Tooltip>
