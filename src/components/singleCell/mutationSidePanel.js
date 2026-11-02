@@ -19,7 +19,7 @@ import {
   snvMetricValue,
   setSnvNaMode,
 } from "../../helpers/singleCell/matrix";
-import { setPlMarkNoRead, binLegendText, gtBinRGBA, plBinRGBA, plBinSummary, plRGBA, snvBinRGBA } from "../../helpers/singleCell/snvBinning";
+import { setPlMarkNoRead, binLegendText, gtBinRGBA, homProb, plBinRGBA, plBinSummary, plHomRGBA, snvBinRGBA } from "../../helpers/singleCell/snvBinning";
 import { siteDetail } from "../../helpers/singleCell/snvAnnot";
 import { placeLabels, siteLabel } from "../../helpers/singleCell/snvLabels";
 
@@ -183,7 +183,7 @@ export default function MutationSidePanel({
       if (metric === "gt" && snv.pl) {
         // PL confidence greyscale, identical at every zoom: a pixel is the mean P(ALT) of its sites with read evidence
         if (b - a > 1) return plBinRGBA(plBinSummary(snv, p, columnOrder, a, b));
-        return plRGBA(snvMetricValue(snv, p, columnOrder[a], "gt"));
+        return plHomRGBA(snvMetricValue(snv, p, columnOrder[a], "gt"), homProb(snv, p, columnOrder[a]));
       }
       if (b - a > 1) {
         const { positive, zero, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
@@ -203,11 +203,12 @@ export default function MutationSidePanel({
     if (b - a > 1 && metric === "gt" && snv.pl) {
       const first = snv.variants[columnOrder[a]];
       const last = snv.variants[columnOrder[b - 1]];
-      const { sum, n } = plBinSummary(snv, p, columnOrder, a, b);
+      const { sum, n, hSum, hW } = plBinSummary(snv, p, columnOrder, a, b);
       return [
         [t("components.single-cell.side.sites"), `${b - a} (${first.id} … ${last.id})`],
         ["Sites with read evidence", n],
         ["Mean P(ALT)", n ? (sum / n).toFixed(3) : "no read evidence"],
+        ...(snv.hom && hW > 0 ? [["Hom share of ALT (PL, diploid assumption)", (hSum / hW).toFixed(2)]] : []),
       ];
     }
     if (b - a > 1) {
@@ -230,6 +231,7 @@ export default function MutationSidePanel({
     const pAlt = snv.pl && p >= 0 ? snvMetricValue(snv, p, c, "gt") : undefined;
     const cellRows = [
       ...(pAlt === undefined ? [] : [["P(ALT) from PL", pAlt == null ? "no read evidence (flat PL)" : pAlt.toFixed(3)]]),
+      ...(snv.hom && p >= 0 && homProb(snv, p, c) != null && pAlt > 0 ? [["P(hom-ALT | ALT) from PL", `${homProb(snv, p, c).toFixed(2)} (PL assumes 2 copies: unreliable at amplified or aneuploid sites)`]] : []),
       ["Cell VAF", vaf == null ? noReads : vaf.toFixed(3)],
       ["Cell ALT reads", altN == null ? (covered && snv.status[p][c] === 1 ? "alt present (count n/a)" : noReads) : altN],
       ["Cell depth", snvMetricValue(snv, p, c, "depth") ?? noReads],

@@ -26,7 +26,7 @@ describe("snvBinning", () => {
   });
 });
 
-import { effectiveSnvMetric, gtBinRGB, plBinRGBA, plBinSummary, plProb, plRGB, PL_NO_EVIDENCE, setPlMarkNoRead } from "./snvBinning";
+import { effectiveSnvMetric, gtBinRGB, homProb, plBinRGBA, plBinSummary, plHomRGB, plProb, plRGB, PL_NO_EVIDENCE, setPlMarkNoRead } from "./snvBinning";
 import { snvMetricValue } from "./matrix";
 import { GT_MATRIX, snvMetricRGBA } from "./matrix";
 
@@ -99,5 +99,38 @@ describe("PL confidence greyscale", () => {
     expect(snvMetricValue(snv, 0, 2, "gt")).toBeNull();
     expect(effectiveSnvMetric("gt", { gt: null, pl: [] })).toBe("gt");
     expect(effectiveSnvMetric("gt", { gt: null, pl: null })).toBe("vaf");
+  });
+
+  it("a covered cell with zero ALT reads is never signal, whatever its PL byte says", () => {
+    const snv = { status: [Int8Array.from([0, 1, -1])], pl: [Uint8Array.from([byte(0.9), byte(0.9), byte(0.9)])] };
+    expect(snvMetricValue(snv, 0, 0, "gt")).toBe(0);
+    expect(snvMetricValue(snv, 0, 1, "gt")).toBeCloseTo(0.9, 2);
+    expect(plBinRGBA(plBinSummary(snv, 0, [0, 0], 0, 2))).toBe(packRGBA([255, 255, 255]));
+  });
+});
+
+describe("het vs hom-ALT colouring", () => {
+  const byte = (p) => 1 + Math.round(249 * p);
+  it("two distinct hues at full P(ALT), white at P = 0, greyscale without a split", () => {
+    const het = plHomRGB(1, 0);
+    const hom = plHomRGB(1, 1);
+    expect(het).not.toEqual(hom);
+    expect(het[0]).toBeGreaterThan(hom[0]); // orange vs deep purple
+    expect(plHomRGB(0, 1)).toEqual([255, 255, 255]);
+    expect(plHomRGB(0.5, 0)[0]).toBeGreaterThan(het[0] - 1);
+    expect(plHomRGB(1, null)).toEqual(plRGB(1));
+    expect(plHomRGB(null, 1)).toEqual(plRGB(null));
+  });
+  it("bins weight the het/hom share by P(ALT) and ignore sites without evidence", () => {
+    const snv = { pl: [Uint8Array.from([byte(1), byte(1), 255, byte(0)])], hom: [Uint8Array.from([byte(1), byte(0), 255, byte(1)])] };
+    const s = plBinSummary(snv, 0, [0, 1, 2, 3], 0, 4);
+    expect(s.n).toBe(3);
+    expect(s.hSum / s.hW).toBeCloseTo(0.5, 2); // P = 0 site carries no weight
+    expect(homProb(snv, 0, 2)).toBeNull();
+    expect(homProb({ pl: snv.pl }, 0, 0)).toBeNull();
+    expect(plBinRGBA(plBinSummary({ pl: snv.pl }, 0, [0, 1], 0, 2))).toBe(packRGBA(plRGB(1)));
+  });
+  it("VAF is the default metric", () => {
+    expect(effectiveSnvMetric(undefined, { gt: null, pl: [] })).toBe("vaf");
   });
 });

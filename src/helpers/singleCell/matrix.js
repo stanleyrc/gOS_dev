@@ -694,6 +694,7 @@ export function snvMetricValue(snv, p, c, metric) {
   if (metric === "gt") {
     if (p >= 0 && snv.pl) {
       const b = snv.pl[p][c]; // PL confidence byte: 1..250 = 1 + round(249 P(ALT)); 0 none, 255 flat PL (no evidence)
+      if (snv.status?.[p]?.[c] === 0) return 0; // covered, zero ALT reads: never signal, whatever the per-site prior says
       return b >= 1 && b <= 250 ? (b - 1) / 249 : null;
     }
     if (p < 0 || !snv.gt) return null;

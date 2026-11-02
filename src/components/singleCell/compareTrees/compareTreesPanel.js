@@ -617,7 +617,7 @@ export default function CompareTreesPanel() {
             <Text type="secondary" style={{ fontSize: TYPE.tick }}>same sites and order as the Single-Cell tab; columns follow each matrix's own tree; click a site to paint it</Text>
             <div style={{ width: "100%" }}><SnvTrackControls annot={annotA} nShown={isolateCount} onIsolate={setIsolate} fitBusy={fitBusyA} /></div>
             <div style={{ width: "100%" }}><SnvSelectionBar snv={snvCalls} annot={annotA} patient="compare" onIsolate={isolateSelected} onPaint={paintSelectedSites} /></div>
-            <div style={{ width: "100%" }}><HeatmapLegend type="none" snvMetric={matrixMetric} snvMax={matrixMax} snvPl={Boolean(snvData?.pl)} /></div>
+            <div style={{ width: "100%" }}><HeatmapLegend type="none" snvMetric={matrixMetric} snvMax={matrixMax} snvPl={Boolean(snvData?.pl)} snvHom={Boolean(snvData?.hom)} /></div>
           </Space>
         ) : null}
         <div style={{ marginBottom: 8 }}>

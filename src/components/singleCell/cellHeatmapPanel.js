@@ -2252,6 +2252,7 @@ export default function CellHeatmapPanel() {
               palette={palette}
               snvMetric={showSnvControls ? snvMetric : null}
               snvPl={Boolean(snvReady && snv.data?.pl)}
+              snvHom={Boolean(snvReady && snv.data?.hom)}
               snvMax={snvMax}
               maxJunctionCn={junctions.data?.maxCn}
               cloneColors={cloneColors}

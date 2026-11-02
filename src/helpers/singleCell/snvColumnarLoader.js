@@ -32,15 +32,20 @@ self.onmessage = function (e) {
   var p = d.range
     ? Promise.all([get(d.url, [0, d.headerBytes]), get(d.url, [d.range.byteStart, d.range.byteEnd])]).then(function (x) {
         var offsets = new Uint32Array(x[0], 0, d.nSites + 1);
-        return fillDense(offsets, x[1], offsets[d.range.siteStart], d.range.siteStart, d.range.siteEnd, d.tableCells, d.cellIds);
+        // het/hom sidecar: one byte per CSR entry, so the entry range of the sites is its byte range; a missing file just means no split
+        return (d.homUrl ? get(d.homUrl, [offsets[d.range.siteStart], offsets[d.range.siteEnd]]).catch(function () { return null; }) : Promise.resolve(null)).then(function (hom) {
+          return fillDense(offsets, x[1], offsets[d.range.siteStart], d.range.siteStart, d.range.siteEnd, d.tableCells, d.cellIds, hom);
+        });
       })
     : get(d.url, null, d.gzUrl && typeof DecompressionStream !== "undefined" ? d.gzUrl : null).then(function (b) {
         var offsets = new Uint32Array(b, 0, d.nSites + 1);
-        return fillDense(offsets, b.slice(d.headerBytes), 0, 0, d.nSites, d.tableCells, d.cellIds);
+        return (d.homUrl ? get(d.homUrl, null).catch(function () { return null; }) : Promise.resolve(null)).then(function (hom) {
+          return fillDense(offsets, b.slice(d.headerBytes), 0, 0, d.nSites, d.tableCells, d.cellIds, hom);
+        });
       });
   p.then(function (out) {
     out.ms = Date.now() - t0;
-    self.postMessage({ ok: true, out: out }, [out.status.buffer, out.alt.buffer, out.depth.buffer, out.gt.buffer, out.pl.buffer]);
+    self.postMessage({ ok: true, out: out }, [out.status.buffer, out.alt.buffer, out.depth.buffer, out.gt.buffer, out.pl.buffer].concat(out.hom ? [out.hom.buffer] : []));
   }).catch(function (err) {
     self.postMessage({ ok: false, error: String(err && err.message ? err.message : err) });
   });
@@ -52,16 +57,18 @@ function canUseWorker() {
 }
 
 async function mainThread(url, msg) {
-  const get = async (range) => {
-    const res = await fetch(url, range ? { headers: { Range: `bytes=${range[0]}-${range[1] - 1}` } } : {});
-    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  const get = async (range, other) => {
+    const u = other || url;
+    const res = await fetch(u, range ? { headers: { Range: `bytes=${range[0]}-${range[1] - 1}` } } : {});
+    if (!res.ok) throw new Error(`${u}: HTTP ${res.status}`);
     const b = await res.arrayBuffer();
     return range && res.status !== 206 ? b.slice(range[0], range[1]) : b;
   };
   if (msg.range) {
     const [h, body] = await Promise.all([get([0, msg.headerBytes]), get([msg.range.byteStart, msg.range.byteEnd])]);
     const offsets = new Uint32Array(h, 0, msg.nSites + 1);
-    return fillDense(offsets, body, offsets[msg.range.siteStart], msg.range.siteStart, msg.range.siteEnd, msg.tableCells, msg.cellIds);
+    const hom = msg.homUrl ? await get([offsets[msg.range.siteStart], offsets[msg.range.siteEnd]], msg.homUrl).catch(() => null) : null;
+    return fillDense(offsets, body, offsets[msg.range.siteStart], msg.range.siteStart, msg.range.siteEnd, msg.tableCells, msg.cellIds, hom);
   }
   let b = null;
   if (msg.gzUrl && typeof DecompressionStream !== "undefined") {
@@ -74,7 +81,8 @@ async function mainThread(url, msg) {
   }
   if (!b) b = await get();
   const offsets = new Uint32Array(b, 0, msg.nSites + 1);
-  return fillDense(offsets, b.slice(msg.headerBytes), 0, 0, msg.nSites, msg.tableCells, msg.cellIds);
+  const hom = msg.homUrl ? await get(null, msg.homUrl).catch(() => null) : null;
+  return fillDense(offsets, b.slice(msg.headerBytes), 0, 0, msg.nSites, msg.tableCells, msg.cellIds, hom);
 }
 
 /**
@@ -96,6 +104,7 @@ export function loadColumnarMatrix(url, table, cellIds, { range = null, useWorke
     cellIds: [...cellIds],
     range,
     gzUrl: gz,
+    homUrl: table.matrix.hom_file ? absOf(url.replace(/[^/]*$/, table.matrix.hom_file)) : null, // optional het/hom sidecar
   };
   if (!useWorker || !canUseWorker()) return mainThread(abs, msg);
   return new Promise((resolve, reject) => {
