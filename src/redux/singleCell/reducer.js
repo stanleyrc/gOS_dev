@@ -127,7 +127,7 @@ const initState = {
   hetMode: linkedHetMode(), // ?hets=blocks
   heatmapType: "cn",
   snvOrder: "tree",
-  snvMetric: "gt",
+  snvMetric: "vaf", // VAF is the default again (2026-11-02); the PL genotype view is a toggle
   cnMode: "total",
   palette: storedPalette(),
   sidePanel: true,

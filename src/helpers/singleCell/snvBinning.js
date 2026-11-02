@@ -41,8 +41,8 @@ export function binLegendText(bins) {
   return `binned: ~${mean} sites per pixel (up to ${d.max}); grey = fraction of the pixel's sites with alt reads; zoom in for single sites`;
 }
 
-/** The metric to draw: GT (the default) needs PL calls in the matrix, else VAF. */
-export const effectiveSnvMetric = (choice, snv) => (choice === "gt" && snv && !snv.gt && !snv.pl ? "vaf" : choice || "gt");
+/** The metric to draw: VAF unless GT (the toggle) was chosen; GT needs PL calls in the matrix, else VAF. */
+export const effectiveSnvMetric = (choice, snv) => (choice === "gt" && snv && !snv.gt && !snv.pl ? "vaf" : choice || "vaf");
 
 const mixHex = (hex, f) => {
   const [r, g, b] = hexToRgb(hex);
@@ -91,23 +91,59 @@ export function plRGB(p) {
 }
 export const plRGBA = (p) => packRGBA(plRGB(p));
 
-/** Sum of P(ALT) and number of sites with evidence in columns[start, end) of matrix row p (p < 0: none). */
+/** P(ALT) of matrix row p, variant c: a covered cell with zero ALT reads is 0 (never signal); null = no read evidence. */
+export function plSiteProb(snv, p, c) {
+  if (p < 0 || !snv?.pl) return null;
+  if (snv.status?.[p]?.[c] === 0) return 0;
+  return plProb(snv.pl[p][c]);
+}
+
+/** P(hom-ALT | ALT) = L11 / (L01 + L11) from the optional het/hom byte (snv.hom, same coding as the PL byte); null when absent or flat. */
+export function homProb(snv, p, c) {
+  if (p < 0 || !snv?.hom) return null;
+  const b = snv.hom[p][c];
+  return b >= 1 && b <= 250 ? (b - 1) / 249 : null;
+}
+
+/** Sum of P(ALT), number of sites with evidence, and the P(ALT)-weighted sum of P(hom|ALT) in columns[start, end) of matrix row p (p < 0: none). */
 export function plBinSummary(snv, p, columns, start, end) {
-  const row = p < 0 || !snv?.pl ? null : snv.pl[p];
   let sum = 0;
   let n = 0;
+  let hSum = 0;
+  let hW = 0;
   for (let k = start; k < end; k += 1) {
-    const q = row ? plProb(row[columns[k]]) : null;
+    const q = plSiteProb(snv, p, columns[k]);
     if (q != null) {
       sum += q;
       n += 1;
+      const h = homProb(snv, p, columns[k]);
+      if (h != null && q > 0) {
+        hSum += q * h;
+        hW += q;
+      }
     }
   }
-  return { sum, n, sites: end - start };
+  return { sum, n, sites: end - start, hSum, hW };
 }
 
+/** Het vs hom-ALT: two hues, lightness from P(ALT). Colour-blind safe pair (Okabe-Ito orange, deep purple). */
+export const HET_HOM_COLORS = { het: "#E69F00", hom: "#5B2A86" };
+
+/** Genotype colour with the het/hom split: white (P = 0) to the hue (P = 1); the hue runs het orange (h = 0) to hom purple (h = 1), a muddy mix where het and hom are not separable. h null = no split available: greyscale. */
+export function plHomRGB(p, h) {
+  if (h == null || !Number.isFinite(h) || p == null || !Number.isFinite(p)) return plRGB(p);
+  const dark = isDarkPlots();
+  const a = hexToRgb(HET_HOM_COLORS.het);
+  const b = hexToRgb(HET_HOM_COLORS.hom);
+  const hh = Math.max(0, Math.min(1, h));
+  const f = Math.max(0, Math.min(1, p));
+  const base = dark ? 42 : 255;
+  return [0, 1, 2].map((i) => Math.round(base + (a[i] + (b[i] - a[i]) * hh - base) * f));
+}
+export const plHomRGBA = (p, h) => packRGBA(plHomRGB(p, h));
+
 /** Pixel colour of a bin: mean P(ALT) over the sites with evidence; no evidence anywhere = white (or the pale tint when marked). */
-export const plBinRGBA = ({ sum, n }) => plRGBA(n ? sum / n : null);
+export const plBinRGBA = ({ sum, n, hSum = 0, hW = 0 }) => plHomRGBA(n ? sum / n : null, hW > 0 ? hSum / hW : null);
 
 /** True when the matrix has PL confidence bytes (else the genotype view falls back to hard calls). */
 export const hasPl = (snv) => Boolean(snv?.pl);
