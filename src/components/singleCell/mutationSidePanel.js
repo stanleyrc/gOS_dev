@@ -230,7 +230,7 @@ export default function MutationSidePanel({
     const covered = p >= 0 && snv.status[p][c] >= 0;
     const pAlt = snv.pl && p >= 0 ? snvMetricValue(snv, p, c, "gt") : undefined;
     const cellRows = [
-      ...(pAlt === undefined ? [] : [["P(ALT) from PL", pAlt == null ? "no read evidence (flat PL)" : pAlt.toFixed(3)]]),
+      ...(pAlt === undefined ? [] : [["P(ALT) from PL (stored)", snv.pl[p][c] >= 1 && snv.pl[p][c] <= 250 ? ((snv.pl[p][c] - 1) / 249).toFixed(3) : "no read evidence (flat PL)"], ["Drawn as (capped by read support)", pAlt == null ? "no read evidence" : pAlt.toFixed(3)]]),
       ...(snv.hom && p >= 0 && homProb(snv, p, c) != null && pAlt > 0 ? [["P(hom-ALT | ALT) from PL", `${homProb(snv, p, c).toFixed(2)} (PL assumes 2 copies: unreliable at amplified or aneuploid sites)`]] : []),
       ["Cell VAF", vaf == null ? noReads : vaf.toFixed(3)],
       ["Cell ALT reads", altN == null ? (covered && snv.status[p][c] === 1 ? "alt present (count n/a)" : noReads) : altN],

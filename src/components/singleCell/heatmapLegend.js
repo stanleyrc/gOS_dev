@@ -120,7 +120,7 @@ export default function HeatmapLegend({
           items[0],
         ];
       }
-      note = (snvHom ? "Hue = het (orange) vs hom-ALT (purple) from the PLs, lightness = P(ALT); a muddy mix means het and hom are not separable. The PLs assume two copies, so het vs hom is unreliable at amplified or aneuploid sites (e.g. EGFR amplicons). " : "No het/hom split in this matrix (greyscale only). ") + "P(ALT) from the genotype likelihoods (PL); mid grey = uncertain. White = REF, covered with 0 ALT reads, or no reads (\"Mark no-read sites\" tints the no-read ones pale blue). Same shading at every zoom; zoomed out a pixel is the mean P(ALT) of its sites that have read evidence";
+      note = (snvHom ? "Hue = het (orange) vs hom-ALT (purple) from the PLs, lightness = P(ALT); a muddy mix means het and hom are not separable. The PLs assume two copies, so het vs hom is unreliable at amplified or aneuploid sites (e.g. EGFR amplicons). " : "No het/hom split in this matrix (greyscale only). ") + "P(ALT) from the genotype likelihoods (PL), drawn no darker than the read support allows (cap 2 a^2 / depth for a ALT reads: a lone ALT read fades with REF depth); mid grey = uncertain. White = REF, covered with 0 ALT reads, or no reads (\"Mark no-read sites\" tints the no-read ones pale blue). Same shading at every zoom; zoomed out a pixel is the mean P(ALT) of its sites that have read evidence";
     } else if (snvMetric === "gt") {
       items = [
         { color: GT_MATRIX.alt, label: "alt call" },

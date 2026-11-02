@@ -4,7 +4,7 @@
 // reuse that floor: with ~10 sites per pixel, 1 carrier site out of 10 would paint the whole pixel "alt-positive" and a
 // neighbouring cell's private SNV would look shared. The bin colour is the plain fraction of its sites with alt reads
 // (white 0 to black 1, no floor), so 1/10 is nearly white and a pixel is dark only when most of its sites are present.
-import { GT_MATRIX, hexToRgb, isDarkPlots, packRGBA, snvMissingColor, vafRGB } from "./matrix";
+import { GT_MATRIX, hexToRgb, isDarkPlots, packRGBA, plReadCap, snvMissingColor, vafRGB } from "./matrix";
 
 /** [r, g, b] of a bin with `positive` of `sites` sites carrying alt reads, or the no-reads colour when `missing` === `sites`. */
 export function snvBinRGB(positive, sites, missing = 0) {
@@ -95,7 +95,8 @@ export const plRGBA = (p) => packRGBA(plRGB(p));
 export function plSiteProb(snv, p, c) {
   if (p < 0 || !snv?.pl) return null;
   if (snv.status?.[p]?.[c] === 0) return 0;
-  return plProb(snv.pl[p][c]);
+  const q = plProb(snv.pl[p][c]);
+  return q == null ? null : Math.min(q, plReadCap(snv.alt?.[p]?.[c], snv.depth?.[p]?.[c])); // display cap by read support, see plReadCap
 }
 
 /** P(hom-ALT | ALT) = L11 / (L01 + L11) from the optional het/hom byte (snv.hom, same coding as the PL byte); null when absent or flat. */
