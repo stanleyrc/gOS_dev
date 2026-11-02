@@ -284,6 +284,48 @@ export function domainExtents(domains, width, gap = 0) {
   ]);
 }
 
+/**
+ * Like genomicColumnLookup, but a pixel takes the segment with the highest value among all segments it overlaps (not the one under
+ * its centre), so a focal segment narrower than a pixel is not lost. `values` is the row's value per bin (segment).
+ * Used for the zoomed amplicon view; the whole-genome view keeps the centre rule.
+ */
+export function genomicColumnLookupMax(binIndex, values, domains, width, gap = 0) {
+  const w = Math.max(0, Math.floor(width));
+  const cols = new Int32Array(w).fill(-1);
+  const extents = domainExtents(domains, width, gap);
+  const { sorted, sortedStarts, gEnd } = binIndex;
+  extents.forEach(([px0, px1, d]) => {
+    const span = px1 - px0;
+    for (let x = px0; x < px1 && x < w; x += 1) {
+      const g0 = d[0] + ((x - px0) / span) * (d[1] - d[0]);
+      const g1 = d[0] + ((x + 1 - px0) / span) * (d[1] - d[0]);
+      let lo = 0;
+      let hi = sortedStarts.length - 1;
+      let first = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (sortedStarts[mid] <= g0) {
+          first = mid;
+          lo = mid + 1;
+        } else hi = mid - 1;
+      }
+      let best = -1;
+      let bestV = -Infinity;
+      for (let k = Math.max(0, first); k < sortedStarts.length && sortedStarts[k] <= g1; k += 1) {
+        const b = sorted[k];
+        if (gEnd[b] < g0) continue;
+        const v = values[b];
+        if (Number.isFinite(v) && v > bestV) {
+          bestV = v;
+          best = b;
+        } else if (best < 0 && !Number.isFinite(v)) best = b;
+      }
+      cols[x] = best;
+    }
+  });
+  return { cols, extents };
+}
+
 export function genomicColumnLookup(binIndex, domains, width, gap = 0) {
   const w = Math.max(0, Math.floor(width));
   const cols = new Int32Array(w).fill(-1);
