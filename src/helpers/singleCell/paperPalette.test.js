@@ -57,3 +57,11 @@ describe("paper style tokens", () => {
     expect(applyPaperTokens(null)).toBe(false);
   });
 });
+
+describe("paperEgfrColor with display names", () => {
+  test("variant display names keep the variant color", () => {
+    expect(paperEgfrColor("ecEGFR Long 2")).toBe("#8E3FA0");
+    expect(paperEgfrColor("ecEGFR Long")).toBe("#2B6CA3");
+    expect(paperEgfrColor("ecEGFR Shorter")).toBe("#2E9E3E");
+  });
+});

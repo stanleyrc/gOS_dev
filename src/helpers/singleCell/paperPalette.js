@@ -93,7 +93,7 @@ export function paperEgfrColor(label) {
   const s = `${label ?? ""}`.toLowerCase();
   if (!/egfr/.test(s)) return null;
   if (/shorter/.test(s)) return PAPER_EGFR.shorter;
-  if (/var\d|_var/.test(s)) return PAPER_EGFR.variant;
+  if (/var\d|_var|long \d/.test(s)) return PAPER_EGFR.variant;
   if (/short|^s/.test(s) || /\bsegfr/.test(s)) return PAPER_EGFR.short;
   if (/long|^w|wegfr/.test(s)) return PAPER_EGFR.long;
   return null;
