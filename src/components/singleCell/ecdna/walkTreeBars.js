@@ -130,7 +130,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
     if (scaleMode === "log") return Math.log1p(v) / Math.log1p(sharedMax);
     return v / (scaleMode === "shared" ? sharedMax : colMax[ci]);
   };
-  const colLabel = (c, w = Infinity) => (c.type === "total" ? t("components.single-cell.ecdna.tc-total", { family: c.block.label }) : c.type === "rare" ? (w < 30 ? `${c.walks.length}r` : t("components.single-cell.ecdna.tc-rare-col")) : c.walks[0].label);
+  const colLabel = (c, w = Infinity) => (c.type === "total" ? t("components.single-cell.ecdna.tc-total", { family: displayLabel(c.block.label) }) : c.type === "rare" ? (w < 30 ? `${c.walks.length}r` : t("components.single-cell.ecdna.tc-rare-col")) : walkName(c.walks[0]));
   const colColor = (c) => (c.type === "walk" ? colorOf(c.walks[0].id) : TOTAL_COLOR);
   const fmt = (v) => (v >= 100 ? d3.format(".0f")(v) : v >= 10 ? d3.format(".0f")(v) : d3.format(".1~f")(v));
   const clip = (s, w, px = 6.2) => {
@@ -169,7 +169,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
       const id = g.key;
       const head = `${id}${g.clone != null ? ` · ${g.clone}` : ""}`;
       if (!hasData(id)) return [head, t("components.single-cell.ecdna.tc-no-data")];
-      const lines = cellWalkLines(walks, id).map((r) => ({ color: colorOf(r.id), text: `${r.label}: ${fmt(r.copies)}` }));
+      const lines = cellWalkLines(walks, id).map((r) => ({ color: colorOf(r.id), text: `${displayLabel(r.label)}: ${fmt(r.copies)}` }));
       const notCounted = unmeasuredWalks(walks, id);
       const extra = notCounted.length ? [{ color: INK.muted, text: `not counted in this cell: ${notCounted.length} walk${notCounted.length > 1 ? "s" : ""} (counted over a different cell set)` }] : [];
       return [head, ...(lines.length ? lines : [t("components.single-cell.ecdna.tc-no-walks")]), ...extra];
@@ -280,7 +280,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
                 <g key={b.key}>
                   <rect x={x0} y={0} width={x1 - x0} height={FAM_H - 1} fill={INK.empty} rx={2} />
                   <text x={x0 + 4} y={FAM_H / 2} dy="0.35em" fontSize={TYPE.tick} fontWeight={700} fill={INK.textSecondary}>
-                    {clip(`${b.label} · ${b.walks.length} walk${b.walks.length > 1 ? "s" : ""}`, x1 - x0 - 6, 6.4)}
+                    {clip(`${displayLabel(b.label)} · ${b.walks.length} walk${b.walks.length > 1 ? "s" : ""}`, x1 - x0 - 6, 6.4)}
                   </text>
                 </g>
               );
