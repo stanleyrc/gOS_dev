@@ -1,3 +1,4 @@
+import { DEFAULT_CASE_PAGE_SIZE } from "./singleCell/viewDefaults";
 import { tableFromIPC } from "apache-arrow";
 import axios from "axios";
 import * as d3 from "d3";
@@ -333,7 +334,7 @@ export function dataToGenome(data, chromoBins) {
 }
 
 export function defaultSearchFilters() {
-  return { page: 1, per_page: 25, texts: "", orderId: 1 };
+  return { page: 1, per_page: DEFAULT_CASE_PAGE_SIZE, texts: "", orderId: 1 };
 }
 
 export function plotMargins() {
