@@ -4,8 +4,8 @@ describe("displayLabel", () => {
   test("maps long and short EGFR walks and variants", () => {
     expect(displayLabel("wEGFR")).toBe("ecEGFR Long");
     expect(displayLabel("sEGFR")).toBe("ecEGFR Short");
-    expect(displayLabel("wEGFR_var1")).toBe("ecEGFR Long var1");
-    expect(displayLabel("wEGFR_var3")).toBe("ecEGFR Long var3");
+    expect(displayLabel("wEGFR_var1")).toBe("ecEGFR Long 1");
+    expect(displayLabel("wEGFR_var3")).toBe("ecEGFR Long 3");
   });
   test("maps inside free text, leaves other names alone", () => {
     expect(displayLabel("ecDNA copies: wEGFR")).toBe("ecDNA copies: ecEGFR Long");
@@ -47,8 +47,8 @@ describe("walkName / walkTip", () => {
   const { walkName, walkTip } = require("./egfrLabels");
   const peel = { label: "EGFR,SEC61G w00038 (1 cells)", curated_match: { label: "wEGFR_var2" } };
   test("auto label with curated match shows the curated name, tooltip keeps the auto id", () => {
-    expect(walkName(peel)).toBe("ecEGFR Long var2");
-    expect(walkTip(peel)).toBe("ecEGFR Long var2 (EGFR,SEC61G w00038 (1 cells))");
+    expect(walkName(peel)).toBe("ecEGFR Long 2");
+    expect(walkTip(peel)).toBe("ecEGFR Long 2 (EGFR,SEC61G w00038 (1 cells))");
   });
   test("no match or curated walk is unchanged", () => {
     expect(walkName({ label: "Other w00004 (1 cells)", curated_match: { status: "new" } })).toBe("Other w00004 (1 cells)");
