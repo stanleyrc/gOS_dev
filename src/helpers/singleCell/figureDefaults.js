@@ -3,6 +3,8 @@
 // patient's ecDNA variants (display only: walks.json is never changed).
 // d3-free so jest can run it.
 
+import { walkName } from "./egfrLabels";
+
 const driverList = (w) => {
   const d = w?.driver_genes;
   if (Array.isArray(d)) return d.filter(Boolean).map(String);
@@ -28,7 +30,6 @@ function carrierCopies(w, cellIds, minCn = 1) {
  * BWH69 -> MYCN 1 (chr2), BWH70 -> wEGFR, MGH303 -> the CDK4 walk,
  * MGH304 -> MYCN,CDK4 1.
  */
-import { walkName } from "./egfrLabels";
 export function dominantWalk(walks = [], cellIds = null, minCn = 1) {
   if (!walks.length) return null;
   const drivers = walks.filter((w) => driverList(w).length);
