@@ -5,6 +5,7 @@ import { textRole } from "./figureKit";
 import useContainerWidth from "../useContainerWidth";
 import { variantNesting, walkDomains } from "../../../helpers/singleCell/figureMath";
 import { selectMode } from "./cellSelection";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const ROW = 30;
 const TOP = 8;
@@ -129,7 +130,7 @@ export default function VariantTree({ family = [], order = [], colorOf, focusId,
         ctx.font = ctx.font.replace(/^(\d+ )?/, focus ? "700 " : "500 ");
         ctx.fillStyle = col;
         ctx.textAlign = "left";
-        ctx.fillText(fitText(ctx, w.label || w.name || `walk ${w.id}`, RIGHT - 70), x1 + 12, y);
+        ctx.fillText(fitText(ctx, walkName(w) || w.name || `walk ${w.id}`, RIGHT - 70), x1 + 12, y);
         textRole(ctx, c, "tick", "textSecondary");
         ctx.textAlign = "right";
         ctx.fillText(`${carriers[i].length} cells`, width - 4, y);
@@ -171,12 +172,12 @@ export default function VariantTree({ family = [], order = [], colorOf, focusId,
         tooltip={(h) => {
           const w = family[h.i];
           const span = (w.nodes || []).reduce((s, nd) => s + Math.abs(nd.end - nd.start), 0);
-          return [w.label || w.name || `walk ${w.id}`, ["Carriers", `${carriers[h.i].length} cells`], ["Structure", `${`${w.circular}`.toLowerCase() === "true" ? "circular" : "linear"} · ${(w.nodes || []).length} segments · ${(span / 1e6).toFixed(2)} Mb`], ["Derived from", parent[h.i] >= 0 ? family[parent[h.i]].label || `walk ${family[parent[h.i]].id}` : "–"], ["Click", "focus and select carriers"]];
+          return [walkName(w) || w.name || `walk ${w.id}`, ["Carriers", `${carriers[h.i].length} cells`], ["Structure", `${`${w.circular}`.toLowerCase() === "true" ? "circular" : "linear"} · ${(w.nodes || []).length} segments · ${(span / 1e6).toFixed(2)} Mb`], ["Derived from", parent[h.i] >= 0 ? family[parent[h.i]].label || `walk ${family[parent[h.i]].id}` : "–"], ["Click", "focus and select carriers"]];
         }}
         onClick={(h, event) => {
           const w = family[h.i];
           onFocus?.(w.id);
-          onSelect?.(carriers[h.i], { label: `${w.label || "walk " + w.id} carriers`, mode: selectMode(event) });
+          onSelect?.(carriers[h.i], { label: `${walkName(w) || "walk " + w.id} carriers`, mode: selectMode(event) });
         }}
       />
     </div>

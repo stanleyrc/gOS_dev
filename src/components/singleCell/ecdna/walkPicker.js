@@ -10,6 +10,7 @@ import { familyLabel } from "../../../helpers/singleCell/walkCopies";
 import { shortLabel } from "../../../helpers/singleCell/walkPlotState";
 import { WalkBadges } from "./walkSetControls";
 import { INK } from "../../../helpers/singleCell/plotTheme";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const { Text } = Typography;
 const carriers = (w) => w.stats?.ncells ?? w.ncells ?? 0;
@@ -91,7 +92,7 @@ export default function WalkPicker({ families, total, nCells, filters, setFilter
               const rare = carriers(w) <= rareMax;
               const focused = focus === w.id;
               return (
-                <Tooltip key={w.id} mouseEnterDelay={0.4} title={`${w.label} · ${w.genes.length ? w.genes.join(", ") : "no genes"} · ${carriers(w)} cells · median ${(w.stats?.medianCn ?? 0).toFixed(0)} copies${w.curated ? " · curated" : ""}${rare ? " · rare" : ""} — ${t(on ? "components.single-cell.ecdna.chip-hide" : "components.single-cell.ecdna.chip-show")}`}>
+                <Tooltip key={w.id} mouseEnterDelay={0.4} title={`${walkTip(w)} · ${w.genes.length ? w.genes.join(", ") : "no genes"} · ${carriers(w)} cells · median ${(w.stats?.medianCn ?? 0).toFixed(0)} copies${w.curated ? " · curated" : ""}${rare ? " · rare" : ""} — ${t(on ? "components.single-cell.ecdna.chip-hide" : "components.single-cell.ecdna.chip-show")}`}>
                   <span
                     role="checkbox"
                     aria-checked={on}
@@ -122,7 +123,7 @@ export default function WalkPicker({ families, total, nCells, filters, setFilter
                     }}
                   >
                     <span style={{ width: 8, height: 8, borderRadius: 4, flex: "none", background: on ? c : "transparent", border: `1.5px solid ${c}` }} />
-                    <span style={{ fontWeight: on ? 600 : 400 }}>{shortLabel(w.label, 26)}</span>
+                    <span style={{ fontWeight: on ? 600 : 400 }}>{shortLabel(walkName(w), 26)}</span>
                     {w.curated && <span style={{ color: INK.ok, fontWeight: 700 }}>✓</span>}
                     <WalkBadges walk={w} recovery={recovery} />
                     <span style={{ color: INK.muted, fontSize: 11, fontVariantNumeric: "tabular-nums" }}>{carriers(w)}</span>

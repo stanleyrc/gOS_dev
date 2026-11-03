@@ -8,6 +8,7 @@ import { paperAmpColor } from "../../../helpers/singleCell/paperPalette";
 import { isPaperStyle } from "../../../helpers/singleCell/figureStyle";
 import { logKde, niceLogDomain } from "../../../helpers/singleCell/figureMath";
 import { selectMode } from "./cellSelection";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const LOG_TICKS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000];
 const pct = (f) => `${Math.round(100 * f)}%`;
@@ -206,7 +207,7 @@ export function AmpliconViolins({ per, selected, onSelect, selection, onSelectCe
         `${h.p.patient} · ${h.g.key}`,
         ["Cells", `${h.g.nCells} of ${h.p.cellIds.length} (${pct(h.g.fraction)})`],
         ["Median copies", Number.isFinite(h.q[1]) ? `${h.q[1].toFixed(1)} (IQR ${h.q[0].toFixed(1)}–${h.q[2].toFixed(1)})` : "–"],
-        ["Walks", h.g.walks.map((w) => w.label || w.name || w.id).join(", ")],
+        ["Walks", h.g.walks.map((w) => walkName(w) || w.name || w.id).join(", ")],
         ["Drag", "select cells in a copy range"],
       ];
     return null;

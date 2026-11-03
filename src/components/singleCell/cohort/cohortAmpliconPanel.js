@@ -14,6 +14,7 @@ import usePlotTheme from "../usePlotTheme";
 import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const { Text } = Typography;
 const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
@@ -60,13 +61,13 @@ export default function CohortAmpliconPanel({ summaries, files, cnRows = {}, chr
     ...p,
     groups: p.walks.slice(0, 6).map((wk) => ({
       key: `${p.patient}::${wk.id}`,
-      label: wk.label,
+      label: walkName(wk),
       color: ink,
       values: p.cellIds.map((id) => Number(wk.cells[id]) || 0).filter((v) => v > 0),
       ids: p.cellIds.filter((id) => (Number(wk.cells[id]) || 0) > 0),
       fraction: wk.stats.fraction,
       total: p.cellIds.length,
-      bar: { fraction: wk.stats.fraction, title: carrierBarLines({ patient: p.patient, label: wk.label, nCarriers: p.cellIds.filter((id) => Number(wk.cells[id]) > 0).length, nCells: p.cellIds.length }).join("\n") },
+      bar: { fraction: wk.stats.fraction, title: carrierBarLines({ patient: p.patient, label: walkName(wk), nCarriers: p.cellIds.filter((id) => Number(wk.cells[id]) > 0).length, nCells: p.cellIds.length }).join("\n") },
     })),
   }));
   const stripGroups = stripsByPatient.flatMap((p) => p.groups);

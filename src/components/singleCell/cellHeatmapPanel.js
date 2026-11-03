@@ -21,7 +21,7 @@ import { carrierRows } from "../../helpers/singleCell/snvIsolate";
 import SnvSelectionBar from "./snvSelectionBar";
 import { idsToColumns, knownIds, parseSnsel, serializeSnsel, SNSEL_PARAM } from "../../helpers/singleCell/snvSelection";
 import SnvIsolatePanel from "./snvIsolatePanel";
-import { cladeNodeLabels } from "../../helpers/singleCell/clades";
+import { cladeNodeLabels, namedGroupLabels } from "../../helpers/singleCell/clades";
 import usePatientClades from "./usePatientClades";
 import usePatientTmb from "./usePatientTmb";
 import { TMB_TRACK, cellTmbMap, fmtTmb, tmbAxisMax, tmbBarColor, tmbBarFraction, tmbTooltipLines } from "../../helpers/singleCell/tmb";
@@ -108,6 +108,7 @@ import useCellSignatures from "./useCellSignatures";
 import { ANNOTATION_PARAMS, ANNOTATION_WIDTHS, SIGNATURE_FIELD, annotationToSearch, annotationWidth as normaliseAnnotationWidth, cellSignatureFit, dominantSignature, signatureSegments, signatureTooltip } from "../../helpers/singleCell/cellSignatures";
 import { signatureColor } from "../../helpers/singleCell/signatureColors";
 import { useTooltipGuard } from "./useTooltipGuard";
+import { displayLabel, walkName, walkTip } from "../../helpers/singleCell/egfrLabels";
 
 const CN_MAPPED_IDLE = { status: "idle", data: null, error: null };
 
@@ -763,7 +764,12 @@ export default function CellHeatmapPanel() {
   const patientClades = usePatientClades();
   const canShowClades = patientClades.status === "ok" && hasTree && patientClades.data.clades.length > 0;
   const cladeLabels = useMemo(
-    () => (canShowClades && layout.cladeOverlay ? cladeNodeLabels(treeLayout, patientClades.data.clades) : null),
+    () => {
+      if (!(canShowClades && layout.cladeOverlay)) return null;
+      const m = cladeNodeLabels(treeLayout, patientClades.data.clades);
+      namedGroupLabels(treeLayout, patientClades.data.named_groups).forEach((v, k) => m.set(k, v)); // figure names (EC1, CI, ...) win over SNV counts
+      return m;
+    },
     [canShowClades, layout.cladeOverlay, treeLayout, patientClades]
   );
   const [branchNode, setBranchNode] = useState(null);
@@ -1302,7 +1308,7 @@ export default function CellHeatmapPanel() {
                 options={[
                   { value: "all", label: "All junctions" },
                   { value: "view", label: "Touching the viewport (either breakend)" },
-                  ...(jWalkOptions.length ? [{ label: "Junctions of an ecDNA / amplicon walk", options: jWalkOptions.map((w) => ({ value: `walk:${w.id}`, label: w.label })) }] : []),
+                  ...(jWalkOptions.length ? [{ label: "Junctions of an ecDNA / amplicon walk", options: jWalkOptions.map((w) => ({ value: `walk:${w.id}`, label: walkName(w) })) }] : []),
                 ]}
               />
               <Text type="secondary">{`${nJunctions} of ${junctions.data.junctions.length}`}</Text>

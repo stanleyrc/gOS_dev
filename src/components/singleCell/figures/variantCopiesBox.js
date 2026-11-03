@@ -5,6 +5,7 @@ import useContainerWidth from "../useContainerWidth";
 import { quantiles } from "../../../helpers/singleCell/figures";
 import { mannWhitney, niceTicks, pStars } from "../../../helpers/singleCell/figureMath";
 import { selectMode } from "./cellSelection";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const PAD = { left: 44, right: 10, top: 18, bottom: 54 };
 const H = 330;
@@ -118,7 +119,7 @@ export default function VariantCopiesBox({ walks = [], order = [], focusId, colo
         ctx.font = ctx.font.replace(/^(\d+ )?/, k === fi ? "700 " : "500 ");
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        ctx.fillText(fitText(ctx, g.w.label || g.w.name || `walk ${g.w.id}`, bw - 4), x, y0 + 6);
+        ctx.fillText(fitText(ctx, walkName(g.w) || g.w.name || `walk ${g.w.id}`, bw - 4), x, y0 + 6);
         textRole(ctx, c, "tick");
         ctx.textBaseline = "top";
         ctx.textAlign = "center";
@@ -158,14 +159,14 @@ export default function VariantCopiesBox({ walks = [], order = [], focusId, colo
         draw={draw}
         ariaLabel="Amplicon copies per ecDNA variant"
         tooltip={(h) => {
-          const name = (g) => g.w.label || g.w.name || `walk ${g.w.id}`;
+          const name = (g) => walkName(g.w) || g.w.name || `walk ${g.w.id}`;
           if (h.kind === "cell") return [h.p.id, [name(h.g), `${h.p.v.toFixed(1)} copies`], ["Click", "select this cell (Cmd adds)"]];
           if (h.kind === "test") return [`${name(groups[fi])} vs ${name(groups[h.t.k])}`, ["Wilcoxon rank-sum p", h.t.p < 1e-4 ? h.t.p.toExponential(1) : h.t.p.toFixed(4)]];
           const [, q1, med, q3] = h.g.q;
           return [name(h.g), ["Carriers", h.g.vals.length], ["Median (IQR)", `${med?.toFixed(0)} (${q1?.toFixed(0)}–${q3?.toFixed(0)})`], ["Click", h.kind === "label" ? "focus this variant" : "select its carriers"]];
         }}
         onClick={(h, event) => {
-          const name = (g) => g.w.label || g.w.name || `walk ${g.w.id}`;
+          const name = (g) => walkName(g.w) || g.w.name || `walk ${g.w.id}`;
           if (h.kind === "cell") onSelect?.([h.p.id], { label: h.p.id, mode: selectMode(event) });
           else if (h.kind === "box") onSelect?.(h.g.pts.map((p) => p.id), { label: `${name(h.g)} carriers`, mode: selectMode(event) });
           else if (h.kind === "label") onFocus?.(h.g.w.id);

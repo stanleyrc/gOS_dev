@@ -8,6 +8,7 @@ import { attachRare, containmentTree, splitRare, subMatrix } from "../../../help
 import HintLine from "../hintLine";
 import { useRareMax } from "./rareControl";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const fmtBp = (v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)} Mb` : `${(v / 1e3).toFixed(0)} kb`);
 const ROW = 19;
@@ -105,9 +106,9 @@ export default function WalkContainmentCard({ walks, colorOf, cellIds = [], onFo
                 <text x={x0} y={cy} dy="0.35em" fontSize={TYPE.micro} fill={MUTED}>{num.get(r.i)}</text>
                 <circle cx={x0 + 17} cy={cy} r={4.5} fill={colorOf(wk.id)} />
                 <text x={x0 + 26} y={cy} dy="0.35em" fontSize={TYPE.label} fill="currentColor" fontWeight={isRare ? 400 : 600} fontStyle={isRare ? "italic" : "normal"}>
-                  {wk.label.length > 20 ? `${wk.label.slice(0, 19)}…` : wk.label}
+                  {walkName(wk).length > 20 ? `${walkName(wk).slice(0, 19)}…` : walkName(wk)}
                   <tspan fill={MUTED} fontWeight={400} fontStyle="normal" fontSize={11}>{`  ${fmtBp(lengths[r.i])} · ${carriers.get(wk.id) || 0} cells`}</tspan>
-                  <title>{`${wk.label}${r.parent >= 0 ? `\n${d3.format(".0%")(r.share)} inside ${walks[r.parent].label}` : ""}`}</title>
+                  <title>{`${walkName(wk)}${r.parent >= 0 ? `\n${d3.format(".0%")(r.share)} inside ${walkName(walks[r.parent])}` : ""}`}</title>
                 </text>
                 {r.parent >= 0 && <text x={TREE_W - 2} y={cy} dy="0.35em" textAnchor="end" fontSize={11} fill={MUTED}>{`⊂ ${num.get(r.parent)} · ${d3.format(".0%")(r.share)}`}</text>}
                 {cols.map((j, c) => {
@@ -117,7 +118,7 @@ export default function WalkContainmentCard({ walks, colorOf, cellIds = [], onFo
                   return (
                     <g key={j}>
                       <rect x={x + 0.5} y={y + 0.5} width={CELL - 1} height={ROW - 1} fill={v >= 0.01 ? color(0.15 + 0.85 * v) : "transparent"} stroke={MUTED} strokeOpacity={0.2} />
-                      <title>{t("components.single-cell.ecdna.contain-cell", { a: wk.label, b: walks[j].label, pct: d3.format(".0%")(v) })}</title>
+                      <title>{t("components.single-cell.ecdna.contain-cell", { a: walkName(wk), b: walkName(walks[j]), pct: d3.format(".0%")(v) })}</title>
                     </g>
                   );
                 })}

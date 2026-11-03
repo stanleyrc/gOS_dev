@@ -12,6 +12,7 @@ import useContainerWidth from "../useContainerWidth";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { viewportShift } from "../../../helpers/singleCell/hoverPopup";
 import { useTooltipGuard } from "../useTooltipGuard";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const GAP_X = 50; // same outer margin / inter-domain gap as the heatmap and the genes plot
 const BAR_MAX = 12;
@@ -359,7 +360,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, ho
                 {/* label: name and curated tick, then carriers / median copies / size in aligned columns */}
                 <circle cx={12} cy={cy} r={Math.min(4.5, laneHeight / 3.5)} fill={color} />
                 <text x={22} y={cy} dy="0.35em" fontSize={fs} fill={INK.text} fontWeight={focused ? 700 : hovered ? 650 : 500}>
-                  {shortLabel(w.label, nameChars - (w.curated ? 2 : 0))}
+                  {shortLabel(walkName(w), nameChars - (w.curated ? 2 : 0))}
                   {w.curated && <tspan fill={INK.ok} fontWeight={700}>{" ✓"}</tspan>}
                 </text>
                 {showMeta && (
@@ -379,7 +380,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, ho
                       const xs = x0 + a + ((g0 - d[0]) / (d[1] - d[0])) * (b - a);
                       const xe = x0 + a + ((g1 - d[0]) / (d[1] - d[0])) * (b - a);
                       const fill = colorBy === "chromosome" ? chrColor(n.chromosome) : color;
-                      const nodeLines = [`${w.label} · segment ${ni + 1}/${w.nodes.length}`, `${n.chromosome}:${n.start.toLocaleString()}-${n.end.toLocaleString()} (${n.strand})`, `${d3.format(",")(n.end - n.start + 1)} bp`, meta];
+                      const nodeLines = [`${walkTip(w)} · segment ${ni + 1}/${w.nodes.length}`, `${n.chromosome}:${n.start.toLocaleString()}-${n.end.toLocaleString()} (${n.strand})`, `${d3.format(",")(n.end - n.start + 1)} bp`, meta];
                       return (
                         <polygon
                           key={ni}
@@ -426,7 +427,7 @@ export default function WalksPlot({ walks, families, colorOf, focus, onFocus, ho
                         stroke={INK.danger}
                         strokeWidth={focused ? 2.2 : 1.6}
                         strokeOpacity={0.9}
-                        onMouseEnter={(e) => enterLane(e, w, [tipText, w.label])}
+                        onMouseEnter={(e) => enterLane(e, w, [tipText, walkTip(w)])}
                         onMouseLeave={backToLane}
                       />
                     );

@@ -2,6 +2,8 @@
 // The raw name stays the key everywhere; only what the user reads changes:
 // "Region_Annotation" -> "Region annotation", "state" -> "State".
 
+import { displayLabel } from "./egfrLabels";
+
 const KNOWN = {
   clone_id: "Clone",
   state: "State",
@@ -21,7 +23,8 @@ const KNOWN = {
 /** Human-readable name of a metadata field; unknown names are tidied, not guessed. */
 export function fieldLabel(name) {
   if (name === null || name === undefined) return "";
-  const raw = `${name}`;
+  const raw = displayLabel(`${name}`);
+  if (KNOWN[`${name}`]) return KNOWN[`${name}`];
   if (KNOWN[raw]) return KNOWN[raw];
   const words = raw
     .replace(/[._]+/g, " ")

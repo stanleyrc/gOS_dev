@@ -28,6 +28,7 @@ function carrierCopies(w, cellIds, minCn = 1) {
  * BWH69 -> MYCN 1 (chr2), BWH70 -> wEGFR, MGH303 -> the CDK4 walk,
  * MGH304 -> MYCN,CDK4 1.
  */
+import { walkName } from "./egfrLabels";
 export function dominantWalk(walks = [], cellIds = null, minCn = 1) {
   if (!walks.length) return null;
   const drivers = walks.filter((w) => driverList(w).length);
@@ -133,7 +134,7 @@ export function variantGrouping(patient, walks = [], config = PAPER_VARIANT_GROU
       if (ov && ov.o > 0) groupOf.set(w.id, ov.a.label);
     });
   }
-  const nameOf = (w) => (w ? rename.get(w.id) || w.label || w.name || `walk ${w.id}` : "");
+  const nameOf = (w) => (w ? rename.get(w.id) || walkName(w) || w.name || `walk ${w.id}` : "");
   const groups = anchors.map((a) => ({ label: a.label, anchorId: a.w.id, walks: walks.filter((w) => groupOf.get(w.id) === a.label) }));
   return { nameOf, groupOf, groups };
 }
