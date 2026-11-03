@@ -1,9 +1,10 @@
+import { DEFAULT_CASE_PAGE_SIZE } from "../../helpers/singleCell/viewDefaults";
 import actions from "./actions";
 import { cascaderOperators } from "../../helpers/filters";
 
 const defaultFilters = () => ({
   page: 1,
-  per_page: 25,
+  per_page: DEFAULT_CASE_PAGE_SIZE,
   texts: "",
   orderId: 1,
   operator: cascaderOperators[0],

@@ -523,7 +523,7 @@ export function* applyFavoriteSearch({ favoriteId }) {
   const searchFilters = {
     ...favoriteSearch.searchFilters,
     page: 1,
-    per_page: favoriteSearch.searchFilters?.per_page || 25,
+    per_page: favoriteSearch.searchFilters?.per_page || 50,
     orderId:
       favoriteSearch.searchFilters?.orderId ||
       defaultSearchFilters().orderId,

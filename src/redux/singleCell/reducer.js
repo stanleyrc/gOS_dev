@@ -1,3 +1,4 @@
+import { DEFAULT_SNV_METRIC } from "../../helpers/singleCell/viewDefaults";
 import actions, {
   SC_DEFAULT_LAYOUT,
   SC_DEFAULT_TRACKS,
@@ -127,7 +128,7 @@ const initState = {
   hetMode: linkedHetMode(), // ?hets=blocks
   heatmapType: "cn",
   snvOrder: "tree",
-  snvMetric: "gt",
+  snvMetric: DEFAULT_SNV_METRIC,
   cnMode: "total",
   palette: storedPalette(),
   sidePanel: true,
