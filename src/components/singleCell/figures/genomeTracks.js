@@ -7,6 +7,7 @@ import { TrackPlot } from "../cellTracksPanel";
 import { loadCellTrack } from "../../../redux/singleCell/loaders";
 import { walkFamilies } from "../../../helpers/singleCell/walks";
 import { Y_MODES, Y_MODE_LABELS, cellTrackRanges, parseYAxis } from "../../../helpers/singleCell/trackScale";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const { Text } = Typography;
 
@@ -46,7 +47,7 @@ export default function GenomeTracks({ width, cnX, cnW, walks = [], colorOf, nam
   const chromoBins = useSelector((s) => s.Settings.chromoBins);
   const domains = useSelector((s) => s.Settings.domains);
   // display names for the walk lanes (the paper's names where mapped)
-  const lanes = useMemo(() => walks.map((w) => ({ ...w, label: nameOf ? nameOf(w) : w.label })), [walks, nameOf]);
+  const lanes = useMemo(() => walks.map((w) => ({ ...w, label: nameOf ? nameOf(w) : walkName(w) })), [walks, nameOf]);
   const families = useMemo(() => walkFamilies(lanes), [lanes]);
 
   const [data, setData] = useState({});

@@ -4,6 +4,7 @@ import { FigureLegend, axisDepth, drawGroups, drawMarker, drawRefLine, drawXAxis
 import useContainerWidth from "../useContainerWidth";
 import { figureStyle, linearTicks } from "../../../helpers/singleCell/figureStyle";
 import { geneSetColor, isNormalClone, phyloSignal } from "../../../helpers/singleCell/figures";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const CONTROLS = [
   { key: "Seq. depth", field: "qc_depth", color: "#b4b4b4" },
@@ -31,7 +32,7 @@ export default function PhyloSignalPanel({ per, onSelect }) {
           const vars = [
             ...CONTROLS.map((v) => ({ key: v.key, color: v.color, value: (id) => Number(rec.get(id)?.[v.field]) })),
             // each walk on its own: summing a gene set's walks hides clade-specific variants (e.g. short vs long ecEGFR)
-            ...p.groups.flatMap((g) => g.walks.map((w) => ({ key: w.label || w.name || `${w.id}`, color: geneSetColor(g.key), group: g, value: (id) => Math.log1p(Number(w.cells?.[id]) || 0) }))),
+            ...p.groups.flatMap((g) => g.walks.map((w) => ({ key: walkName(w) || w.name || `${w.id}`, color: geneSetColor(g.key), group: g, value: (id) => Math.log1p(Number(w.cells?.[id]) || 0) }))),
           ];
           const stats = phyloSignal(p.tree, tumor, vars, { nPerm: 199 });
           return { p, rows: stats.map((s, k) => ({ ...s, color: vars[k].color, group: vars[k].group })).filter((s) => Number.isFinite(s.z)) };

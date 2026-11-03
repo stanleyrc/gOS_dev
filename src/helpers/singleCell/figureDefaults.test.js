@@ -52,7 +52,7 @@ describe("variantGrouping (BWH70 long / short EGFR)", () => {
   it("renames the anchors", () => {
     expect(nameOf(ws[0])).toBe("long EGFR");
     expect(nameOf(ws[1])).toBe("short EGFR");
-    expect(nameOf(ws[3])).toBe("wEGFR_var3");
+    expect(nameOf(ws[3])).toBe("long EGFR var3");
   });
   it("classifies variants by containment in the anchors' spans", () => {
     expect(groupOf.get("7358")).toBe("long EGFR"); // starts before sEGFR
@@ -66,7 +66,7 @@ describe("variantGrouping (BWH70 long / short EGFR)", () => {
   it("is empty for other patients", () => {
     const g = variantGrouping("MGH303", ws);
     expect(g.groups).toEqual([]);
-    expect(g.nameOf(ws[0])).toBe("wEGFR");
+    expect(g.nameOf(ws[0])).toBe("long EGFR");
   });
 });
 

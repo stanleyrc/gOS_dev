@@ -12,6 +12,7 @@ import { copiesOf } from "../../../helpers/singleCell/walkCopies";
 import HintLine, { Provenance } from "../hintLine";
 import singleCellActions from "../../../redux/singleCell/actions";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const { Text } = Typography;
 const CHR_ORDER = [...d3.range(1, 23).map(String), "X", "Y"];
@@ -73,7 +74,7 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
   return (
     <Card
       size="small"
-      title={<Space><RadarChartOutlined /><span style={{ color: colorOf(walk.id) }}>{walk.label}</span><Text type="secondary">{walk.circular ? t("components.single-cell.ecdna.circular") : t("components.single-cell.ecdna.linear")} · {fmtPos(walk.span)} · {t("components.single-cell.ecdna.nodes", { count: nodes.length })} · {t("components.single-cell.ecdna.alt-junctions", { count: alt.length })}</Text><Provenance id="walkDiagram" /></Space>}
+      title={<Space><RadarChartOutlined /><span style={{ color: colorOf(walk.id) }}>{walkName(walk)}</span><Text type="secondary">{walk.circular ? t("components.single-cell.ecdna.circular") : t("components.single-cell.ecdna.linear")} · {fmtPos(walk.span)} · {t("components.single-cell.ecdna.nodes", { count: nodes.length })} · {t("components.single-cell.ecdna.alt-junctions", { count: alt.length })}</Text><Provenance id="walkDiagram" /></Space>}
       extra={<SvgExportButton containerRef={ref} name={`walk-${walk.label}`} />}
     >
       <div ref={ref}>
@@ -181,7 +182,7 @@ export default function WalkDiagram({ walk, colorOf, cellIds = [] }) {
                 </g>
               );
             })}
-            <text x={cx} y={cy - 8} textAnchor="middle" fontSize={TYPE.body} fontWeight={600} fill="currentColor">{walk.label}</text>
+            <text x={cx} y={cy - 8} textAnchor="middle" fontSize={TYPE.body} fontWeight={600} fill="currentColor">{walkName(walk)}</text>
             <text x={cx} y={cy + 10} textAnchor="middle" fontSize={TYPE.tick} fill={INK.muted}>{fmtPos(walk.span)}</text>
           </svg>
         ) : !walk.circular && nodes.length > 2 ? (

@@ -30,6 +30,7 @@ import RareControl, { useRareMax } from "./rareControl";
 import DisplayMenu from "./displayMenu";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { useTooltipGuard } from "../useTooltipGuard";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const TREE_WIDTH = 200;
 const STRIP_W = 6; // clone strip, flush against the tree
@@ -183,7 +184,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
       })
       .filter((r) => r.n > 0)
       .sort((a, b) => b.mean - a.mean)
-      .map((r) => ({ color: colorOf(r.w.id), text: `${r.w.label}: mean ${fmt(r.mean)} · ${r.n}/${r.m} carry` }));
+      .map((r) => ({ color: colorOf(r.w.id), text: `${walkName(r.w)}: mean ${fmt(r.mean)} · ${r.n}/${r.m} carry` }));
     return [head, ...lines];
   };
 
@@ -303,7 +304,7 @@ export default function WalkTreeBars({ walks, families: familiesProp, colorOf, m
                   )}
                   <title>
                     {c.type === "rare"
-                      ? t("components.single-cell.ecdna.tc-rare-title", { count: c.walks.length, list: c.walks.map((wk) => wk.label).join(", ") })
+                      ? t("components.single-cell.ecdna.tc-rare-title", { count: c.walks.length, list: c.walks.map((wk) => walkName(wk)).join(", ") })
                       : `${label} · ${c.carriers}/${nRows} cells · ${t("components.single-cell.ecdna.tc-max", { value: fmt(colMax[ci]) })}`}
                   </title>
                 </g>

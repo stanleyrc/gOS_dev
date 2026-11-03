@@ -16,6 +16,7 @@ import HintLine, { Provenance } from "../hintLine";
 import { SC_GUTTER } from "../density";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 import { walkMeasured } from "../../../helpers/singleCell/walkCopies";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const { Text } = Typography;
 const MUTED = INK.muted;
@@ -63,8 +64,8 @@ export function WalkUpset({ walks, families, cellIds: allIds, colorOf, minCn = 1
             <g key={w.id}>
               <rect x={0} y={top + i * rowH} width={plotW + RIGHT} height={rowH} fill={i % 2 ? "rgba(128,128,128,0.06)" : "transparent"} />
               <text x={LEFT - 10} y={top + (i + 0.5) * rowH} dy="0.35em" textAnchor="end" fontSize={TYPE.label} fill={rowColor(w)} fontWeight={w.rare ? 400 : 600} fontStyle={w.rare ? "italic" : "normal"}>
-                {w.label.length > 26 ? `${w.label.slice(0, 25)}…` : w.label}
-                <title>{w.rare ? w.members.map((m) => m.label).join(", ") : w.label}</title>
+                {walkName(w).length > 26 ? `${walkName(w).slice(0, 25)}…` : walkName(w)}
+                <title>{w.rare ? w.members.map((m) => walkName(m)).join(", ") : walkName(w)}</title>
               </text>
               <text x={plotW + 6} y={top + (i + 0.5) * rowH} dy="0.35em" fontSize={TYPE.tick} fill={MUTED}>{nCarry(w)}</text>
             </g>
@@ -119,7 +120,7 @@ export function WalkScatter({ walks, cellIds, colorOf }) {
   const x = d3.scaleLinear().domain([0, Math.max(1, d3.max(pts, (q) => q.x))]).nice().range([M.left, w - M.right]);
   const y = d3.scaleLinear().domain([0, Math.max(1, d3.max(pts, (q) => q.y))]).nice().range([h - M.bottom, M.top]);
   const selected = new Set(selectedCellIds);
-  const opt = (wk) => ({ value: wk.id, label: `${wk.label} · ${carriers.get(wk.id) || 0}` });
+  const opt = (wk) => ({ value: wk.id, label: `${walkName(wk)} · ${carriers.get(wk.id) || 0}` });
   const opts = rare.length
     ? [{ label: t("components.single-cell.ecdna.scatter-common"), options: common.map(opt) }, { label: t("components.single-cell.ecdna.scatter-rare", { k: rareMax }), options: rare.map(opt) }]
     : common.map(opt);

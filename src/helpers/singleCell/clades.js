@@ -95,6 +95,34 @@ export function cladeNodeLabels(layout, clades) {
   return out;
 }
 
+/**
+ * Named cell groups (clades.json `named_groups`: [{ name, cells }], e.g. the figure's EC1 / CI / EC2) -> Map(node index -> { label, clade }).
+ * A group is labeled only when it is exactly one clade of the tree (its smallest enclosing node holds no other leaf), so a label never
+ * claims cells that are not in the group. Groups with fewer than 2 cells on this tree are skipped.
+ */
+export function namedGroupLabels(layout, groups) {
+  const out = new Map();
+  if (!layout || !groups?.length) return out;
+  const row = new Map(layout.leaves.map((id, i) => [`${id}`, i]));
+  groups.forEach((g) => {
+    const rows = (g.cells || []).map((id) => row.get(`${id}`)).filter((r) => r != null);
+    if (rows.length < 2) return;
+    const lo = Math.min(...rows);
+    const hi = Math.max(...rows);
+    if (hi - lo + 1 !== new Set(rows).size) return;
+    let best = -1;
+    let bestSize = Infinity;
+    layout.nodes.forEach((n, k) => {
+      if (n.isLeaf || n.firstLeaf > lo || n.lastLeaf < hi) return;
+      const size = n.lastLeaf - n.firstLeaf;
+      if (size < bestSize) { best = k; bestSize = size; }
+    });
+    if (best < 0 || layout.nodes[best].firstLeaf !== lo || layout.nodes[best].lastLeaf !== hi) return;
+    out.set(best, { label: `${g.name} (${rows.length})`, clade: { id: g.name, n_cells: rows.length, cells: g.cells } });
+  });
+  return out;
+}
+
 /** Saved-groups list for a patient with the clade's cells added (replacing an earlier copy). */
 export function withCladeGroup(groups = [], clade) {
   const name = cladeGroupName(clade.clade || clade.id);

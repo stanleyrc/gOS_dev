@@ -2,6 +2,7 @@ import React from "react";
 import { Card, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { TYPE } from "../../../helpers/singleCell/plotTheme";
 import { STATE_COLORS, STATE_ORDER, VERDICTS, pctText, placementText, portraitHref, portraitUnavailable, sortNovel, STATUS_LABEL, verdictOf } from "../../../helpers/singleCell/portrait";
+import { displayLabel, walkName, walkTip } from "../../../helpers/singleCell/egfrLabels";
 
 const { Text } = Typography;
 const STATUS_COLOR = { robust: "green", candidate: "blue", exploratory: "default" };
@@ -81,7 +82,7 @@ function Genotype({ g, patient }) {
           {g.ecdna_walks.map((w) => (
             <PortraitLink key={w.label} link={{ report: patient, tab: 14, walk: w.label }}>
               <Tag color="purple" style={{ cursor: "pointer" }}>
-                {w.label} ({w.genes}) {w.ncells} cells, median {w.median_cn} copies
+                {walkName(w)} ({w.genes}) {w.ncells} cells, median {w.median_cn} copies
               </Tag>
             </PortraitLink>
           ))}
