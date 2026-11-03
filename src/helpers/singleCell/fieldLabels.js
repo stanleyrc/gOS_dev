@@ -23,8 +23,10 @@ const KNOWN = {
 /** Human-readable name of a metadata field; unknown names are tidied, not guessed. */
 export function fieldLabel(name) {
   if (name === null || name === undefined) return "";
-  const raw = displayLabel(`${name}`);
-  if (KNOWN[`${name}`]) return KNOWN[`${name}`];
+  const raw = `${name}`;
+  if (KNOWN[raw]) return KNOWN[raw];
+  const egfr = displayLabel(raw);
+  if (egfr !== raw) return egfr.replace(/_/g, " "); // EGFR walk names keep the figure's capitalization
   if (KNOWN[raw]) return KNOWN[raw];
   const words = raw
     .replace(/[._]+/g, " ")
