@@ -65,8 +65,8 @@ export function dominantGroupIndex(groups = [], minCn = 1) {
  */
 export const PAPER_VARIANT_GROUPS = {
   BWH70: [
-    { label: "long EGFR", anchor: "wEGFR" },
-    { label: "short EGFR", anchor: "sEGFR" },
+    { label: "ecEGFR Long", anchor: "wEGFR" },
+    { label: "ecEGFR Short", anchor: "sEGFR" },
   ],
 };
 

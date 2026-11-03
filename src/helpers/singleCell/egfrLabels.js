@@ -1,11 +1,11 @@
 // d3-free: display names for the BWH70 EGFR ecDNA walks. Data keys (walk labels in walks.json, covariate names,
 // figureDefaults anchors, paperPalette lookups) stay "wEGFR" / "sEGFR"; only what the user reads is mapped.
-const TOKEN = /(?<![A-Za-z0-9_])([ws])EGFR(?:_var(\d+))?(?![A-Za-z0-9])/g;
+const TOKEN = /(?<![A-Za-z0-9_])(shorter_)?([ws])EGFR(?:_var(\d+))?(?![A-Za-z0-9])/g;
 
-/** Replace every wEGFR / sEGFR token (and _varN) in a display string: wEGFR -> "long EGFR", wEGFR_var1 -> "long EGFR var1", sEGFR -> "short EGFR". Non-strings pass through. */
+/** Replace every wEGFR / sEGFR token (and _varN) in a display string: wEGFR -> "ecEGFR Long", wEGFR_var1 -> "ecEGFR Long var1", sEGFR -> "ecEGFR Short", shorter_sEGFR -> "ecEGFR Shorter" (the Figure 4 names). Non-strings pass through. */
 export function displayLabel(s) {
   if (typeof s !== "string" || !s.includes("EGFR")) return s;
-  return s.replace(TOKEN, (_, k, v) => `${k === "w" ? "long" : "short"} EGFR${v ? ` var${v}` : ""}`);
+  return s.replace(TOKEN, (_, shorter, k, v) => `ecEGFR ${shorter ? "Shorter" : k === "w" ? "Long" : "Short"}${v ? ` var${v}` : ""}`);
 }
 
 const AUTO_LABEL = /\bw\d{4,}\b/;
@@ -15,7 +15,7 @@ export const isAutoWalkLabel = (label) => typeof label === "string" && AUTO_LABE
 
 /**
  * Name shown for a walk: its own label, except an auto-generated label that has a curated match (peel walks), which
- * reads as the curated walk ("wEGFR_var2" -> "long EGFR var2"). Data keys are never changed.
+ * reads as the curated walk ("wEGFR_var2" -> "ecEGFR Long var2"). Data keys are never changed.
  */
 export function walkName(w) {
   if (!w) return "";

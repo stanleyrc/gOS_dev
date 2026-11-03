@@ -50,23 +50,23 @@ describe("variantGrouping (BWH70 long / short EGFR)", () => {
   ];
   const { nameOf, groupOf, groups } = variantGrouping("BWH70", ws);
   it("renames the anchors", () => {
-    expect(nameOf(ws[0])).toBe("long EGFR");
-    expect(nameOf(ws[1])).toBe("short EGFR");
-    expect(nameOf(ws[3])).toBe("long EGFR var3");
+    expect(nameOf(ws[0])).toBe("ecEGFR Long");
+    expect(nameOf(ws[1])).toBe("ecEGFR Short");
+    expect(nameOf(ws[3])).toBe("ecEGFR Long var3");
   });
   it("classifies variants by containment in the anchors' spans", () => {
-    expect(groupOf.get("7358")).toBe("long EGFR"); // starts before sEGFR
-    expect(groupOf.get("13517")).toBe("long EGFR");
-    expect(groupOf.get("2029")).toBe("short EGFR");
-    expect(groupOf.get("177")).toBe("short EGFR");
-    expect(groupOf.get("181")).toBe("short EGFR"); // its chr7 part lies inside sEGFR
+    expect(groupOf.get("7358")).toBe("ecEGFR Long"); // starts before sEGFR
+    expect(groupOf.get("13517")).toBe("ecEGFR Long");
+    expect(groupOf.get("2029")).toBe("ecEGFR Short");
+    expect(groupOf.get("177")).toBe("ecEGFR Short");
+    expect(groupOf.get("181")).toBe("ecEGFR Short"); // its chr7 part lies inside sEGFR
     expect(groupOf.has("7")).toBe(false);
     expect(groups.map((g) => g.walks.length)).toEqual([3, 4]);
   });
   it("is empty for other patients", () => {
     const g = variantGrouping("MGH303", ws);
     expect(g.groups).toEqual([]);
-    expect(g.nameOf(ws[0])).toBe("long EGFR");
+    expect(g.nameOf(ws[0])).toBe("ecEGFR Long");
   });
 });
 
