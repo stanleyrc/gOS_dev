@@ -23,6 +23,8 @@ import { idsToColumns, knownIds, parseSnsel, serializeSnsel, SNSEL_PARAM } from 
 import SnvIsolatePanel from "./snvIsolatePanel";
 import { cladeNodeLabels, namedGroupLabels } from "../../helpers/singleCell/clades";
 import usePatientClades from "./usePatientClades";
+import { useEcdnaStatus } from "./ecdnaStatusChip";
+import { withCladeEcdnaFields, defaultCladeEcdnaFields } from "../../helpers/singleCell/cellCladeEcdnaFields";
 import usePatientTmb from "./usePatientTmb";
 import { TMB_TRACK, cellTmbMap, fmtTmb, tmbAxisMax, tmbBarColor, tmbBarFraction, tmbTooltipLines } from "../../helpers/singleCell/tmb";
 import { themePalette } from "../../helpers/singleCell/themes";
@@ -239,7 +241,13 @@ export default function CellHeatmapPanel() {
     [cnMappedOn, cnMapped, snvBase]
   );
   const cnMappedInfo = cnMappedSummary(cnMapped, cnMappedOn);
-  const cells = useQcCells(rawCells); // + live QC / QC reason annotation fields
+  const qcCells = useQcCells(rawCells); // + live QC / QC reason annotation fields
+  const cladesForTracks = usePatientClades();
+  const ecdnaForTracks = useEcdnaStatus();
+  const cells = useMemo(
+    () => withCladeEcdnaFields(qcCells, cladesForTracks.status === "ok" ? cladesForTracks.data : null, ecdnaForTracks.status === "ok" ? ecdnaForTracks.data : null),
+    [qcCells, cladesForTracks, ecdnaForTracks]
+  ); // + Clade (named clades) and ecDNA classifier call strips
   const cellById = useMemo(() => new Map(cells.map((c) => [c.cell_id, c])), [cells]);
   const cellSignatureSource = useCellSignatures();
   const signatureMode = !layout.cellSignatureMode || layout.cellSignatureMode === "auto"
@@ -347,6 +355,7 @@ export default function CellHeatmapPanel() {
     });
   }, [cells]);
   const metadataFields = withQcColumn(layout.annotationFields, annotationOptions);
+  if (!layout.annotationFieldsTouched) defaultCladeEcdnaFields(annotationOptions).forEach((f) => { if (!metadataFields.includes(f)) metadataFields.push(f); });
   const annotationFields = [...metadataFields, ...(showSignature ? [SIGNATURE_FIELD] : [])];
   const signatureColumn = showSignature ? 2 + metadataFields.length : -1;
   const annotationLevels = useMemo(
@@ -1354,7 +1363,7 @@ export default function CellHeatmapPanel() {
                 maxTagCount="responsive"
                 style={{ minWidth: 150, maxWidth: 320 }}
                 value={annotationFields}
-                onChange={(value) => dispatch(singleCellActions.updateLayout({ annotationFields: value.filter((f) => f !== SIGNATURE_FIELD), signatureTrack: value.includes(SIGNATURE_FIELD) }))}
+                onChange={(value) => dispatch(singleCellActions.updateLayout({ annotationFieldsTouched: true, annotationFields: value.filter((f) => f !== SIGNATURE_FIELD), signatureTrack: value.includes(SIGNATURE_FIELD) }))}
                 options={[...annotationOptions.map((f) => ({ value: f, label: fieldLabel(f) })), { value: SIGNATURE_FIELD, label: signatureLabel }]}
               />
             </Space>

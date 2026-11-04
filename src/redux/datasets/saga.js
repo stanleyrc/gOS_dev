@@ -34,7 +34,10 @@ function* fetchDatasets() {
   try {
     const currentState = yield select(getCurrentState);
     const { data: settings } = currentState.Settings;
-    const responseDatasets = yield call(axios.get, "datasets.json");
+    const responseDatasets = yield call(axios.get, "datasets.json", {
+      params: { v: Date.now() }, // cache-buster: new datasets appear without a hard reload
+      headers: { "Cache-Control": "no-cache" },
+    });
     const records = (responseDatasets.data || []).map((dataset) =>
       normalizeDataset(dataset, settings),
     );
