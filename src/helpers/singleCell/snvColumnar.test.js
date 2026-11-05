@@ -16,11 +16,12 @@ function encode(entries) {
   offsets.forEach((o, i) => dv.setUint32(4 * i, o, true));
   let k = 0;
   entries.forEach((e) =>
-    e.forEach(([c, r, a, g]) => {
+    e.forEach(([c, r, a, g, pl]) => {
       dv.setUint16(head + 8 * k, c, true);
       dv.setUint16(head + 8 * k + 2, r, true);
       dv.setUint16(head + 8 * k + 4, a, true);
       dv.setInt8(head + 8 * k + 6, g);
+      dv.setUint8(head + 8 * k + 7, pl || 0);
       k += 1;
     })
   );
@@ -142,5 +143,34 @@ describe("columnar SNV site sets", () => {
   it("ships a worker source that parses", () => {
     // eslint-disable-next-line no-new-func
     expect(() => new Function(_workerSource())).not.toThrow();
+  });
+
+  it("reads the PL confidence byte (entry byte 7) and the compact 5th element; none when absent", () => {
+    const { buf: b2, head: h2 } = encode([[[0, 3, 2, 1, 250], [1, 0, 0, -1, 255]], [[2, 4, 0, 0, 1]]]);
+    const t2 = { n_sites: 2, cells: ["c1", "c2", "c3"] };
+    const dense = fillDense(new Uint32Array(b2, 0, 3), b2.slice(h2), 0, 0, 2, t2.cells, ["c1", "c2", "c3"]);
+    expect(dense.hasPl).toBe(true);
+    expect([dense.pl[0], dense.pl[1], dense.pl[2], dense.pl[5]]).toEqual([250, 0, 255, 1]);
+    const none = fillDense(matrixOffsets(buf, table), buf.slice(head), 0, 0, 3, table.cells, ["c1", "c2", "c3"]);
+    expect(none.hasPl).toBe(false);
+    const sp = snvFromSparse({ variants: [{ id: "chr1_100_A_G" }], cells: { c1: [[0, 3, 2, 1, 250]], c2: [[0, null, null, null, 255]], c3: [[0, 1, 0, 0]] } }, ["c1", "c2", "c3"], chromoBins);
+    expect(sp.pl.map((r) => r[0])).toEqual([250, 255, 0]);
+    expect(snvFromSparse({ variants: [{ id: "chr1_100_A_G" }], cells: { c1: [[0, 3, 2, 1]] } }, ["c1"], chromoBins).pl).toBeNull();
+  });
+
+  it("reads the optional het/hom sidecar (one byte per CSR entry), also for a branch range", () => {
+    const { buf: b2, head: h2 } = encode([[[0, 3, 2, 1, 250], [1, 0, 0, -1, 255]], [[2, 4, 0, 0, 1]]]);
+    const t2 = { n_sites: 2, cells: ["c1", "c2", "c3"] };
+    const hom = Uint8Array.from([250, 255, 1]).buffer; // entries in CSR order
+    const off = new Uint32Array(b2, 0, 3);
+    const all = fillDense(off, b2.slice(h2), 0, 0, 2, t2.cells, ["c1", "c2", "c3"], hom);
+    expect(all.hasHom).toBe(true);
+    expect([all.hom[0], all.hom[1], all.hom[2], all.hom[5]]).toEqual([250, 0, 255, 1]);
+    // second site only: its entry range is [off[1], off[2]) of the sidecar
+    const part = fillDense(off, b2.slice(h2 + 8 * off[1], h2 + 8 * off[2]), off[1], 1, 2, t2.cells, ["c1", "c2", "c3"], hom.slice(off[1], off[2]));
+    expect(part.hom[2]).toBe(1);
+    expect(fillDense(off, b2.slice(h2), 0, 0, 2, t2.cells, ["c1", "c2", "c3"]).hasHom).toBe(false);
+    const m = snvFromColumnar({ n_sites: 2, cells: t2.cells, columns: {} }, all, ["c1", "c2", "c3"], chromoBins);
+    expect(m.hom).not.toBeNull();
   });
 });

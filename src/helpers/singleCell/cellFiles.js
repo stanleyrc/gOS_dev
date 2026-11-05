@@ -482,11 +482,14 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
   const depth = [];
   const gt = [];
   let hasGt = false;
+  const pl = [];
+  let hasPl = false;
   cellIds.forEach((cellId) => {
     const s = new Int8Array(n).fill(-1);
     const a = new Float32Array(n).fill(NaN);
     const dp = new Float32Array(n).fill(NaN);
     const g = new Int8Array(n).fill(-1); // PL genotype call: 1 alt, 0 ref, -1 no call
+    const pb = new Uint8Array(n); // PL confidence byte (5th element): 1..250 = 1 + round(249 P(ALT)), 255 flat PL, 0 none
     (cellsIn[cellId] || []).forEach((o) => {
       const compact = Array.isArray(o);
       const k = compact ? bySourceIndex.get(o[0]) : byId.get(`${o.variantId ?? o.id ?? ""}`);
@@ -498,6 +501,11 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
         g[k] = call;
         hasGt = true;
       }
+      const plb = compact ? o[4] : o.pl;
+      if (Number.isInteger(plb) && plb >= 1 && plb <= 255) {
+        pb[k] = plb;
+        hasPl = true;
+      }
       if (x == null || r == null || !Number.isFinite(x) || !Number.isFinite(r)) return;
       a[k] = x;
       dp[k] = x + r;
@@ -505,8 +513,9 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
     });
     status.push(s);
     gt.push(g);
+    pl.push(pb);
     alt.push(a);
     depth.push(dp);
   });
-  return { cells: [...cellIds], variants, status, alt, depth, gt: hasGt ? gt : null, source: "matrix" };
+  return { cells: [...cellIds], variants, status, alt, depth, gt: hasGt ? gt : null, pl: hasPl ? pl : null, source: "matrix" };
 }

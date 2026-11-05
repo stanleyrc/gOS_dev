@@ -284,6 +284,48 @@ export function domainExtents(domains, width, gap = 0) {
   ]);
 }
 
+/**
+ * Like genomicColumnLookup, but a pixel takes the segment with the highest value among all segments it overlaps (not the one under
+ * its centre), so a focal segment narrower than a pixel is not lost. `values` is the row's value per bin (segment).
+ * Used for the zoomed amplicon view; the whole-genome view keeps the centre rule.
+ */
+export function genomicColumnLookupMax(binIndex, values, domains, width, gap = 0) {
+  const w = Math.max(0, Math.floor(width));
+  const cols = new Int32Array(w).fill(-1);
+  const extents = domainExtents(domains, width, gap);
+  const { sorted, sortedStarts, gEnd } = binIndex;
+  extents.forEach(([px0, px1, d]) => {
+    const span = px1 - px0;
+    for (let x = px0; x < px1 && x < w; x += 1) {
+      const g0 = d[0] + ((x - px0) / span) * (d[1] - d[0]);
+      const g1 = d[0] + ((x + 1 - px0) / span) * (d[1] - d[0]);
+      let lo = 0;
+      let hi = sortedStarts.length - 1;
+      let first = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (sortedStarts[mid] <= g0) {
+          first = mid;
+          lo = mid + 1;
+        } else hi = mid - 1;
+      }
+      let best = -1;
+      let bestV = -Infinity;
+      for (let k = Math.max(0, first); k < sortedStarts.length && sortedStarts[k] <= g1; k += 1) {
+        const b = sorted[k];
+        if (gEnd[b] < g0) continue;
+        const v = values[b];
+        if (Number.isFinite(v) && v > bestV) {
+          bestV = v;
+          best = b;
+        } else if (best < 0 && !Number.isFinite(v)) best = b;
+      }
+      cols[x] = best;
+    }
+  });
+  return { cols, extents };
+}
+
 export function genomicColumnLookup(binIndex, domains, width, gap = 0) {
   const w = Math.max(0, Math.floor(width));
   const cols = new Int32Array(w).fill(-1);
@@ -647,9 +689,23 @@ export const GT_COLORS = { nocall: "#D9D9D9", ref: "#9ECAE1", alt: "#B2182B" }; 
 export const GT_MATRIX = { ref: "#FFFFFF", alt: "#B2182B", nocall: "#D9D9D9" };
 export const SNV_MISSING_COLOR = "#ADB5BD";
 
+/**
+ * Display cap of the genotype view: P(ALT) can never be drawn darker than the read support allows.
+ * cap = min(1, 2 a^2 / (a + r)) = min(1, 2 a VAF) for a ALT and r REF reads. The PL model allows PTA allelic dropout, so 1 ALT read
+ * against 5 REF reads still has P(ALT) ~ 0.5 and, at a clonal site, the per-site prior lifts a lone read at 15-20 REF reads further.
+ * The cap keeps a lone read near white and falling with REF depth (1/2 .67, 1/5 .33, 1/10 .18, 1/15 .125, 1/20 .095) while
+ * 2 ALT reads reach 1 up to 4 REF reads and 3 ALT reads up to ~11 REF. Display only: the stored PLs and bytes are untouched.
+ */
+export const plReadCap = (alt, depth) => (Number.isFinite(alt) && Number.isFinite(depth) && alt > 0 && depth >= alt ? Math.min(1, (2 * alt * alt) / depth) : 1);
+
 /** Value of a metric for matrix row p, variant c; null when the site has no reads. */
 export function snvMetricValue(snv, p, c, metric) {
   if (metric === "gt") {
+    if (p >= 0 && snv.pl) {
+      const b = snv.pl[p][c]; // PL confidence byte: 1..250 = 1 + round(249 P(ALT)); 0 none, 255 flat PL (no evidence)
+      if (snv.status?.[p]?.[c] === 0) return 0; // covered, zero ALT reads: never signal, whatever the per-site prior says
+      return b >= 1 && b <= 250 ? Math.min((b - 1) / 249, plReadCap(snv.alt?.[p]?.[c], snv.depth?.[p]?.[c])) : null;
+    }
     if (p < 0 || !snv.gt) return null;
     const g = snv.gt[p][c];
     return g === 1 || g === 0 ? g : null; // 1 alt, 0 ref, null = no call
@@ -682,9 +738,14 @@ export const snvNaMode = () => (snvNaWhite ? "white" : "grey");
 export const SNV_NO_READS_BLUE = "#a9cbe8";
 /** Covered site with reference reads only (VAF 0): white. */
 export const SNV_REF_COLOR = "#ffffff";
-/** Grey level of an alt VAF f in (0, 1] in white-NA mode: 205 (lightest alt, clearly off-white) down to 0. */
-export const SNV_ALT_TOP = 205;
-export const snvAltLevel = (f) => Math.round(SNV_ALT_TOP * (1 - Math.max(0, Math.min(1, f))));
+/**
+ * Grey level of an alt VAF f in white-NA mode. No floor: the old floor (every ALT read at least grey 205) drew 1 ALT read against 15, 16
+ * and 20 REF reads (VAF 6.3%, 5.9%, 4.8%) as the same visible grey, which read as leakage. The ramp is linear white (VAF 0) to black
+ * at SNV_VAF_FULL (100%), so VAF 5% is near white (242), a het near 50% is mid-grey and homozygous ALT is black.
+ */
+export const SNV_VAF_FULL = 1;
+export const SNV_ALT_TOP = 255; // kept for older imports: the lightest ALT level is now the VAF -> 0 limit, white
+export const snvAltLevel = (f) => Math.round(255 * (1 - Math.max(0, Math.min(1, f / SNV_VAF_FULL))));
 /**
  * [r, g, b] of a VAF cell in light theme with blue = no reads: ref (VAF 0) white, alt grey 205 -> black,
  * missing (null) blue. Used by the patient heatmaps and the paper-figure SNV panels so the conventions match.

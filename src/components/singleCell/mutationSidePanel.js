@@ -19,7 +19,7 @@ import {
   snvMetricValue,
   setSnvNaMode,
 } from "../../helpers/singleCell/matrix";
-import { binLegendText, gtBinRGBA, snvBinRGBA } from "../../helpers/singleCell/snvBinning";
+import { setPlMarkNoRead, binLegendText, gtBinRGBA, homProb, isLoneRead, plBinRGBA, plBinSummary, plHomRGBA, snvBinIntensity, snvBinRGBA, strongCarriers } from "../../helpers/singleCell/snvBinning";
 import { siteDetail } from "../../helpers/singleCell/snvAnnot";
 import { placeLabels, siteLabel } from "../../helpers/singleCell/snvLabels";
 
@@ -96,11 +96,17 @@ export default function MutationSidePanel({
   onTrackClick = null,
   trackLabelSide = "left",
   detailExtra = null,
+  rowClone = null,
 }) {
   const { t } = useTranslation("common");
   const layoutState = useSelector((st) => st.SingleCell.layout) || {};
   const naMode = layoutState.snvNaColor === "grey" ? "grey" : "white"; // white unless the user chose grey
   setSnvNaMode(naMode); // module setting read by the colour functions and the legend
+  const markNoRead = Boolean(layoutState.snvMarkNoRead);
+  setPlMarkNoRead(markNoRead);
+  const loneWhite = Boolean(layoutState.snvLoneWhite) && metric === "gt";
+  // lone-read rule: cells with 1 ALT read and no cell of their clone with 2+ ALT reads at the site are drawn white
+  const strong = useMemo(() => (loneWhite && snv.alt ? strongCarriers(snv, rows, rowClone) : null), [loneWhite, snv, rows, rowClone]);
   const labelMode = layoutState.snvLabel || "protein";
   const dispatch = useDispatch();
   const total = columnOrder.length;
@@ -178,17 +184,27 @@ export default function MutationSidePanel({
       const p = rows[r];
       const a = bins.binStart[x];
       const b = bins.binEnd[x];
+      if (metric === "gt" && snv.pl) {
+        // PL confidence greyscale, identical at every zoom: a pixel is the mean P(ALT) of its sites with read evidence
+        const lone = strong ? (c) => isLoneRead(snv, p, c, rowClone?.[r], strong) : null;
+        if (b - a > 1) return plBinRGBA(plBinSummary(snv, p, columnOrder, a, b, lone));
+        if (lone && lone(columnOrder[a]) && snv.pl[p][columnOrder[a]] >= 1 && snv.pl[p][columnOrder[a]] <= 250) return plHomRGBA(0, null);
+        return plHomRGBA(snvMetricValue(snv, p, columnOrder[a], "gt"), homProb(snv, p, columnOrder[a]));
+      }
       if (b - a > 1) {
         const { positive, zero, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
         if (metric === "gt") return gtBinRGBA(positive, zero);
-        return snvBinRGBA(positive, b - a, missing); // plain fraction, no pale-grey floor (helpers/singleCell/snvBinning.js)
+        // VAF: mean VAF over the bin's sites, so a lone read among deep REF reads is faint; other metrics: plain fraction
+        if (metric === "vaf") return snvBinRGBA(snvBinIntensity(snv, p, columnOrder, a, b), b - a, missing);
+        return snvBinRGBA(positive, b - a, missing);
       }
       return snvMetricRGBA(snvMetricValue(snv, p, columnOrder[a], metric), metric, max);
     },
-    [rows, bins, snv, columnOrder, metric, max, naMode]
+    [rows, bins, snv, columnOrder, metric, max, naMode, markNoRead, strong, rowClone]
   );
 
-  const describe = (r, x) => {
+  // Hover is short: site, ALT/REF reads, VAF or P(ALT), clade. Hold Shift while hovering for the full annotation; click a site for its reads.
+  const describe = (r, x, more = false) => {
     const p = rows[r];
     const a = bins.binStart[x];
     const b = bins.binEnd[x];
@@ -196,36 +212,41 @@ export default function MutationSidePanel({
     if (b - a > 1) {
       const first = snv.variants[columnOrder[a]];
       const last = snv.variants[columnOrder[b - 1]];
-      const { positive, zero, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
-      return [
-        [t("components.single-cell.side.sites"), `${b - a} (${first.id} … ${last.id})`],
-        [t("components.single-cell.side.positive"), positive],
-        [t("components.single-cell.side.zero"), zero],
-        [t("components.single-cell.side.no-reads"), missing],
-      ];
+      if (metric === "gt" && snv.pl) {
+        const { sum, n } = plBinSummary(snv, p, columnOrder, a, b);
+        return [[t("components.single-cell.side.sites"), `${b - a} (${first.id} … ${last.id})`], ["Mean P(ALT)", n ? (sum / n).toFixed(2) : "no read evidence"], ["Click", "zoom to these sites"]];
+      }
+      const { positive, missing } = snvBinSummary(snv, p, columnOrder, a, b, metric === "gt");
+      return [[t("components.single-cell.side.sites"), `${b - a} (${first.id} … ${last.id})`], [t("components.single-cell.side.positive"), `${positive} with ALT reads, ${missing} no reads`], ["Click", "zoom to these sites"]];
     }
     const c = columnOrder[a];
     const v = snv.variants[c];
     const vaf = snvMetricValue(snv, p, c, "vaf");
     const altN = snvMetricValue(snv, p, c, "alt");
+    const depth = snvMetricValue(snv, p, c, "depth");
     const noReads = t("components.single-cell.side.no-reads");
     const covered = p >= 0 && snv.status[p][c] >= 0;
-    const cellRows = [
-      ["Cell VAF", vaf == null ? noReads : vaf.toFixed(3)],
-      ["Cell ALT reads", altN == null ? (covered && snv.status[p][c] === 1 ? "alt present (count n/a)" : noReads) : altN],
-      ["Cell depth", snvMetricValue(snv, p, c, "depth") ?? noReads],
+    const pAlt = snv.pl && p >= 0 ? snvMetricValue(snv, p, c, "gt") : undefined;
+    const reads = altN == null ? (covered && snv.status[p][c] === 1 ? "alt present (count n/a)" : noReads) : `${altN} ALT / ${depth == null ? "?" : depth - altN} REF`;
+    const clade = v.category ? `${t(`components.single-cell.snv.category-${v.category}`)}${v.cladeCells != null ? ` (${v.cladeCells} cells)` : ""}` : null;
+    const short = [
+      ["Mutation", annot ? siteLabel(v, "protein") : [v.gene, v.protein || v.consequence].filter(Boolean).join(" ") || v.id],
+      ["Reads", reads],
+      metric === "gt" && pAlt !== undefined ? ["P(ALT)", pAlt == null ? "no read evidence" : pAlt.toFixed(2)] : ["VAF", vaf == null ? noReads : vaf.toFixed(3)],
+      ...(clade ? [["Clade", clade]] : []),
     ];
-    if (annot) return [["Mutation", siteLabel(v, "protein")], ...siteDetail(annot, c), ...(detailExtra ? detailExtra(c) : []), ...cellRows];
+    if (!more) return [...short, ["Shift", "hold for more; click for reads"]];
+    const cellRows = [
+      ...(pAlt === undefined ? [] : [["P(ALT) from PL (stored)", snv.pl[p][c] >= 1 && snv.pl[p][c] <= 250 ? ((snv.pl[p][c] - 1) / 249).toFixed(3) : "no read evidence (flat PL)"]]),
+      ...(snv.hom && p >= 0 && homProb(snv, p, c) != null && pAlt > 0 ? [["P(hom-ALT | ALT)", `${homProb(snv, p, c).toFixed(2)} (PL assumes 2 copies: unreliable at amplified or aneuploid sites)`]] : []),
+      ["Cell VAF", vaf == null ? noReads : vaf.toFixed(3)],
+      ["Cell depth", depth ?? noReads],
+    ];
+    if (annot) return [...short, ...siteDetail(annot, c), ...(detailExtra ? detailExtra(c) : []), ...cellRows];
     return [
+      ...short,
       [t("components.single-cell.tooltip.variant"), v.id],
-      ...(v.gene ? [[t("components.single-cell.tooltip.gene"), [v.gene, v.protein || v.consequence].filter(Boolean).join(" ")]] : []),
       ...(v.oncogenic || v.oncokbLevel ? [["OncoKB", [v.oncogenic, v.oncokbLevel].filter(Boolean).join(" · ")]] : []),
-      ...(v.category
-        ? [[
-            t("components.single-cell.snv.category"),
-            `${t(`components.single-cell.snv.category-${v.category}`)}${v.cladeCells != null ? ` (${v.cladeCells} cells)` : ""}`,
-          ]]
-        : []),
       ...(v.cladeScore != null ? [[t("components.single-cell.snv.clade-score"), cladeScoreDetail(v)]] : []),
       ...cellRows,
     ];
@@ -329,7 +350,7 @@ export default function MutationSidePanel({
           onDrag={handleDrag}
           onWheelZoom={(e) => zoomAt(e.x / width, wheelZoomFactor(e))}
           wheelNeedsModifier={wheelNeedsModifier}
-          onHover={({ row, col }, event) => onHover(row, col < 0 ? [] : describe(row, col), event)}
+          onHover={({ row, col }, event) => onHover(row, col < 0 ? [] : describe(row, col, Boolean(event?.shiftKey)), event)}
           onLeave={onLeave}
         />
         {bands.map((b) => (

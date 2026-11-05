@@ -43,7 +43,7 @@ export const isColumnarTable = (t) => Boolean(t?.format === SNV_COLS_FORMAT && A
  * Self-contained, ES5 only (no imports, closures, destructuring or spread):
  * snvColumnarLoader.js ships its source to a Web Worker via toString().
  */
-export function fillDense(offsets, entries, entryBase, siteStart, siteEnd, tableCells, cellIds) {
+export function fillDense(offsets, entries, entryBase, siteStart, siteEnd, tableCells, cellIds, homBuf) {
   var n = siteEnd - siteStart;
   var nCells = cellIds.length;
   var rowOf = {};
@@ -55,7 +55,12 @@ export function fillDense(offsets, entries, entryBase, siteStart, siteEnd, table
   var alt = new Float32Array(nCells * n).fill(NaN);
   var depth = new Float32Array(nCells * n).fill(NaN);
   var gt = new Int8Array(nCells * n).fill(-1);
+  var pl = new Uint8Array(nCells * n); // PL confidence byte (entry byte 7): 0 none, 1..250 = 1 + round(249 P(ALT)), 255 flat PL
+  var hom = homBuf ? new Uint8Array(nCells * n) : null; // optional het/hom byte per CSR entry (sidecar <name>.hom.bin): 1..250 = 1 + round(249 P(hom | ALT)), 255 flat, 0 none
+  var hb = homBuf ? new Uint8Array(homBuf) : null;
   var hasGt = false;
+  var hasPl = false;
+  var hasHom = false;
   var dv = new DataView(entries);
   for (var s = siteStart; s < siteEnd; s += 1) {
     var col = s - siteStart;
@@ -67,6 +72,15 @@ export function fillDense(offsets, entries, entryBase, siteStart, siteEnd, table
       var a = dv.getUint16(off + 4, true);
       var g = dv.getInt8(off + 6);
       var idx = row * n + col;
+      var pb = dv.getUint8(off + 7);
+      if (pb > 0) {
+        pl[idx] = pb;
+        hasPl = true;
+      }
+      if (hb && hb[k - entryBase] > 0) {
+        hom[idx] = hb[k - entryBase];
+        hasHom = true;
+      }
       if (g === 0 || g === 1) {
         gt[idx] = g;
         hasGt = true;
@@ -77,7 +91,7 @@ export function fillDense(offsets, entries, entryBase, siteStart, siteEnd, table
       status[idx] = a > 0 ? 1 : a + r > 0 ? 0 : -1;
     }
   }
-  return { n: n, nCells: nCells, status: status, alt: alt, depth: depth, gt: gt, hasGt: hasGt };
+  return { n: n, nCells: nCells, status: status, alt: alt, depth: depth, gt: gt, hasGt: hasGt, pl: pl, hasPl: hasPl, hom: hom, hasHom: hasHom };
 }
 
 /** The header (site offsets) of a .cells.bin buffer. */
@@ -129,6 +143,8 @@ export function snvFromColumnar(table, dense, cellIds, chromoBins, { siteStart =
     alt: rows.map((r) => view(dense.alt, r)),
     depth: rows.map((r) => view(dense.depth, r)),
     gt: dense.hasGt ? rows.map((r) => view(dense.gt, r)) : null,
+    pl: dense.hasPl ? rows.map((r) => view(dense.pl, r)) : null,
+    hom: dense.hasHom ? rows.map((r) => view(dense.hom, r)) : null,
     source: "columnar",
     set: table?.set || null,
   };
@@ -170,6 +186,8 @@ export function appendSnv(base, extra) {
     alt: join("alt", Float32Array, NaN),
     depth: join("depth", Float32Array, NaN),
     gt: base.gt || extra.gt ? join("gt", Int8Array, -1) : null,
+    pl: base.pl || extra.pl ? join("pl", Uint8Array, 0) : null,
+    hom: base.hom || extra.hom ? join("hom", Uint8Array, 0) : null,
     appended: { set: extra.set || null, first: n1, count: keep.length },
   };
 }

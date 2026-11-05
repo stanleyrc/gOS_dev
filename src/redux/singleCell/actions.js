@@ -59,6 +59,8 @@ export const SC_DEFAULT_LAYOUT = {
   snvAnnotFilter: null, // site filter set by clicking track values: { track: { values } | { min, max } }
   snvLabel: null, // column labels of the mutation matrices: gene | protein | position | none (null = protein)
   snvNaColor: null, // "Missing (no coverage)" colour of the mutation matrices: null/"white" (default, drawn blue) or "grey"
+  ampZoom: null, // "Zoom to amplicons" (walk intervals side by side in the genome view; URL ampzoom=1)
+  snvMarkNoRead: false, // genotype matrix: draw no-read sites pale blue instead of white (like REF)
   snvFiltersHidden: false, // collapse the filter bar to a one-line stub (filters stay active)
   snvLegendHidden: false, // hide the annotation-track legend rows
   snvIsolate: false, // isolate the filtered sites: where they sit (branch counts, carrier cells), table and fit

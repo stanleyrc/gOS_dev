@@ -4,7 +4,7 @@
 // reuse that floor: with ~10 sites per pixel, 1 carrier site out of 10 would paint the whole pixel "alt-positive" and a
 // neighbouring cell's private SNV would look shared. The bin colour is the plain fraction of its sites with alt reads
 // (white 0 to black 1, no floor), so 1/10 is nearly white and a pixel is dark only when most of its sites are present.
-import { GT_MATRIX, hexToRgb, isDarkPlots, packRGBA, snvMissingColor, vafRGB } from "./matrix";
+import { GT_MATRIX, SNV_VAF_FULL, hexToRgb, isDarkPlots, packRGBA, plReadCap, snvMissingColor, vafRGB } from "./matrix";
 
 /** [r, g, b] of a bin with `positive` of `sites` sites carrying alt reads, or the no-reads colour when `missing` === `sites`. */
 export function snvBinRGB(positive, sites, missing = 0) {
@@ -41,8 +41,8 @@ export function binLegendText(bins) {
   return `binned: ~${mean} sites per pixel (up to ${d.max}); grey = fraction of the pixel's sites with alt reads; zoom in for single sites`;
 }
 
-/** The metric to draw: GT (the default) needs PL calls in the matrix, else VAF. */
-export const effectiveSnvMetric = (choice, snv) => (choice === "gt" && snv && !snv.gt ? "vaf" : choice || "gt");
+/** The metric to draw: VAF unless GT (the toggle) was chosen; GT needs PL calls in the matrix, else VAF. */
+export const effectiveSnvMetric = (choice, snv) => (choice === "gt" && snv && !snv.gt && !snv.pl ? "vaf" : choice || "vaf");
 
 const mixHex = (hex, f) => {
   const [r, g, b] = hexToRgb(hex);
@@ -59,3 +59,136 @@ export function gtBinRGB(positive, zero) {
   return mixHex(GT_MATRIX.alt, positive / called);
 }
 export const gtBinRGBA = (positive, zero) => packRGBA(gtBinRGB(positive, zero));
+
+/* ----------------------------------------------------------------------- */
+/* PL confidence greyscale (snv.pl: Uint8Array per cell, see skilift gos_sc_snv_columnar.pl_byte)   */
+/* ----------------------------------------------------------------------- */
+
+export const PL_NONE = 0; // no PL data for this cell/site
+export const PL_FLAT = 255; // PL present but flat: no read evidence
+/** Very pale blue (not a grey): no-read sites when "Mark no-read sites" is on (default off: they are white like REF). Dark plots use a dark blue. */
+export const PL_NO_EVIDENCE = { light: "#D4E6F6", dark: "#27394a" };
+let plMarkNoRead = false;
+/** Module setting (layout.snvMarkNoRead), read by the colour functions and the legend, like setSnvNaMode. */
+export const setPlMarkNoRead = (on) => {
+  plMarkNoRead = Boolean(on);
+};
+export const plMarkNoReadOn = () => plMarkNoRead;
+
+/** P(ALT) of a PL confidence byte (1..250 = 1 + round(249 P)); null when there is no evidence or no PL. */
+export const plProb = (b) => (b >= 1 && b <= 250 ? (b - 1) / 249 : null);
+
+/** Greyscale for P(ALT): 0 white (confident REF), 1 black (confident ALT), mid = uncertain. Null = no read evidence: white like REF, or the pale tint when marked. */
+export function plRGB(p) {
+  const dark = isDarkPlots();
+  if (p == null || !Number.isFinite(p)) {
+    if (!plMarkNoRead) return plRGB(0);
+    return hexToRgb(dark ? PL_NO_EVIDENCE.dark : PL_NO_EVIDENCE.light);
+  }
+  const f = Math.max(0, Math.min(1, p));
+  const v = dark ? Math.round(42 + 213 * f) : Math.round(255 * (1 - f));
+  return [v, v, v];
+}
+export const plRGBA = (p) => packRGBA(plRGB(p));
+
+/** P(ALT) of matrix row p, variant c: a covered cell with zero ALT reads is 0 (never signal); null = no read evidence. */
+export function plSiteProb(snv, p, c, lone = null) {
+  if (p < 0 || !snv?.pl) return null;
+  if (snv.status?.[p]?.[c] === 0) return 0;
+  if (lone && lone(c)) return 0; // lone-read rule (optional toggle): drawn white
+  const q = plProb(snv.pl[p][c]);
+  return q == null ? null : Math.min(q, plReadCap(snv.alt?.[p]?.[c], snv.depth?.[p]?.[c])); // display cap by read support, see plReadCap
+}
+
+/** P(hom-ALT | ALT) = L11 / (L01 + L11) from the optional het/hom byte (snv.hom, same coding as the PL byte); null when absent or flat. */
+export function homProb(snv, p, c) {
+  if (p < 0 || !snv?.hom) return null;
+  const b = snv.hom[p][c];
+  return b >= 1 && b <= 250 ? (b - 1) / 249 : null;
+}
+
+/** Sum of P(ALT), number of sites with evidence, and the P(ALT)-weighted sum of P(hom|ALT) in columns[start, end) of matrix row p (p < 0: none). */
+export function plBinSummary(snv, p, columns, start, end, lone = null) {
+  let sum = 0;
+  let n = 0;
+  let hSum = 0;
+  let hW = 0;
+  for (let k = start; k < end; k += 1) {
+    const q = plSiteProb(snv, p, columns[k], lone);
+    if (q != null) {
+      sum += q;
+      n += 1;
+      const h = homProb(snv, p, columns[k]);
+      if (h != null && q > 0) {
+        hSum += q * h;
+        hW += q;
+      }
+    }
+  }
+  return { sum, n, sites: end - start, hSum, hW };
+}
+
+/** Het vs hom-ALT: two hues, lightness from P(ALT). Colour-blind safe pair (Okabe-Ito orange, deep purple). */
+export const HET_HOM_COLORS = { het: "#E69F00", hom: "#5B2A86" };
+
+/** Genotype colour with the het/hom split: white (P = 0) to the hue (P = 1); the hue runs het orange (h = 0) to hom purple (h = 1), a muddy mix where het and hom are not separable. h null = no split available: greyscale. */
+export function plHomRGB(p, h) {
+  if (h == null || !Number.isFinite(h) || p == null || !Number.isFinite(p)) return plRGB(p);
+  const dark = isDarkPlots();
+  const a = hexToRgb(HET_HOM_COLORS.het);
+  const b = hexToRgb(HET_HOM_COLORS.hom);
+  const hh = Math.max(0, Math.min(1, h));
+  const f = Math.max(0, Math.min(1, p));
+  const base = dark ? 42 : 255;
+  return [0, 1, 2].map((i) => Math.round(base + (a[i] + (b[i] - a[i]) * hh - base) * f));
+}
+export const plHomRGBA = (p, h) => packRGBA(plHomRGB(p, h));
+
+/** Pixel colour of a bin: mean P(ALT) over the sites with evidence; no evidence anywhere = white (or the pale tint when marked). */
+export const plBinRGBA = ({ sum, n, hSum = 0, hW = 0 }) => plHomRGBA(n ? sum / n : null, hW > 0 ? hSum / hW : null);
+
+/** True when the matrix has PL confidence bytes (else the genotype view falls back to hard calls). */
+export const hasPl = (snv) => Boolean(snv?.pl);
+
+/**
+ * VAF-view bin intensity: sum over the bin's sites with ALT reads of VAF (alt / depth) (a site whose count is unknown counts 1).
+ * The zoomed-out pixel is the mean VAF over the bin's sites (sites without ALT reads count 0), a MEAN (never a max), so a lone read among deep REF reads adds ~0.1 of a site, not a whole one.
+ */
+export function snvBinIntensity(snv, p, columns, start, end) {
+  if (p < 0) return 0;
+  let sum = 0;
+  for (let k = start; k < end; k += 1) {
+    const c = columns[k];
+    if (snv.status[p][c] !== 1) continue;
+    const a = snv.alt?.[p]?.[c];
+    const d = snv.depth?.[p]?.[c];
+    sum += Number.isFinite(a) && Number.isFinite(d) && d > 0 ? Math.min(1, a / d / SNV_VAF_FULL) : 1;
+  }
+  return sum;
+}
+
+/* ---- genotype view: optional "lone ALT read = white" rule ---- */
+
+/**
+ * Per clone key, a Uint16Array over sites: the number of cells of that clone with at least 2 ALT reads at the site.
+ * rows: matrix row per displayed row; rowClone: clone key per displayed row (null = one shared group).
+ */
+export function strongCarriers(snv, rows, rowClone) {
+  const n = snv.variants.length;
+  const out = new Map();
+  rows.forEach((p, r) => {
+    if (p < 0) return;
+    const key = rowClone?.[r] ?? "";
+    let arr = out.get(key);
+    if (!arr) {
+      arr = new Uint16Array(n);
+      out.set(key, arr);
+    }
+    const alt = snv.alt[p];
+    for (let c = 0; c < n; c += 1) if (alt[c] >= 2 && arr[c] < 65535) arr[c] += 1;
+  });
+  return out;
+}
+
+/** True for a cell with exactly 1 ALT read and no cell of its clone with 2+ ALT reads at the site: drawn white when the toggle is on. */
+export const isLoneRead = (snv, p, c, key, strong) => p >= 0 && snv.alt?.[p]?.[c] === 1 && !(strong?.get(key ?? "")?.[c] > 0);
