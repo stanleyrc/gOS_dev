@@ -37,6 +37,7 @@ import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../../redux/singleCell
 import CellIgvPanel from "../cellIgvPanel";
 import { SnvTrackControls, tracksHeight, useSnvAnnot, useSnvTracks, useTreeSiteFit } from "../snvAnnotTracks";
 import SnvIsolatePanel from "../snvIsolatePanel";
+import { setOptionParts, treeOptionParts } from "../../../helpers/singleCell/selectOptions";
 import SnvSelectionBar from "../snvSelectionBar";
 import HeatmapLegend from "../heatmapLegend";
 import { carrierRows, subsetLeafStates } from "../../../helpers/singleCell/snvIsolate";
@@ -497,7 +498,14 @@ export default function CompareTreesPanel() {
   }, [variants, eventList, search, paints]);
 
   if (!trees.length || trees.length < 2) return <Alert type="info" showIcon message="No alternative phylogenies were exported for this patient." />;
-  const treeOpts = trees.map((t) => ({ value: t.name, label: `${t.label || t.name}${t.n_matched != null && t.name !== CURRENT_TREE ? ` (${t.n_matched} cells)` : ""}` }));
+  const optNode = (o) => (
+    <div title={o.title} style={{ lineHeight: 1.25, whiteSpace: "normal", padding: "2px 0" }}>
+      <div>{o.short}</div>
+      {o.note ? <div style={{ fontSize: 11, opacity: 0.6 }}>{o.note}</div> : null}
+    </div>
+  );
+  const toOpt = (o) => ({ value: o.value, short: o.short, title: o.title, label: optNode(o) });
+  const treeOpts = trees.map((t) => toOpt(treeOptionParts(t)));
   const loading = treeA.status === "loading" || treeB.status === "loading";
   const labelOf = (name) => trees.find((t) => t.name === name)?.label || name;
 
@@ -557,9 +565,9 @@ export default function CompareTreesPanel() {
     <div>
       <Card size="small" title="Compare phylogenies" extra={<Text type="secondary">same cells, two trees; lines join each cell; branch colour = clone</Text>}>
         <Space wrap size="middle" style={{ marginBottom: 8 }}>
-          <span>Tree A <Select style={{ width: 210 }} value={a} options={treeOpts} onChange={(v) => { setNameA(v); setPick(null); }} /></span>
-          <span>Tree B <Select style={{ width: 210 }} value={b} options={treeOpts} onChange={(v) => { setNameB(v); setPick(null); }} /></span>
-          <Tooltip title="Which SNV matrix the heatmaps, tracks and concordance use. Smaller sets load faster; sets other than the full matrix are fetched when first selected."><span>Mutation set <Select style={{ width: 250 }} value={activeSet?.name} loading={snv.status === "loading"} options={snvSets.map((x) => ({ value: x.name, label: `${x.label}${x.n_variants != null ? ` (${x.n_variants.toLocaleString()} sites)` : ""}` }))} onChange={(v) => { setSetChoice(v); setPick(null); setPainted([]); }} /></span></Tooltip>
+          <span>Tree A <Select style={{ width: 340 }} popupMatchSelectWidth={false} optionLabelProp="short" listHeight={400} dropdownStyle={{ minWidth: 460, maxWidth: 640 }} value={a} options={treeOpts} onChange={(v) => { setNameA(v); setPick(null); }} /></span>
+          <span>Tree B <Select style={{ width: 340 }} popupMatchSelectWidth={false} optionLabelProp="short" listHeight={400} dropdownStyle={{ minWidth: 460, maxWidth: 640 }} value={b} options={treeOpts} onChange={(v) => { setNameB(v); setPick(null); }} /></span>
+          <Tooltip title="Which SNV matrix the heatmaps, tracks and concordance use. Smaller sets load faster; sets other than the full matrix are fetched when first selected."><span>Mutation set <Select popupMatchSelectWidth={false} optionLabelProp="short" listHeight={400} dropdownStyle={{ minWidth: 460, maxWidth: 640 }} style={{ width: 340 }} value={activeSet?.name} loading={snv.status === "loading"} options={snvSets.map((x) => toOpt(setOptionParts(x)))} onChange={(v) => { setSetChoice(v); setPick(null); setPainted([]); }} /></span></Tooltip>
           <span>Lines <Switch checked={showLinks} onChange={setShowLinks} /></span>
           <span>Hide normal cells <Switch checked={hideNormal} onChange={setHideNormal} /></span>
           <Tooltip title={t("components.single-cell.toolbar.clip-help")}><span>Shorten long branches <Switch checked={clip} onChange={setClip} disabled={cladogram} /></span></Tooltip>
