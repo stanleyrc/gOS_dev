@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { useHiddenCellIds } from "../useCovQc";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
-import { CURRENT_TREE, alignTipNames } from "../../../helpers/singleCell/treeCompare";
+import { CURRENT_TREE, alignTipNames, legacyTreeName } from "../../../helpers/singleCell/treeCompare";
 import { parseNewick } from "../../../helpers/singleCell/newick";
 import { annotateSupport } from "../../../helpers/singleCell/treeSupport";
 
@@ -27,7 +27,9 @@ export default function useAltTree(name, support = null) {
     if (!name || name === CURRENT_TREE || !dataset || !patient) return undefined;
     const key = `${dataset.dataPath}${patient.caseReportId}/${name}`;
     if (!cache.has(key)) {
-      cache.set(key, tryGet(casePath(dataset, patient.caseReportId, `trees/${name}.nwk`), { responseType: "text" }).catch((error) => ({ status: "error", error })));
+      const get = (n) => tryGet(casePath(dataset, patient.caseReportId, `trees/${n}.nwk`), { responseType: "text" });
+      const legacy = legacyTreeName(name); // data not yet renamed: fall back to the old file name
+      cache.set(key, get(name).then((r) => (r?.status !== "ok" && legacy ? get(legacy) : r)).catch((error) => ({ status: "error", error })));
     }
     let cancelled = false;
     setFile({ name, status: "loading", text: null });
@@ -46,14 +48,14 @@ export default function useAltTree(name, support = null) {
     if (name === CURRENT_TREE) {
       const source = tree?.status === "ok" ? tree.data?.source : null;
       if (!source) return { status: "missing", root: null, matched: 0, total: 0 };
-      const ann = annotateSupport(source, support?.available ? support.trees?.[name] : null);
+      const ann = annotateSupport(source, support?.available ? (support.trees?.[name] || support.trees?.[legacyTreeName(name)]) : null);
       const { root, matched, total } = alignTipNames(ann.root, ids);
       return { status: root ? "ok" : "missing", root, matched, total, supportMapped: ann.mapped, supportInternal: ann.internal };
     }
     if (file.name !== name || file.status === "loading" || file.status === "idle") return { status: "loading", root: null, matched: 0, total: 0 };
     if (file.status !== "ok") return { status: file.status, root: null, matched: 0, total: 0 };
     try {
-      const ann = annotateSupport(parseNewick(file.text), support?.available ? support.trees?.[name] : null);
+      const ann = annotateSupport(parseNewick(file.text), support?.available ? (support.trees?.[name] || support.trees?.[legacyTreeName(name)]) : null);
       const { root, matched, total } = alignTipNames(ann.root, ids);
       return { status: root ? "ok" : "missing", root, matched, total, supportMapped: ann.mapped, supportInternal: ann.internal };
     } catch (error) {

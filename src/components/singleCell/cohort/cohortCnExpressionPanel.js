@@ -25,7 +25,7 @@ import GeneQuickLook, { GeneQuickLookText } from "./geneQuickLook";
 import { INK, TYPE } from "../../../helpers/singleCell/plotTheme";
 
 const { Text } = Typography;
-// genes of the deck's EGFR ecDNA dosage figure (the collaborator)
+// genes of the deck's EGFR ecDNA dosage figure
 const DEFAULT_GENES = ["EGFR", "SOX4", "SEC61G", "GAP43", "HSP90B1", "MRAS", "STMN4", "PTBP2"];
 const GENE_INK = ["#6A3D9A", "#283593", "#1B7837", "#B35806"];
 const STATES = ["MES", "AC", "OPC", "NPC"];

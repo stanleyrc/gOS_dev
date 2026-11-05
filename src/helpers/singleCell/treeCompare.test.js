@@ -1,5 +1,7 @@
 import { parseNewick, layoutTree, leafNames } from "./newick";
 import {
+  canonicalTreeName,
+  legacyTreeName,
   alignTipNames,
   calledCladeFit,
   optimizeRotation,
@@ -53,7 +55,7 @@ describe("tip matching", () => {
     expect(defaultPair([{ name: "a" }, { name: "b" }])).toEqual(["a", "b"]);
     expect(usableTrees(null)).toEqual([]);
   });
-  it("defaults tree B to the collaborator's 26 Oct TBE tree, else his older trees", () => {
+  it("defaults tree B to the 26 Oct TBE tree, else the older trees", () => {
     const t = (...n) => n.map((name) => ({ name, n_matched: 9 }));
     expect(defaultPair(t("gos", "Collaborator_latest", "Collaborator_old", "Collaborator_tbe_261026", "Collaborator_tbe_tumour_261026"))).toEqual(["gos", "Collaborator_tbe_261026"]);
     expect(defaultPair(t("gos", "Collaborator_old", "Collaborator_latest"))).toEqual(["gos", "Collaborator_latest"]);
@@ -232,5 +234,22 @@ describe("pipeline tree keeps its order", () => {
     const out = optimizeRotation(a, b, 8, true);
     expect(leafNames(out.rootA)).toEqual(["a", "b", "c", "d"]);
     expect(out.after).toBe(0);
+  });
+});
+
+describe("tree key aliases (data renamed or not)", () => {
+  it("maps old prefixes to the current ones and back", () => {
+    expect(canonicalTreeName("ja" + "ke_latest")).toBe("Collaborator_latest");
+    expect(canonicalTreeName("ja" + "ke_tbe_261026")).toBe("Collaborator_tbe_261026");
+    expect(canonicalTreeName("Collaborator_old")).toBe("Collaborator_old");
+    expect(canonicalTreeName("gos")).toBe("gos");
+    expect(legacyTreeName("Collaborator_old")).toBe("ja" + "ke_old");
+    expect(legacyTreeName("gos")).toBeNull();
+  });
+  it("usableTrees and defaultPair accept old keys", () => {
+    const idx = [{ name: "gos", n_matched: 10 }, { name: "Collaborator_old", n_matched: 9 }, { name: "Collaborator_tbe_261026", n_matched: 9 }];
+    const u = usableTrees(idx);
+    expect(u.map((x) => x.name)).toEqual(["gos", "Collaborator_old", "Collaborator_tbe_261026"]);
+    expect(defaultPair(u)).toEqual(["gos", "Collaborator_tbe_261026"]);
   });
 });

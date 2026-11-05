@@ -153,7 +153,7 @@ function PathToy() {
   );
 }
 
-/** Figure 2 Moran's I z per patient and state, old (the collaborator) vs new trees, from _cohort/fig2_moran_I_by_patient_state.tsv. */
+/** Figure 2 Moran's I z per patient and state, earlier vs new trees, from _cohort/fig2_moran_I_by_patient_state.tsv. */
 function Fig2Moran({ dataset }) {
   const theme = usePlotTheme();
   const [state, setState] = useState({ status: "loading" });
@@ -213,7 +213,7 @@ function Fig2Moran({ dataset }) {
           );
         })}
       </svg>
-      <Text type="secondary" style={{ fontSize: 12.5 }}>Moran's I z of each RNA state on each patient's tree (PATH): hollow = earlier trees (the collaborator), filled = the new trees of this paper. Right of the dashed line: the state is significantly heritable. Real values, read from the Figure 2 table; click a patient to open its RNA tab.</Text>
+      <Text type="secondary" style={{ fontSize: 12.5 }}>Moran's I z of each RNA state on each patient's tree (PATH): hollow = earlier trees, filled = the new trees of this paper. Right of the dashed line: the state is significantly heritable. Real values, read from the Figure 2 table; click a patient to open its RNA tab.</Text>
     </div>
   );
 }
