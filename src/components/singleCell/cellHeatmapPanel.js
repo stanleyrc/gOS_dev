@@ -32,6 +32,8 @@ import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
 import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
+import { ampliconRegions, labelRegions } from "../../helpers/singleCell/ampliconRegions";
+import { useGeneModels } from "../genes/useGeneModels";
 import { effectiveSnvMetric } from "../../helpers/singleCell/snvBinning";
 import { appendSnv } from "../../helpers/singleCell/snvColumnar";
 import { CN_MAPPED_PARAM, cnMappedSummary } from "../../helpers/singleCell/cnMapped";
@@ -61,6 +63,7 @@ import {
   domainExtents,
   expressionRGBA,
   genomicColumnLookup,
+  genomicColumnLookupMax,
   genomicTicks,
   hexToRgb,
   junctionRGBA,
@@ -797,6 +800,30 @@ export default function CellHeatmapPanel() {
   const jSort = layout.junctionSort === "carriers" ? "carriers" : "pos";
   const walkList = sc.walks?.status === "ok" ? sc.walks.data.walks || [] : [];
   const jWalkOptions = useMemo(() => walkOptions(walkList), [walkList]);
+  /* ---- "Zoom to amplicons": the walks' intervals as side-by-side domains (layout.ampZoom, URL ampzoom=1); off restores the earlier range ---- */
+  const ampBase = useMemo(
+    () => (sc.walks?.status === "ok" ? ampliconRegions(sc.walks.data.walks, chromoBins) : { domains: [], regions: [], reason: sc.walks?.status === "missing" ? "walks.json is not exported for this report" : "amplicon walks not loaded" }),
+    [sc.walks, chromoBins]
+  );
+  // region labels: candidate genes whose coordinates (hg38 gene models) fall inside the region; locus text without models
+  const ampChroms = useMemo(() => [...new Set(ampBase.regions.map((r) => r.chr))].filter((c) => chromoBins?.[c]).map((c) => ({ chromosome: c, startPlace: chromoBins[c].startPlace })), [ampBase, chromoBins]);
+  const ampModels = useGeneModels(layout.ampZoom ? ampChroms : [], "hg38");
+  const ampRegions = useMemo(() => ({ ...ampBase, regions: labelRegions(ampBase.regions, ampModels.genes) }), [ampBase, ampModels.genes]);
+  const ampKey = JSON.stringify(ampRegions.domains);
+  const ampZoom = Boolean(layout.ampZoom) && ampRegions.domains.length > 0;
+  const savedDomains = useRef(null);
+  useEffect(() => {
+    if (ampZoom) {
+      if (!savedDomains.current) savedDomains.current = domains;
+      dispatch(settingsActions.updateDomains(ampRegions.domains));
+    } else if (savedDomains.current) {
+      dispatch(settingsActions.updateDomains(savedDomains.current));
+      savedDomains.current = null;
+    }
+    // domains deliberately not a dependency: panning inside the amplicon view must not reset it
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ampZoom, ampKey]);
+  const toggleAmpZoom = () => dispatch(singleCellActions.updateLayout({ ampZoom: ampZoom ? null : true }));
   const jStats = useMemo(() => (junctions.status === "ok" ? junctionStats(junctions.data) : []), [junctions]);
   const jZoomed = isZoomed(domains, defaultDomain);
   const jChoiceOk = jFilterChoice && (jFilterChoice.mode !== "walk" || walkList.some((w) => `${w.id}` === `${jFilterChoice.walkId}`));
@@ -928,7 +955,13 @@ export default function CellHeatmapPanel() {
         const p = map[r];
         if (p < 0 || !rows[p]) return null;
         if (!lookups.has(p)) {
-          lookups.set(p, genomicColumnLookup(rows[p].binIndex, domains, devWidth, DOMAIN_GAP * pixelRatio).cols);
+          lookups.set(
+            p,
+            // amplicon zoom: a pixel shows the highest copy number of the segments it covers, so a focal segment narrower than a pixel stays visible
+            ampZoom
+              ? genomicColumnLookupMax(rows[p].binIndex, valuesOf(rows[p]), domains, devWidth, DOMAIN_GAP * pixelRatio).cols
+              : genomicColumnLookup(rows[p].binIndex, domains, devWidth, DOMAIN_GAP * pixelRatio).cols
+          );
         }
         return lookups.get(p);
       };
@@ -984,7 +1017,7 @@ export default function CellHeatmapPanel() {
     if (heatmapType === "drivers" && driverMatrix) return driverMatrix;
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heatmapType, cnSource, cnMode, cnColor, junctions, jRange, jCols, jStats, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverMatrix, snv, snvRows, cn, stripBlank]);
+  }, [ampZoom, heatmapType, cnSource, cnMode, cnColor, junctions, jRange, jCols, jStats, order, domains, heatWidth, devWidth, pixelRatio, chromoBins, t, driverMatrix, snv, snvRows, cn, stripBlank]);
 
   const annotationCols = useMemo(() => {
     const stacked = showSignature && signatureMode === "stacked";
@@ -1104,7 +1137,7 @@ export default function CellHeatmapPanel() {
     setHoverRange(null);
     shareHover(null);
   };
-  const hoverCell = (row, extra, event) => {
+  const hoverCell = (row, extra, event, compact = false) => {
     if (row == null || row < 0) return clearHover();
     shareHover(order[row]);
     const cell = cellById.get(order[row]);
@@ -1116,9 +1149,9 @@ export default function CellHeatmapPanel() {
       lines: [
         [t("components.single-cell.tooltip.cell"), cellLabels.full(order[row])],
         ...(cell?.clone_id != null ? [[t("components.single-cell.tooltip.clone"), cell.clone_id]] : []),
-        ...annotationFields.filter((f) => cell?.[f] != null).map((f) => [f, cell[f]]),
-        ...(showSignature ? signatureTooltip(signatureFits.get(order[row]), signatureUnavailable) : []),
-        ...(showExpression
+        ...(compact ? [] : annotationFields.filter((f) => cell?.[f] != null).map((f) => [f, cell[f]])),
+        ...(showSignature && !compact ? signatureTooltip(signatureFits.get(order[row]), signatureUnavailable) : []),
+        ...(showExpression && !compact
           ? [[
               expression.gene,
               expression.values[order[row]] == null
@@ -1126,8 +1159,8 @@ export default function CellHeatmapPanel() {
                 : expression.values[order[row]],
             ]]
           : []),
-        ...(showPloidy ? ploidyTooltipLines(cell, modalPl) : []),
-        ...(showTmb ? tmbTooltipLines(tmbMap.get(order[row])) : []),
+        ...(showPloidy && !compact ? ploidyTooltipLines(cell, modalPl) : []),
+        ...(showTmb && !compact ? tmbTooltipLines(tmbMap.get(order[row])) : []),
         ...(extra || []),
       ],
     });
@@ -1193,7 +1226,8 @@ export default function CellHeatmapPanel() {
     () => (heatmapType === "cn" && chromoBins ? genomicTicks(chromoBins, domainExtents(domains, heatWidth, DOMAIN_GAP)) : []),
     [heatmapType, chromoBins, domains, heatWidth]
   );
-  const axisHeight = ticks.length ? AXIS_HEIGHT + TICK_HEIGHT : AXIS_HEIGHT;
+  const ampLabelRow = ampZoom && (heatmapType === "cn" || heatmapType === "junctions") ? 30 : 0;
+  const axisHeight = (ticks.length ? AXIS_HEIGHT + TICK_HEIGHT : AXIS_HEIGHT) + ampLabelRow;
 
   const isolating = Boolean(layout.snvIsolate) && snvReady && heatmapType === "snv";
   const isolateRows = useMemo(() => (isolating ? carrierRows(snv.data, snvColumns, snvRows) : null), [isolating, snv, snvColumns, snvRows]);
@@ -1235,8 +1269,10 @@ export default function CellHeatmapPanel() {
     onRowClick: handleRowClick,
     // a site: drawer with its annotation and every cell's reads, IGV for several cells
     onSiteClick: (row, c) => setSiteDrawer({ c, row }),
-    onHover: (row, lines, event) => hoverCell(row, lines, event),
+    // SNV matrix hover: cell + clone + the short site lines; Shift while hovering adds the per-cell annotation, signature and ploidy lines
+    onHover: (row, lines, event) => hoverCell(row, lines, event, !event?.shiftKey),
     onLeave: clearHover,
+    rowClone: order.map((id) => cellById.get(id)?.clone_id ?? null),
   };
 
   const selectionBar = (
@@ -1517,7 +1553,7 @@ export default function CellHeatmapPanel() {
                 style={{ width: 120 }}
                 value={snvMetric}
                 onChange={(value) => dispatch(singleCellActions.updateSnvMetric(value))}
-                options={["vaf", "alt", "depth", ...(snv.data?.gt ? ["gt"] : [])].map((value) => ({
+                options={["vaf", "alt", "depth", ...(snv.data?.gt || snv.data?.pl ? ["gt"] : [])].map((value) => ({
                   value,
                   label: t(`components.single-cell.metric.${value}`),
                 }))}
@@ -1717,6 +1753,13 @@ export default function CellHeatmapPanel() {
               </Tooltip>
             )}
             {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={ampRegions.domains.length ? `Zoom to the ${ampRegions.domains.length} amplicon region${ampRegions.domains.length > 1 ? "s" : ""} of this report (${ampRegions.regions.map((r) => r.label).join("; ")}), side by side. Copy-number and junction views follow; the SNV columns and the drivers view are unaffected.` : `Zoom to amplicons: not available (${ampRegions.reason})`}>
+                <Button size="small" type={ampZoom ? "primary" : "default"} disabled={!ampRegions.domains.length} onClick={toggleAmpZoom} data-amp-zoom>
+                  Zoom to amplicons
+                </Button>
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
               <Tooltip title={t("components.single-cell.heatmap.whole-genome")}>
                 <Button
                   size="small"
@@ -1757,6 +1800,13 @@ export default function CellHeatmapPanel() {
                     heatmapType === "cn" ? zoomAll(2) : junctionWheel({ x: heatWidth / 2, deltaY: 500, deltaMode: 0 })
                   }
                 />
+              </Tooltip>
+            )}
+            {(heatmapType === "cn" || heatmapType === "junctions") && (
+              <Tooltip title={ampRegions.domains.length ? `Zoom to the ${ampRegions.domains.length} amplicon region${ampRegions.domains.length > 1 ? "s" : ""} of this report (${ampRegions.regions.map((r) => r.label).join("; ")}), side by side. Copy-number and junction views follow; the SNV columns and the drivers view are unaffected.` : `Zoom to amplicons: not available (${ampRegions.reason})`}>
+                <Button size="small" type={ampZoom ? "primary" : "default"} disabled={!ampRegions.domains.length} onClick={toggleAmpZoom} data-amp-zoom>
+                  Zoom to amplicons
+                </Button>
               </Tooltip>
             )}
             {(heatmapType === "cn" || heatmapType === "junctions") && (
@@ -1808,7 +1858,7 @@ export default function CellHeatmapPanel() {
           style={{ width: 110 }}
           value={snvMetric}
           onChange={(value) => dispatch(singleCellActions.updateSnvMetric(value))}
-          options={["vaf", "alt", "depth", ...(snv.data?.gt ? ["gt"] : [])].map((value) => ({ value, label: t(`components.single-cell.metric.${value}`) }))}
+          options={["vaf", "alt", "depth", ...(snv.data?.gt || snv.data?.pl ? ["gt"] : [])].map((value) => ({ value, label: t(`components.single-cell.metric.${value}`) }))}
         />
       )}
       {heatmapType === "drivers" && (
@@ -2055,6 +2105,18 @@ export default function CellHeatmapPanel() {
                         {tk.label}
                       </span>
                     ))}
+                    {ampLabelRow > 0 &&
+                      heatmapType === "cn" && (
+                        <span className="sc-axis-label" style={{ left: 0, width: heatWidth, top: axisHeight - 14, fontSize: 11, opacity: 0.75 }}>
+                          Amplicon zoom: each pixel shows the highest copy number of the segments it covers
+                        </span>
+                      )}
+                    {ampLabelRow > 0 &&
+                      domainExtents(domains, heatWidth, DOMAIN_GAP).map(([px0, px1], k) => (
+                        <span key={`amp-${k}`} className="sc-axis-label" style={{ left: px0, width: px1 - px0, top: axisHeight - ampLabelRow, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={ampRegions.regions[k] ? `${ampRegions.regions[k].label} (chr${ampRegions.regions[k].chr}:${Math.round(ampRegions.regions[k].start / 1e3)}-${Math.round(ampRegions.regions[k].end / 1e3)} kb)` : ""}>
+                          {ampRegions.regions[k]?.label}
+                        </span>
+                      ))}
                     {active.axis.spans
                       .filter((s) => s.x1 - s.x0 >= 14)
                       .map((s, k) => (
@@ -2206,6 +2268,8 @@ export default function CellHeatmapPanel() {
               cnMode={cnMode}
               palette={palette}
               snvMetric={showSnvControls ? snvMetric : null}
+              snvPl={Boolean(snvReady && snv.data?.pl)}
+              snvHom={Boolean(snvReady && snv.data?.hom)}
               snvMax={snvMax}
               maxJunctionCn={junctions.data?.maxCn}
               cloneColors={cloneColors}

@@ -595,7 +595,7 @@ export default function CompareTreesPanel() {
         {showMatrix && snvData && showsSnv(heatMode) ? (
           <Space wrap size="small" style={{ marginBottom: 8 }}>
             <Text type="secondary">{t("components.single-cell.toolbar.metric")}</Text>
-            <Select size="small" style={{ width: 120 }} value={matrixMetric} onChange={setMetric} options={["vaf", "alt", "depth", ...(snvData.gt ? ["gt"] : [])].map((value) => ({ value, label: t(`components.single-cell.metric.${value}`) }))} />
+            <Select size="small" style={{ width: 120 }} value={matrixMetric} onChange={setMetric} options={["vaf", "alt", "depth", ...(snvData.gt || snvData.pl ? ["gt"] : [])].map((value) => ({ value, label: t(`components.single-cell.metric.${value}`) }))} />
             <Text type="secondary">{t("components.single-cell.toolbar.order")}</Text>
             <Select size="small" style={{ width: 150 }} value={snvOrder} onChange={(value) => dispatch(singleCellActions.updateSnvOrder(value))} options={["tree", "genomic", "prevalence", "catalog"].map((value) => ({ value, label: t(`components.single-cell.snv.order-${value}`) }))} />
             {Object.keys(categoryCounts).length ? (
@@ -625,7 +625,7 @@ export default function CompareTreesPanel() {
             <Text type="secondary" style={{ fontSize: TYPE.tick }}>same sites and order as the Single-Cell tab; columns follow each matrix's own tree; click a site to paint it</Text>
             <div style={{ width: "100%" }}><SnvTrackControls annot={annotA} nShown={isolateCount} onIsolate={setIsolate} fitBusy={fitBusyA} /></div>
             <div style={{ width: "100%" }}><SnvSelectionBar snv={snvCalls} annot={annotA} patient="compare" onIsolate={isolateSelected} onPaint={paintSelectedSites} /></div>
-            <div style={{ width: "100%" }}><HeatmapLegend type="none" snvMetric={matrixMetric} snvMax={matrixMax} /></div>
+            <div style={{ width: "100%" }}><HeatmapLegend type="none" snvMetric={matrixMetric} snvMax={matrixMax} snvPl={Boolean(snvData?.pl)} snvHom={Boolean(snvData?.hom)} /></div>
           </Space>
         ) : null}
         <div style={{ marginBottom: 8 }}>
