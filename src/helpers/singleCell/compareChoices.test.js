@@ -54,7 +54,7 @@ describe("treeQualityNote", () => {
   it("reads the gos entry's note or the label suffix, else null", () => {
     expect(treeQualityNote([{ name: "gos", label: "Pipeline (current)" }])).toBeNull();
     expect(treeQualityNote([{ name: "gos", label: "Pipeline (current; weak: relaxed site set, 356 sites)" }])).toBe("weak: relaxed site set, 356 sites");
-    expect(treeQualityNote([{ name: "gos", label: "Pipeline (current)", note: "weak: 356 sites" }, { name: "jake_latest" }])).toBe("weak: 356 sites");
+    expect(treeQualityNote([{ name: "gos", label: "Pipeline (current)", note: "weak: 356 sites" }, { name: "Collaborator_latest" }])).toBe("weak: 356 sites");
     expect(treeQualityNote(null)).toBeNull();
   });
 });

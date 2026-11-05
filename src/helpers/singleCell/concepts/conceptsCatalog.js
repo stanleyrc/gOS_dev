@@ -71,7 +71,7 @@ export function parseTsv(text) {
 }
 
 /**
- * Figure 2 Moran's I table (patient, src, state, I, Z, n; src = "Jake tree" | "New tree") -> { ok, patients, states,
+ * Figure 2 Moran's I table (patient, src, state, I, Z, n; src = "Collaborator tree" | "New tree") -> { ok, patients, states,
  * sources, get(patient, state, src) }; { ok: false, reason } when the rows are missing or malformed.
  */
 export function fig2Moran(rows) {

@@ -16,7 +16,7 @@ export const firstEnabledItem = (items) => (items || []).find((it) => it && !it.
 export const PATIENT_RAIL = [
   { key: "tree", label: "Tree & cells", icon: "ApartmentOutlined", tabs: [
     { tab: 7, desc: "Phylogeny with copy-number, SNV and junction heatmaps, drivers layer, per-cell tracks, UMAP, spatial and IGV." },
-    { tab: 18, desc: "The current tree against alternative trees (CellPhy, Jake's trees) with shared clades." },
+    { tab: 18, desc: "The current tree against alternative trees (CellPhy, the collaborator's trees) with shared clades." },
   ] },
   { key: "report", label: "Report", icon: "FileTextOutlined", tabs: [
     { tab: 12, desc: "Patient vignette, driver report, clone history, amplicon timing and branch rates." },

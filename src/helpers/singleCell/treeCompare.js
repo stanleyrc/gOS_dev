@@ -19,19 +19,38 @@ export const MAX_PAINTED = 8;
 
 /** Entries of trees/index.json that can be drawn: the current tree and files with enough matched tips. */
 export function usableTrees(index) {
-  return (Array.isArray(index) ? index : []).filter((t) => t && t.name && (t.name === CURRENT_TREE || t.n_matched >= 3));
+  return (Array.isArray(index) ? index : [])
+    .filter((t) => t && t.name && (t.name === CURRENT_TREE || t.n_matched >= 3))
+    .map((t) => (canonicalTreeName(t.name) === t.name ? t : { ...t, name: canonicalTreeName(t.name) }));
 }
 
-/** Jake's 26 Oct 2026 TBE tree (all cells): default tree B. */
-export const JAKE_TBE_TREE = "jake_tbe_261026";
+/** Data written before the key rename: old file/key prefix -> current prefix. Both are read so a deploy works before and after the data rename. */
+export const TREE_KEY_ALIASES = { jake_: "Collaborator_" };
+
+/** Current name of a tree key (old prefixes mapped through TREE_KEY_ALIASES). */
+export function canonicalTreeName(name) {
+  const s = `${name ?? ""}`;
+  const hit = Object.keys(TREE_KEY_ALIASES).find((k) => s.startsWith(k));
+  return hit ? TREE_KEY_ALIASES[hit] + s.slice(hit.length) : s;
+}
+
+/** Old (pre-rename) name of a tree key, or null when it has none. */
+export function legacyTreeName(name) {
+  const s = `${name ?? ""}`;
+  const hit = Object.entries(TREE_KEY_ALIASES).find(([, v]) => s.startsWith(v));
+  return hit ? hit[0] + s.slice(hit[1].length) : null;
+}
+
+/** The collaborator's 26 Oct 2026 TBE tree (all cells): default tree B. */
+export const COLLAB_TBE_TREE = "Collaborator_tbe_261026";
 
 /**
- * Default tree B: Jake's 26 Oct TBE tree when this patient has it, else his older trees
- * (jake_latest, else jake_old), else the first other tree.
+ * Default tree B: the 26 Oct TBE tree when this patient has it, else the older trees
+ * (Collaborator_latest, else Collaborator_old), else the first other tree.
  */
 export function defaultTreeB(trees, a = CURRENT_TREE) {
   const names = (trees || []).map((t) => t.name);
-  const pick = [JAKE_TBE_TREE, "jake_latest", "jake_old"].find((n) => names.includes(n) && n !== a);
+  const pick = [COLLAB_TBE_TREE, "Collaborator_latest", "Collaborator_old"].find((n) => names.includes(n) && n !== a);
   return pick || names.find((n) => n !== a) || null;
 }
 
