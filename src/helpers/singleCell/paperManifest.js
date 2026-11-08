@@ -18,6 +18,23 @@ export function figureGroup(id) {
   return "main";
 }
 
+const PREV_RE = /_prev_\d{6}$/i;
+const GROUPS = ["main", "supplementary", "extra", "previous"];
+
+/** Group of a manifest figure: its explicit `group` field, else previous for ids ending _prev_<yymmdd>, else figureGroup(id). */
+export function figureGroupOf(f) {
+  const g = `${f?.group ?? ""}`.trim().toLowerCase();
+  if (GROUPS.includes(g)) return g;
+  return PREV_RE.test(`${f?.id}`) ? "previous" : figureGroup(f?.id);
+}
+
+/** Label of a manifest figure: explicit `label`, else "Fig 2 (prev)" for _prev_ ids, else figureLabel(id). */
+export function figureLabelOf(f) {
+  if (f?.label && `${f.label}`.trim()) return `${f.label}`.trim();
+  const id = `${f?.id}`;
+  return PREV_RE.test(id) ? `${figureLabel(id.replace(PREV_RE, ""))} (prev)` : figureLabel(id);
+}
+
 /** Short label: Figure4 -> "Fig 4", FigureS1 -> "Fig S1", FigureV2_ecdna_new -> "Fig V2". */
 export function figureLabel(id) {
   const m = /^Figure([A-Z]?\d+)/i.exec(`${id}`);
@@ -47,9 +64,9 @@ export function parsePaperManifest(json, base = "") {
       }));
       return {
         id: `${f.id}`,
-        label: figureLabel(f.id),
+        label: figureLabelOf(f),
         title: f.title || `${f.id}`,
-        group: figureGroup(f.id),
+        group: figureGroupOf(f),
         svg: url(f.svg),
         png: url(f.png),
         pdf: url(f.pdf),

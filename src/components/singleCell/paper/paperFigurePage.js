@@ -1176,7 +1176,7 @@ export default function PaperFigurePage({ label }) {
 export function PaperFigureLinks({ onView, views }) {
   const { manifest } = usePaperManifest();
   if (!manifest) return null;
-  const byLabel = new Map(manifest.figures.map((f) => [f.label, f]));
+  const byLabel = new Map(manifest.figures.filter((f) => f.group !== "previous").map((f) => [f.label, f]));
   const items = views.map((v) => ({ ...v, fig: byLabel.get(v.label) })).filter((x) => x.fig);
   if (!items.length) return null;
   return (

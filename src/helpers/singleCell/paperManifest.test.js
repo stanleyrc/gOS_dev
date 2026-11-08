@@ -97,3 +97,17 @@ describe("paper figure layout", () => {
     expect(lettersLabel(undefined)).toBe("");
   });
 });
+
+describe("paper figure groups: previous versions", () => {
+  it("_prev_<yymmdd> ids default to group previous with a (prev) label", () => {
+    const m = parsePaperManifest({ figures: [{ id: "Figure2_prev_261108" }, { id: "Figure2" }] });
+    expect(m.figures[0]).toMatchObject({ group: "previous", label: "Fig 2 (prev)" });
+    expect(m.figures[1]).toMatchObject({ group: "main", label: "Fig 2" });
+  });
+  it("explicit group and label override the defaults; unknown group is ignored", () => {
+    const m = parsePaperManifest({ figures: [{ id: "Figure3", group: "previous", label: "Old 3" }, { id: "FigureS1", group: "bogus" }, { id: "Figure4_prev_261108", group: "main", label: "Fig 4b" }] });
+    expect(m.figures[0]).toMatchObject({ group: "previous", label: "Old 3" });
+    expect(m.figures[1].group).toBe("supplementary");
+    expect(m.figures[2]).toMatchObject({ group: "main", label: "Fig 4b" });
+  });
+});

@@ -104,12 +104,12 @@ function PanelCard({ fig, panel, onOpen }) {
  */
 export default function PaperFiguresViewer({ manifest, initialFigure = null, onOpenTarget }) {
   const groups = useMemo(() => {
-    const g = { main: [], supplementary: [], extra: [] };
-    (manifest?.figures || []).forEach((f) => g[f.group].push(f));
+    const g = { main: [], supplementary: [], extra: [], previous: [] };
+    (manifest?.figures || []).forEach((f) => (g[f.group] || g.main).push(f));
     return g;
   }, [manifest]);
-  const [figId, setFigId] = useState(initialFigure && manifest?.figures.some((f) => f.id === initialFigure) ? initialFigure : manifest?.figures[0]?.id || null);
-  const fig = manifest?.figures.find((f) => f.id === figId) || manifest?.figures[0] || null;
+  const [figId, setFigId] = useState(initialFigure && manifest?.figures.some((f) => f.id === initialFigure) ? initialFigure : (manifest?.figures.find((f) => f.group === "main") || manifest?.figures[0])?.id || null);
+  const fig = manifest?.figures.find((f) => f.id === figId) || manifest?.figures.find((f) => f.group === "main") || manifest?.figures[0] || null;
   const [panel, setPanel] = useState(null);
   const figIds = useMemo(() => (manifest?.figures || []).map((f) => f.id), [manifest]);
   const navRef = useRef({});
@@ -141,6 +141,12 @@ export default function PaperFiguresViewer({ manifest, initialFigure = null, onO
           <Segmented size="small" value={fig.id} onChange={(v) => { setFigId(v); setPanel(null); }} options={groups.main.map(option)} />
           {groups.supplementary.length > 0 && <Segmented size="small" value={fig.group === "supplementary" ? fig.id : null} onChange={setFigId} options={groups.supplementary.map(option)} />}
           {groups.extra.length > 0 && <Segmented size="small" value={fig.group === "extra" ? fig.id : null} onChange={setFigId} options={groups.extra.map(option)} />}
+          {groups.previous.length > 0 && (
+            <Space size={6}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Previous versions:</Text>
+              <Segmented size="small" value={fig.group === "previous" ? fig.id : null} onChange={(v) => { setFigId(v); setPanel(null); }} options={groups.previous.map(option)} />
+            </Space>
+          )}
         </Space>
         <Space size={10} wrap>
           <Text type="secondary" style={{ fontSize: 12 }}>
