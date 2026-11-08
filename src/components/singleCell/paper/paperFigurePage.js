@@ -4,7 +4,7 @@ import { Button, Empty, Modal, Segmented, Space, Switch, Tag, Tooltip, Typograph
 import { CompressOutlined, DownloadOutlined, ExpandOutlined, LeftOutlined, LinkOutlined, RightOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
 import useCohortExport from "../cohort/useCohortExport";
-import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, formatBuilt, panelAt, panelRegions, panelTarget, parsePaperManifest, targetSearch } from "../../../helpers/singleCell/paperManifest";
+import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, figureVariants, formatBuilt, panelAt, panelRegions, panelTarget, parsePaperManifest, targetSearch } from "../../../helpers/singleCell/paperManifest";
 import { announceCohortView, requestHelpTarget } from "../../../helpers/singleCell/helpNav";
 import { PAPER_FIGURE_TABS } from "../../../helpers/singleCell/cohortViews";
 import { ORIGINAL_DIR, ORIGINAL_MANIFEST_FILE, isOriginalOnly, parseOriginalManifest } from "../../../helpers/singleCell/paperOriginal";
@@ -131,7 +131,7 @@ const inRect = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y +
  */
 let keepZoom = false; // set when the whole-figure zoom steps to another figure, so the new figure opens zoomed too
 
-function PaperFigureInteractive({ label }) {
+function PaperFigureInteractive({ label, navLabel = null }) {
   const { status, manifest } = usePaperManifest();
   const fig = manifest?.figures.find((f) => f.label === label) || null;
   const [ref, measured] = useContainerWidth(1100);
@@ -328,7 +328,7 @@ function PaperFigureInteractive({ label }) {
   lensRef.current = lens;
   // left / right arrows (and the < > buttons) cycle through the paper figures in manifest order, wrapping; the URL follows (scview)
   const navKeys = useMemo(() => PAPER_FIGURE_TABS.map((n) => `paperfig${n}`), []);
-  const curKey = label ? `paperfig${`${label}`.replace(/^Fig /, "")}` : null;
+  const curKey = (navLabel || label) ? `paperfig${`${navLabel || label}`.replace(/^Fig /, "")}` : null;
   const blocked = !!(lens || liveView || open || zoom);
   const goFigure = useCallback(
     (delta) => {
@@ -1099,6 +1099,10 @@ export default function PaperFigurePage({ label }) {
   const { status, manifest } = usePaperManifest();
   const { original } = useOriginalFigures();
   const [mode, setMode] = useState("current");
+  const [version, setVersion] = useState(null); // label of an alternative build (figureVariants), null = the current main figure
+  const variants = useMemo(() => figureVariants(manifest?.figures, label), [manifest, label]);
+  const shown = variants.some((v) => v.value === version) ? version : label;
+  useEffect(() => setVersion(null), [label]);
   const navKeys = useMemo(() => PAPER_FIGURE_TABS.map((n) => `paperfig${n}`), []);
   const curKey = label ? `paperfig${`${label}`.replace(/^Fig /, "")}` : null;
   const item = original?.byLabel?.[label] || null;
@@ -1140,6 +1144,11 @@ export default function PaperFigurePage({ label }) {
   const pdfHeight = Math.max(480, (window.innerHeight || 900) - 160);
   return (
     <div>
+      {variants.length > 0 && eff === "current" && (
+        <div style={{ marginBottom: 6 }}>
+          <Segmented size="small" value={shown} onChange={(v) => setVersion(v === label ? null : v)} options={[{ value: label, label: "Current" }, ...variants.map((v) => ({ value: v.value, label: v.label }))]} />
+        </div>
+      )}
       {item && !only && (
         <div style={{ marginBottom: 6 }}>
           <Segmented
@@ -1161,7 +1170,7 @@ export default function PaperFigurePage({ label }) {
           <OriginalPdf item={item} label={label} height={pdfHeight} />
         </>
       )}
-      {eff === "current" && <PaperFigureInteractive label={label} />}
+      {eff === "current" && <PaperFigureInteractive key={shown} label={shown} navLabel={label} />}
       {eff === "side" && (
         <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0, maxHeight: pdfHeight + 30, overflow: "auto" }}><PaperFigureInteractive label={label} /></div>

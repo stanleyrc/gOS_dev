@@ -1,4 +1,4 @@
-import { anchoredPanels, bestImage, lettersLabel, panelAt, panelLettersById, panelRegions, figureGroup, figureLabel, fitView, formatBuilt, panelStatus, panelTarget, parsePaperManifest, targetSearch, zoomAt } from "./paperManifest";
+import { anchoredPanels, bestImage, lettersLabel, panelAt, panelLettersById, panelRegions, figureGroup, figureLabel, figureVariants, fitView, formatBuilt, panelStatus, panelTarget, parsePaperManifest, targetSearch, zoomAt } from "./paperManifest";
 
 const manifest = {
   format: "gos-sc-paper-figures/1",
@@ -109,5 +109,17 @@ describe("paper figure groups: previous versions", () => {
     expect(m.figures[0]).toMatchObject({ group: "previous", label: "Old 3" });
     expect(m.figures[1].group).toBe("supplementary");
     expect(m.figures[2]).toMatchObject({ group: "main", label: "Fig 4b" });
+  });
+});
+
+describe("figureVariants", () => {
+  const m = parsePaperManifest({ figures: [{ id: "Figure5" }, { id: "Figure5_alt", label: "Fig 5 alt" }, { id: "Figure5_prev_261106" }, { id: "Figure2" }, { id: "Figure2_prev_261108" }, { id: "Figure50_x" }] });
+  it("lists alternative builds of a figure with prev dates", () => {
+    expect(figureVariants(m.figures, "Fig 5").map((v) => [v.value, v.label])).toEqual([["Fig 5 alt", "Fig 5 alt"], ["Fig 5 (prev)", "Previous (11-06)"]]);
+    expect(figureVariants(m.figures, "Fig 2").map((v) => v.label)).toEqual(["Previous (11-08)"]);
+  });
+  it("is empty when there is no main figure or no variants", () => {
+    expect(figureVariants(m.figures, "Fig 9")).toEqual([]);
+    expect(figureVariants(null, "Fig 5")).toEqual([]);
   });
 });

@@ -199,3 +199,19 @@ export function panelRegions(anchors, w, h, { grid = 96 } = {}) {
   }
   return [...box.values()];
 }
+
+/**
+ * Alternative builds of a figure for the figure tab's version switch: manifest figures whose id starts with the main
+ * figure's id + "_" (Figure5_alt, Figure5_prev_261106). [{ value: label, label: option text, id }]; the main figure
+ * (found by `label`) is not included. Prev versions read "Previous (11-06)".
+ */
+export function figureVariants(figures, label) {
+  const main = (figures || []).find((f) => f.label === label && f.group !== "previous");
+  if (!main) return [];
+  return figures
+    .filter((f) => f !== main && `${f.id}`.startsWith(`${main.id}_`))
+    .map((f) => {
+      const m = /_prev_(\d{2})(\d{2})(\d{2})$/i.exec(`${f.id}`);
+      return { value: f.label, id: f.id, label: m ? `Previous (${m[2]}-${m[3]})` : f.label };
+    });
+}
