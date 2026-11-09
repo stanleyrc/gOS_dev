@@ -20,6 +20,7 @@ export const COHORT_VIEWS = [
   { key: "clinical", group: "genome" },
   { key: "amplicons", group: "genome" },
   { key: "ecplast", group: "genome" },
+  { key: "bulk", group: "genome" },
   { key: "mutations", group: "genome" },
   { key: "treeshape", group: "evolution" },
   { key: "aligned", group: "evolution" },

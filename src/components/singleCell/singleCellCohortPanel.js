@@ -81,6 +81,7 @@ const CohortTreeShapePanel = React.lazy(() => import("./cohort/cohortTreeShapePa
 const CohortAlignedTreesPanel = React.lazy(() => import("./cohort/cohortAlignedTreesPanel"));
 const CohortMutJunctionsPanel = React.lazy(() => import("./cohort/cohortMutJunctionsPanel"));
 const CohortEcdnaPlasticityPanel = React.lazy(() => import("./cohort/cohortEcdnaPlasticityPanel"));
+const CohortBulkPanel = React.lazy(() => import("./cohort/cohortBulkPanel"));
 const CohortAssociationsPanel = React.lazy(() => import("./cohort/cohortAssociationsPanel"));
 const CohortGenePanel = React.lazy(() => import("./cohort/cohortGenePanel"));
 const CohortDriverTreesPanel = React.lazy(() => import("./cohort/cohortDriverTreesPanel"));
@@ -732,6 +733,11 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "ecplast" && (
           <Col span={24}>
             <CohortEcdnaPlasticityPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} summaries={summaries} />
+          </Col>
+        )}
+        {view === "bulk" && (
+          <Col span={24}>
+            <CohortBulkPanel dataset={datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null} datasets={datasets} />
           </Col>
         )}
         {paperFigureLabel(view) && (
