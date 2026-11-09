@@ -16,7 +16,6 @@ import {
 } from "antd";
 import * as d3 from "d3";
 import {
-  legendColors,
   coverageQCFields,
   getColorMarker,
   orderListViewFilters,
@@ -45,6 +44,8 @@ import { normalizePatientId } from "../patientCaseSwitcher/helpers";
 import CopyIconButton from "../copyIconButton";
 import ReportButtonsPanel from "../reportButtonsPanel";
 import PrimarySiteSelect from "../primarySiteSelect";
+import QuantileLegend from "./quantileLegend";
+import PatientSummaryStrip from "./patientSummaryStrip";
 import ctgovLogo from "../../assets/images/ctgov_logo.png";
 import { entryType } from "../../helpers/singleCell/cellFiles";
 
@@ -367,6 +368,14 @@ export class HeaderPanel extends Component {
     // While pinned during scrolling, single-cell patient pages keep only the
     // title row so the sticky area stays small.
     const compactHeader = Boolean(this.props.compact) && isSingleCellPatient;
+    // The lower 25% / mid 50% / top 25% key belongs to the colored summary values (bulk: the population
+    // quantile of each attribute; single-cell: the strip draws its own key), so it only shows when one is on the page.
+    const usesQuantileColors =
+      !isSingleCellPatient &&
+      summaryFields.some((field) => {
+        const plot = (plots || []).find((e) => e.id === field);
+        return plot?.q1 != null && plot?.q3 != null && getNestedValue(metadata, field) != null;
+      });
 
     return (
       <Wrapper>
@@ -456,12 +465,8 @@ export class HeaderPanel extends Component {
               </Space>
             </Space>
           }
-          extra={compactHeader ? null : (
-            <Space size={[0, 4]} wrap>
-              <Tag color={legendColors()[0]}>{t("metadata.tags.tag1")}</Tag>
-              <Tag color={legendColors()[1]}>{t("metadata.tags.tag2")}</Tag>
-              <Tag color={legendColors()[2]}>{t("metadata.tags.tag3")}</Tag>
-            </Space>
+          extra={compactHeader || !usesQuantileColors ? null : (
+            <QuantileLegend what={t("components.header-panel.quantile-legend-what")} />
           )}
         >
           {!compactHeader && (
@@ -614,6 +619,7 @@ export class HeaderPanel extends Component {
                 </div>
                 )}
               </div>
+              {isSingleCellPatient && <PatientSummaryStrip metadata={metadata} />}
             </div>
           </div>
           )}

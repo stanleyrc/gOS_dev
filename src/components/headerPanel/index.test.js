@@ -23,6 +23,7 @@ jest.mock("antd", () => ({
   Typography: { Text: "Text" },
   Button: "Button",
 }));
+jest.mock("./patientSummaryStrip", () => "PatientSummaryStrip");
 jest.mock("d3", () => ({ format: () => (value) => `${value}` }));
 jest.mock("../../helpers/utility", () => ({
   legendColors: () => ["a", "b", "c"],
