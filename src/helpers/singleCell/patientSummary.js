@@ -32,28 +32,37 @@ export function quantileClass(value, cohortValues, minN = 4) {
   return +value < q1 ? 0 : +value > q3 ? 2 : 1;
 }
 
+export const TMB_LABEL = "SNVs/Mb (our calls)";
+
 /**
- * TMB for one patient from the cohort tmb.json: truncal and subclonal SNV sites per callable Mb, each with its class
- * among the cohort's patients. patientDoc (the patient's own tmb.json, optional) adds the median over tumor cells of
- * the subclonal SNVs each cell carries.
+ * SNVs per Mb for one patient from _cohort/patient_summary_261109.json (srctools gos_sc_patient_summary.py; the
+ * Figure 1 version A counts): truncal per Mb, and the median over tumor cells of the shared subclonal calls per
+ * callable Mb and per cell, each with its quartile class among the cohort's patients.
  */
-export function summarizeTmb(cohortDoc, patient, patientDoc = null) {
-  const all = cohortDoc?.patients;
-  const p = Array.isArray(all) ? all.find((x) => x.patient === patient) : null;
+export function summarizeTmb(doc, patient) {
+  const all = doc?.patients;
+  const p = all && typeof all === "object" ? all[patient] : null;
   if (!p) return null;
-  const truncal = p.patient_summary?.truncal?.tmb_corrected;
-  const sub = p.patient_summary?.subclonal?.tmb_corrected;
-  const perCell = median((patientDoc?.cells || []).map((c) => c.n_subclonal_alt));
+  const col = (k) => Object.values(all).map((x) => x?.[k]);
   return {
-    truncalPerMb: finite(truncal) ? +truncal : null,
-    truncalSites: p.patient_summary?.truncal?.n_sites ?? null,
-    truncalClass: quantileClass(truncal, all.map((x) => x.patient_summary?.truncal?.tmb_corrected)),
-    subclonalPerMb: finite(sub) ? +sub : null,
-    subclonalClass: quantileClass(sub, all.map((x) => x.patient_summary?.subclonal?.tmb_corrected)),
-    subclonalPerCell: perCell,
-    nCohort: all.length,
-    noisy: Boolean(p.noisy),
+    truncalPerMb: finite(p.truncal_per_mb) ? +p.truncal_per_mb : null,
+    truncalSites: p.truncal_n ?? null,
+    truncalCorrected: Boolean(p.truncal_corrected),
+    truncalClass: quantileClass(p.truncal_per_mb, col("truncal_per_mb")),
+    subclonalPerMb: finite(p.subclonal_per_mb_median) ? +p.subclonal_per_mb_median : null,
+    subclonalClass: quantileClass(p.subclonal_per_mb_median, col("subclonal_per_mb_median")),
+    subclonalPerCell: finite(p.subclonal_per_cell_median) ? +p.subclonal_per_cell_median : null,
+    nCohort: Object.keys(all).length,
   };
+}
+
+/** The tree the page is drawn with: the label the Compare Trees dropdown gives it (trees/index.json entry "gos"), else a description. */
+export function currentTreeLabel(altTrees, method, record) {
+  const list = altTrees?.status === "ok" && Array.isArray(altTrees.data) ? altTrees.data : [];
+  const cur = list.find((t) => t.name === "gos") || null;
+  const d = describeTree(method, record);
+  if (cur?.label) return { label: cur.label, detail: cur.note || d?.detail || "", kind: d?.label?.startsWith("older") ? "older" : method === "file" ? "current" : "other" };
+  return d ? { label: d.label, detail: d.detail, kind: d.label.startsWith("older") ? "older" : d.label.startsWith("included") ? "current" : "other" } : null;
 }
 
 /** Tumor / normal counts: qc.json `normal` where present, else a clone named Normal. */
@@ -89,7 +98,7 @@ export function describeTree(method, record) {
   return null;
 }
 
-/** Cells flagged by QC (qc.json flags, or the coverage-QC fail): count over the cells that carry any QC call. */
+/** Cells flagged by QC (qc.json flags, or the coverage-QC fail), of the cells that carry any QC call (tumor and normal); `unassessed` have none. */
 export function countFlagged(cells = []) {
   let flagged = 0;
   let assessed = 0;
@@ -99,5 +108,5 @@ export function countFlagged(cells = []) {
     assessed += 1;
     if ((flag != null && flag !== "pass") || c.QC === "fail") flagged += 1;
   });
-  return { flagged, assessed };
+  return { flagged, assessed, unassessed: cells.length - assessed };
 }

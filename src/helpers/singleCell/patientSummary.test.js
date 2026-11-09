@@ -1,7 +1,7 @@
-import { countFlagged, countTumorNormal, describeTree, median, quantile, quantileClass, summarizeQc, summarizeTmb } from "./patientSummary";
+import { countFlagged, countTumorNormal, currentTreeLabel, describeTree, median, quantile, quantileClass, summarizeQc, summarizeTmb } from "./patientSummary";
 
-const patient = (name, trunc, sub, perCell = []) => ({ patient: name, noisy: false, patient_summary: { truncal: { tmb_corrected: trunc, n_sites: 100 }, subclonal: { tmb_corrected: sub } }, cells: perCell.map((n) => ({ n_subclonal_alt: n })) });
-const doc = { patients: [patient("A", 0.5, 0.1), patient("B", 1, 1), patient("C", 2, 2), patient("D", 3, 3), patient("E", 4, 4)] };
+const row = (t, sub, perCell) => ({ truncal_per_mb: t, truncal_n: 100, truncal_corrected: false, subclonal_per_mb_median: sub, subclonal_per_cell_median: perCell });
+const doc = { patients: { A: row(0.5, 0.1, 5), B: row(1, 1, 9), C: row(2, 2, 20), D: row(3, 3, 30), E: row(4, 4, 40) } };
 
 describe("patientSummary", () => {
   test("median and quantile", () => {
@@ -19,11 +19,16 @@ describe("patientSummary", () => {
     expect(quantileClass(null, cohort)).toBeNull();
   });
   test("summarizeTmb", () => {
-    expect(summarizeTmb(doc, "E")).toMatchObject({ truncalPerMb: 4, truncalClass: 2, subclonalPerMb: 4, subclonalClass: 2, subclonalPerCell: null, nCohort: 5 });
+    expect(summarizeTmb(doc, "E")).toMatchObject({ truncalPerMb: 4, truncalClass: 2, subclonalPerMb: 4, subclonalClass: 2, subclonalPerCell: 40, nCohort: 5 });
     expect(summarizeTmb(doc, "A")).toMatchObject({ truncalClass: 0, subclonalClass: 0 });
-    expect(summarizeTmb(doc, "C", { cells: [{ n_subclonal_alt: 1 }, { n_subclonal_alt: 9 }, { n_subclonal_alt: 5 }] }).subclonalPerCell).toBe(5);
     expect(summarizeTmb(doc, "Z")).toBeNull();
     expect(summarizeTmb(null, "A")).toBeNull();
+  });
+  test("currentTreeLabel uses the dropdown label of the current tree", () => {
+    const alt = { status: "ok", data: [{ name: "gos", label: "Pipeline (current; 5,675 tree sites)" }, { name: "x", label: "other" }] };
+    expect(currentTreeLabel(alt, "file", {})).toMatchObject({ label: "Pipeline (current; 5,675 tree sites)", kind: "current" });
+    expect(currentTreeLabel({ status: "missing" }, "snv", {}).label).toMatch(/SNV/);
+    expect(currentTreeLabel({ status: "missing" }, null, {})).toBeNull();
   });
   test("tumor / normal counts", () => {
     const cells = [{ cell_id: "a", clone_id: "Clone 1" }, { cell_id: "b", clone_id: "Normal" }, { cell_id: "c", clone_id: "Clone 1" }];
@@ -42,6 +47,6 @@ describe("patientSummary", () => {
     expect(describeTree(null, {})).toBeNull();
   });
   test("countFlagged only counts cells with a QC call", () => {
-    expect(countFlagged([{ "QC flag": "pass" }, { "QC flag": "doublet" }, { QC: "fail" }, {}])).toEqual({ flagged: 2, assessed: 3 });
+    expect(countFlagged([{ "QC flag": "pass" }, { "QC flag": "doublet" }, { QC: "fail" }, {}])).toEqual({ flagged: 2, assessed: 3, unassessed: 1 });
   });
 });
