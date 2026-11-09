@@ -536,6 +536,7 @@
       "report-wait": "Wait for saved interpretations to load or finish saving before opening the report."
     },
     "header-panel": {
+      "quantile-legend-what": "Quantile of the population for the values shown",
       "view-report": "View Report",
       "qcMetrics": "Quality Control Metrics",
       "cbioportal-button": "cBioPortal",

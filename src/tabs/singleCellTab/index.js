@@ -14,6 +14,7 @@ import { SpatialLayoutProvider, SpatialSection, useSpatialLayoutState } from "..
 import CladeComparisonCard from "../../components/singleCell/cladeComparisonCard";
 import PpfitLink from "../../components/singleCell/ppfit/ppfitLink";
 import ConvergencePanel from "../../components/singleCell/convergencePanel";
+import CellQuickSelect from "../../components/singleCell/cellQuickSelect";
 import CellSelectionPanel from "../../components/singleCell/cellSelectionPanel";
 import CellTracksPanel from "../../components/singleCell/cellTracksPanel";
 import PhyloBarsCard from "../../components/singleCell/phyloBarsCard";
@@ -121,6 +122,9 @@ export default function SingleCellTab() {
       <PendingEventOpener />
       <ScEventModal />
       <Row gutter={SC_GUTTER}>
+        <Col span={24}>
+          <CellQuickSelect />
+        </Col>
         <Col span={24}>
           <Space wrap size={[16, 4]} className="sc-tab-toggles">
             <HelpDrawer compact />
