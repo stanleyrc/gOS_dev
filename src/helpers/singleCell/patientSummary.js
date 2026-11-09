@@ -33,24 +33,24 @@ export function quantileClass(value, cohortValues, minN = 4) {
 }
 
 /**
- * TMB for one patient from the cohort tmb.json: truncal SNVs per callable Mb, and the median over tumor cells of
- * subclonal SNVs per cell; each with its class among the cohort's patients.
+ * TMB for one patient from the cohort tmb.json: truncal and subclonal SNV sites per callable Mb, each with its class
+ * among the cohort's patients. patientDoc (the patient's own tmb.json, optional) adds the median over tumor cells of
+ * the subclonal SNVs each cell carries.
  */
-export function summarizeTmb(cohortDoc, patient) {
+export function summarizeTmb(cohortDoc, patient, patientDoc = null) {
   const all = cohortDoc?.patients;
   const p = Array.isArray(all) ? all.find((x) => x.patient === patient) : null;
   if (!p) return null;
   const truncal = p.patient_summary?.truncal?.tmb_corrected;
-  const subclonalPerCell = (cells) => median((cells || []).map((c) => c.n_subclonal_alt));
-  const cohortTruncal = all.map((x) => x.patient_summary?.truncal?.tmb_corrected);
-  const cohortSub = all.map((x) => subclonalPerCell(x.cells));
-  const sub = subclonalPerCell(p.cells);
+  const sub = p.patient_summary?.subclonal?.tmb_corrected;
+  const perCell = median((patientDoc?.cells || []).map((c) => c.n_subclonal_alt));
   return {
     truncalPerMb: finite(truncal) ? +truncal : null,
     truncalSites: p.patient_summary?.truncal?.n_sites ?? null,
-    truncalClass: quantileClass(truncal, cohortTruncal),
-    subclonalPerCell: sub,
-    subclonalClass: quantileClass(sub, cohortSub),
+    truncalClass: quantileClass(truncal, all.map((x) => x.patient_summary?.truncal?.tmb_corrected)),
+    subclonalPerMb: finite(sub) ? +sub : null,
+    subclonalClass: quantileClass(sub, all.map((x) => x.patient_summary?.subclonal?.tmb_corrected)),
+    subclonalPerCell: perCell,
     nCohort: all.length,
     noisy: Boolean(p.noisy),
   };

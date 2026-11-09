@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
 import { Space, Tag, Tooltip, Typography } from "antd";
 import { legendColors } from "../../helpers/utility";
+import usePatientTmb from "../singleCell/usePatientTmb";
 import useCohortExport from "../singleCell/cohort/useCohortExport";
 import {
   countFlagged,
@@ -39,6 +40,7 @@ export default function PatientSummaryStrip({ metadata }) {
   const dataset = useSelector((s) => s.Settings.dataset);
   const sc = useSelector((s) => s.SingleCell);
   const tmbDoc = useCohortExport(dataset, "tmb.json");
+  const patientTmb = usePatientTmb();
   const pair = metadata?.pair;
   const ready = sc.patient && sc.patient.caseReportId === pair && !sc.loading;
   const cells = ready ? sc.cells : [];
@@ -47,7 +49,7 @@ export default function PatientSummaryStrip({ metadata }) {
   const counts = useMemo(() => countTumorNormal(cells, qcRows), [cells, qcRows]);
   const qc = useMemo(() => summarizeQc(qcRows), [qcRows]);
   const flagged = useMemo(() => countFlagged(cells), [cells]);
-  const tmb = useMemo(() => summarizeTmb(tmbDoc.data, pair), [tmbDoc.data, pair]);
+  const tmb = useMemo(() => summarizeTmb(tmbDoc.data, pair, patientTmb.status === "ok" ? patientTmb.data : null), [tmbDoc.data, pair, patientTmb]);
   const tree = useMemo(() => describeTree(sc.tree?.method, metadata), [sc.tree, metadata]);
 
   if (!ready) return null;
@@ -68,11 +70,15 @@ export default function PatientSummaryStrip({ metadata }) {
           {tmb?.truncalPerMb != null ? <span style={{ color: classColor(tmb.truncalClass) }}>{fmt(tmb.truncalPerMb)}</span> : <NA why={tmbWhy} />}
         </Item>
         <Item
-          label="Subclonal SNVs / cell"
-          tip={tmb ? `Median over tumor cells of the subclonal SNVs each cell carries${tmb.noisy ? " (patient flagged noisy: an upper bound)" : ""}. Colored by its quantile among ${tmb.nCohort} patients.` : undefined}
+          label="Subclonal SNVs / Mb"
+          tip={tmb ? `Dropout-corrected subclonal SNV sites per callable Mb${tmb.noisy ? " (patient flagged noisy: an upper bound)" : ""}. Colored by its quantile among ${tmb.nCohort} patients with SNV calls.${tmb.subclonalPerCell != null ? " The median is over tumor cells of the subclonal SNVs each cell carries (patient tmb.json)." : ""}` : undefined}
         >
-          {tmb?.subclonalPerCell != null ? (
-            <span style={{ color: classColor(tmb.subclonalClass) }}>{`median ${fmt(tmb.subclonalPerCell, 0)}`}{tmb.noisy ? " (noisy)" : ""}</span>
+          {tmb?.subclonalPerMb != null ? (
+            <>
+              <span style={{ color: classColor(tmb.subclonalClass) }}>{fmt(tmb.subclonalPerMb)}</span>
+              {tmb.subclonalPerCell != null ? <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>{` median ${fmt(tmb.subclonalPerCell, 0)} / cell`}</Text> : null}
+              {tmb.noisy ? <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}> (noisy)</Text> : null}
+            </>
           ) : (
             <NA why={tmbWhy} />
           )}
