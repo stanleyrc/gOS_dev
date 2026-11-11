@@ -91,7 +91,8 @@ export default function CompareTreesPanel() {
   const siteFilter = useSelector((s) => s.SingleCell.layout) || {};
   const events = useSelector((s) => s.FilteredEvents?.filteredEvents);
   const trees = useMemo(() => usableTrees(index), [index]);
-  const [defA, defB] = useMemo(() => defaultPair(trees), [trees]);
+  const drawnTree = useSelector((s) => s.SingleCell.treeVariant) || CURRENT_TREE;
+  const [defA, defB] = useMemo(() => defaultPair(trees, drawnTree), [trees, drawnTree]);
   // tree A / tree B / mutation set are URL params (cmpa, cmpb, cmpset); the defaults are left out of the URL
   const urlParam = (name) => {
     try {
@@ -218,8 +219,8 @@ export default function CompareTreesPanel() {
     const ra = prep(treeA.root);
     const rb = prep(treeB.root);
     if (!ra || !rb) return null;
-    return optimizeRotation(ra, rb, 8, a === CURRENT_TREE); // the pipeline tree keeps the Single-Cell tab order; only B is rotated
-  }, [treeA.root, treeB.root, hideNormal, cladogram, cells, a]);
+    return optimizeRotation(ra, rb, 8, a === drawnTree); // the pipeline tree keeps the Single-Cell tab order; only B is rotated
+  }, [treeA.root, treeB.root, hideNormal, cladogram, cells, a, drawnTree]);
   const finish = (root) => {
     if (!root) return null;
     const l = layoutTree(root);

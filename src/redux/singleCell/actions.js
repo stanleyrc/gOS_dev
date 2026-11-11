@@ -121,6 +121,8 @@ const actions = {
   SC_DRIVER_DRAWER_UPDATED: "SC_DRIVER_DRAWER_UPDATED",
   SC_CN_MAPPED_REQUEST: "SC_CN_MAPPED_REQUEST",
   SC_CN_MAPPED_LOADED: "SC_CN_MAPPED_LOADED",
+  SC_TREE_VARIANT_REQUEST: "SC_TREE_VARIANT_REQUEST",
+  SC_TREE_VARIANT_LOADED: "SC_TREE_VARIANT_LOADED",
 
   // caseReportId: load another patient than the open case report (cohort figures)
   fetchSingleCellData: (caseReportId) => ({ type: actions.FETCH_SINGLE_CELL_DATA_REQUEST, caseReportId }),
@@ -158,6 +160,8 @@ const actions = {
   updateHover: (cellId) => ({ type: actions.SC_HOVER_UPDATED, cellId }),
   /** patch of SC_DEFAULT_LAYOUT keys; saved in this browser */
   updateLayout: (patch) => ({ type: actions.SC_LAYOUT_UPDATED, patch }),
+  /** Draw another branch-length version of the tree (trees/index.json entry name; "gos" = tree.nwk). */
+  requestTreeVariant: (name) => ({ type: actions.SC_TREE_VARIANT_REQUEST, name }),
   /** Add (or replace) a computed RNA metadata field, e.g. k-means clusters: values keyed by RNA displayId. */
   addRnaField: (name, values, numeric = false) => ({ type: actions.SC_RNA_FIELD_ADDED, name, values, numeric }),
   /** Add a categorical field to the DNA cells (values keyed by cell id), e.g. carriers of an event. */

@@ -49,7 +49,7 @@ export default function PatientSummaryStrip({ metadata }) {
   const qc = useMemo(() => summarizeQc(qcRows), [qcRows]);
   const flagged = useMemo(() => countFlagged(cells), [cells]);
   const tmb = useMemo(() => summarizeTmb(tmbDoc.data, pair), [tmbDoc.data, pair]);
-  const tree = useMemo(() => currentTreeLabel(sc.altTrees, sc.tree?.method, metadata), [sc.altTrees, sc.tree, metadata]);
+  const tree = useMemo(() => currentTreeLabel(sc.altTrees, sc.tree?.method, metadata, sc.treeVariant), [sc.altTrees, sc.tree, metadata, sc.treeVariant]);
 
   if (!ready) return null;
   const usesQuantile = tmb && (tmb.truncalClass != null || tmb.subclonalClass != null);

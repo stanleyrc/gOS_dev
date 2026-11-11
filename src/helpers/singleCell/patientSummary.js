@@ -56,10 +56,10 @@ export function summarizeTmb(doc, patient) {
   };
 }
 
-/** The tree the page is drawn with: the label the Compare Trees dropdown gives it (trees/index.json entry "gos"), else a description. */
-export function currentTreeLabel(altTrees, method, record) {
+/** The tree the page is drawn with: the label the Compare Trees dropdown gives it (trees/index.json entry `drawn`, "gos" by default), else a description. */
+export function currentTreeLabel(altTrees, method, record, drawn = "gos") {
   const list = altTrees?.status === "ok" && Array.isArray(altTrees.data) ? altTrees.data : [];
-  const cur = list.find((t) => t.name === "gos") || null;
+  const cur = list.find((t) => t.name === (drawn || "gos")) || list.find((t) => t.name === "gos") || null;
   const d = describeTree(method, record);
   if (cur?.label) return { label: cur.label, detail: cur.note || d?.detail || "", kind: d?.label?.startsWith("older") ? "older" : method === "file" ? "current" : "other" };
   return d ? { label: d.label, detail: d.detail, kind: d.label.startsWith("older") ? "older" : d.label.startsWith("included") ? "current" : "other" } : null;

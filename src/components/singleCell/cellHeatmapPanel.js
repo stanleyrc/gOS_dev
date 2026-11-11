@@ -1,6 +1,7 @@
 import { findEntryByKey } from "../../helpers/singleCell/complexFamilies";
 import { splitMissingGenomes } from "../../helpers/singleCell/missingGenomes";
 import { treeNoteDisplay, treeQualityNote } from "../../helpers/singleCell/compareChoices";
+import { treeVariants, variantShortLabel } from "../../helpers/singleCell/treeVariants";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -1221,6 +1222,7 @@ export default function CellHeatmapPanel() {
       : t("components.single-cell.tree.none");
   const altIndex = useSelector((s) => s.SingleCell.altTrees?.data);
   const treeQuality = treeQualityNote(altIndex); // e.g. "weak: relaxed site set, 356 sites" (trees/index.json note)
+  const lengthVariants = useMemo(() => treeVariants(altIndex), [altIndex]); // branch-length versions of the drawn tree (trees/index.json topology_of)
 
   const ticks = useMemo(
     () => (heatmapType === "cn" && chromoBins ? genomicTicks(chromoBins, domainExtents(domains, heatWidth, DOMAIN_GAP)) : []),
@@ -1463,6 +1465,20 @@ export default function CellHeatmapPanel() {
                 {t("components.single-cell.toolbar.tmb")}
               </Tooltip>
             </Checkbox>
+          )}
+          {tree.status === "ok" && tree.method === "file" && lengthVariants.length > 1 && (
+            <Space size={4} data-testid="sc-branch-length">
+              <Tooltip title={t("components.single-cell.toolbar.branch-length-help")}>
+                <Text type="secondary">{t("components.single-cell.toolbar.branch-length")}</Text>
+              </Tooltip>
+              <Segmented
+                size="small"
+                value={sc.treeVariant || "gos"}
+                onChange={(v) => dispatch(singleCellActions.requestTreeVariant(v))}
+                options={lengthVariants.map((v) => ({ value: v.name, label: <Tooltip title={v.label}>{variantShortLabel(v)}</Tooltip> }))}
+              />
+              {sc.treeVariantError && <Text type="warning">{sc.treeVariantError}</Text>}
+            </Space>
           )}
           {tree.status === "ok" && (
             <Checkbox

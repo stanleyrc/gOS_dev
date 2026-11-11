@@ -40,6 +40,7 @@ import {
   upgma,
 } from "../../helpers/singleCell/phylogeny";
 import { allelicToGenome, dataToGenome } from "../../helpers/utility";
+import { BASE_TREE, activeTreeVariant, readTreeVariantParam, variantFile, writeTreeVariantParam } from "../../helpers/singleCell/treeVariants";
 
 const getState = (state) => state;
 // Above this many cells, skip on-the-fly tree inference (O(n^2) distances).
@@ -237,7 +238,19 @@ function* fetchSingleCellData(action = {}) {
     const cloneRank = new Map((viewLink?.cloneOrder || []).map((c, i) => [c, i]));
     const cloneOfCell = new Map(cells.map((c) => [`${c.cell_id}`, c.clone_id]));
     const rankOf = cloneRank.size ? (name) => cloneRank.get(cloneOfCell.get(`${name}`)) : null;
-    const tree = buildTree(treeFile, cellIds, snv, cn, genomeLength, rankOf);
+    // Branch-length version of the tree (trees/index.json `default` / ?treebl=): same topology as tree.nwk, other units
+    const altIndex = altTreesFile.status === "ok" ? altTreesFile.data : null;
+    let treeVariant = BASE_TREE;
+    let drawnTreeFile = treeFile;
+    const wantVariant = activeTreeVariant(altIndex, readTreeVariantParam());
+    if (wantVariant !== BASE_TREE) {
+      const variantFileRes = yield call(tryGet, casePath(dataset, id, variantFile(wantVariant)), { cancelToken, responseType: "text" });
+      if (variantFileRes.status === "ok") {
+        drawnTreeFile = variantFileRes;
+        treeVariant = wantVariant;
+      }
+    }
+    const tree = buildTree(drawnTreeFile, cellIds, snv, cn, genomeLength, rankOf);
     let order = defaultCellOrder(cells);
     if (tree.status === "ok") {
       const unplaced = new Set(tree.data.unplaced);
@@ -266,6 +279,7 @@ function* fetchSingleCellData(action = {}) {
       rnaIsoforms: isoformsFile.status === "ok" ? attempt(() => normalizeFusionIsoforms(isoformsFile.data)) : missing(),
       rnaDnaSupport: dnaSupportFile.status === "ok" ? attempt(() => normalizeDnaSupport(dnaSupportFile.data)) : missing(),
       altTrees: altTreesFile.status === "ok" ? altTreesFile : missing(),
+      treeVariant,
       cellFiles,
       selectedCellIds: [],
     });
@@ -273,6 +287,35 @@ function* fetchSingleCellData(action = {}) {
     if (axios.isCancel(error)) return;
     yield put({ type: actions.FETCH_SINGLE_CELL_DATA_FAILED, error });
   }
+}
+
+/** Draw another branch-length version of the tree (same cells and splits): fetch it, rebuild the layout and order. */
+function* switchTreeVariant(action) {
+  const state = yield select(getState);
+  const { dataset, genomeLength } = state.Settings;
+  const sc = state.SingleCell;
+  if (!dataset || !sc.patient || sc.loading) return;
+  const index = sc.altTrees?.status === "ok" ? sc.altTrees.data : null;
+  const name = activeTreeVariant(index, action.name);
+  writeTreeVariantParam(name, index);
+  if (name === sc.treeVariant) return;
+  const file = yield call(tryGet, casePath(dataset, sc.patient.caseReportId, variantFile(name)), { responseType: "text" });
+  if (file.status !== "ok") {
+    yield put({ type: actions.SC_TREE_VARIANT_LOADED, treeVariant: sc.treeVariant, tree: sc.tree, order: sc.order, error: `not available (${variantFile(name)} could not be read)` });
+    return;
+  }
+  const cellIds = sc.cells.map((c) => c.cell_id);
+  const viewLink = linkAppliesTo(readDeepLink(), `${sc.patient.caseReportId}`) ? readViewLink() : null;
+  const cloneRank = new Map((viewLink?.cloneOrder || []).map((c, i) => [c, i]));
+  const cloneOfCell = new Map(sc.cells.map((c) => [`${c.cell_id}`, c.clone_id]));
+  const rankOf = cloneRank.size ? (n) => cloneRank.get(cloneOfCell.get(`${n}`)) : null;
+  const tree = buildTree(file, cellIds, sc.snv, sc.cn, genomeLength, rankOf);
+  let order = defaultCellOrder(sc.cells);
+  if (tree.status === "ok") {
+    const unplaced = new Set(tree.data.unplaced);
+    order = [...tree.data.layout.leaves, ...order.filter((c) => unplaced.has(c))];
+  }
+  yield put({ type: actions.SC_TREE_VARIANT_LOADED, treeVariant: name, tree, order, error: null });
 }
 
 /** Fetch per-cell files for selected cells and toggled tracks not yet loaded. */
@@ -423,6 +466,7 @@ function* actionWatcher() {
   yield takeLatest(actions.SC_CN_MAPPED_REQUEST, loadCnMapped);
   yield takeLatest(actions.SC_PALETTE_UPDATED, persistPalette);
   yield takeLatest(actions.FETCH_SINGLE_CELL_DATA_REQUEST, fetchSingleCellData);
+  yield takeLatest(actions.SC_TREE_VARIANT_REQUEST, switchTreeVariant);
   yield takeEvery(
     [
       actions.FETCH_SINGLE_CELL_DATA_SUCCESS,

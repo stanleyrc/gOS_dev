@@ -120,6 +120,8 @@ const initState = {
   rnaSplicing: emptySource, // rna/splicing.json, normalised: { variants, clusters, cellMap }
   walks: emptySource, // walks.json: { cells, walks: [{ id, label, circular, nodes, junctions, cells: { id: cn } }] }
   altTrees: emptySource, // trees/index.json: [{ name, label, source_path, n_tips, n_matched }] (the files are fetched by the Compare Trees tab)
+  treeVariant: "gos", // which branch-length version of the tree is drawn ("gos" = tree.nwk; helpers/singleCell/treeVariants.js)
+  treeVariantError: null,
   precompute: {}, // { manifest, qc, sphase, telomeres, calls, slices }: each { status, data } (helpers/singleCell/precompute.js)
   // Raw per-cell files already loaded for the heatmaps, reused by the tracks.
   cellFiles: {}, // { [cellId]: { genome, mutations } }
@@ -172,6 +174,8 @@ export default function appReducer(state = initState, action) {
       };
     case actions.SC_CN_MAPPED_REQUEST:
       return state.cnMapped.status === "idle" ? { ...state, cnMapped: { ...emptySource, status: "loading" } } : state;
+    case actions.SC_TREE_VARIANT_LOADED:
+      return { ...state, tree: action.tree, order: action.order, treeVariant: action.treeVariant, treeVariantError: action.error || null };
     case actions.SC_CN_MAPPED_LOADED:
       return action.patient === state.patient?.caseReportId ? { ...state, cnMapped: action.cnMapped } : state;
     case actions.FETCH_SINGLE_CELL_DATA_PROGRESS:
@@ -220,6 +224,8 @@ export default function appReducer(state = initState, action) {
         rnaDnaSupport: action.rnaDnaSupport || emptySource,
         rnaIsoforms: action.rnaIsoforms || emptySource,
         altTrees: action.altTrees || emptySource,
+        treeVariant: action.treeVariant || "gos",
+        treeVariantError: null,
         precompute: action.precompute || {},
         cellFiles: action.cellFiles,
         selectedCellIds: linkedCells.length ? linkedCells : action.selectedCellIds,

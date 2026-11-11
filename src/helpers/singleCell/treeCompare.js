@@ -8,6 +8,7 @@ import { isDarkLike } from "./plotTheme";
 // pipeline tree is the one of the single-cell store.
 import { layoutTree, leafNames, parseNewick, pruneTree, rotateByLeafRank } from "./newick";
 import { yieldToBrowser } from "./rnaStats";
+import { withPreviousDefault } from "./treeVariants";
 import { driverKey, driverLabel, splitIds } from "./driverContrast";
 
 export const CURRENT_TREE = "gos";
@@ -21,6 +22,7 @@ export const MAX_PAINTED = 8;
 export function usableTrees(index) {
   return (Array.isArray(index) ? index : [])
     .filter((t) => t && t.name && (t.name === CURRENT_TREE || t.n_matched >= 3))
+    .map((t) => withPreviousDefault(t, index))
     .map((t) => (canonicalTreeName(t.name) === t.name ? t : { ...t, name: canonicalTreeName(t.name) }));
 }
 
@@ -51,13 +53,15 @@ export const COLLAB_TBE_TREE = "Collaborator_tbe_261026";
 export function defaultTreeB(trees, a = CURRENT_TREE) {
   const names = (trees || []).map((t) => t.name);
   const pick = [COLLAB_TBE_TREE, "Collaborator_latest", "Collaborator_old"].find((n) => names.includes(n) && n !== a);
-  return pick || names.find((n) => n !== a) || null;
+  // a branch-length version of A (same topology, trees/index.json topology_of) is the last resort
+  const group = (n) => (trees || []).find((t) => t.name === n)?.topology_of || n;
+  return pick || names.find((n) => n !== a && group(n) !== group(a)) || names.find((n) => n !== a) || null;
 }
 
-/** Default pair: the pipeline tree (as drawn in the Single-Cell tab) against defaultTreeB. */
-export function defaultPair(trees) {
+/** Default pair: the pipeline tree as drawn in the Single-Cell tab (`current`, store treeVariant) against defaultTreeB. */
+export function defaultPair(trees, current = CURRENT_TREE) {
   const names = (trees || []).map((t) => t.name);
-  const a = names.includes(CURRENT_TREE) ? CURRENT_TREE : names[0] || null;
+  const a = names.includes(current) ? current : names.includes(CURRENT_TREE) ? CURRENT_TREE : names[0] || null;
   return [a, defaultTreeB(trees, a)];
 }
 

@@ -1683,6 +1683,8 @@
         "hide-placeholder": "clones…",
         "clip": "Shorten long branches",
         "clip-help": "Branches longer than 3× the 95th percentile (e.g. a normal outgroup) are drawn shortened and marked with //",
+        "branch-length": "Branch length",
+        "branch-length-help": "Same tree (same cells and splits), drawn with a different branch length. Hover an option for how it was counted.",
         "ploidy": "Ploidy bars",
         "ploidy-help": "Per-cell ploidy as a bar (length = ploidy), coloured by deviation from the patient's modal ploidy (blue below, red above). Hover for ploidy, purity and fit QC.",
         "tmb": "TMB bars",
