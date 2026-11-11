@@ -1,7 +1,7 @@
 import { findEntryByKey } from "../../helpers/singleCell/complexFamilies";
 import { splitMissingGenomes } from "../../helpers/singleCell/missingGenomes";
 import { treeNoteDisplay, treeQualityNote } from "../../helpers/singleCell/compareChoices";
-import { hasOtherTopologies, sameTopologyAsBase, treeVariants, variantShortLabel } from "../../helpers/singleCell/treeVariants";
+import { drawnTreeEntry, hasOtherTopologies, sameTopologyAsBase, treeVariants, variantShortLabel } from "../../helpers/singleCell/treeVariants";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -1218,12 +1218,16 @@ export default function CellHeatmapPanel() {
   const missingGenomes = missingSplit.other;
   const missingNormals = missingSplit.normal;
 
+  // a drawn tree other than tree.nwk (trees/index.json default or ?treebl=) is named by its index entry
+  const drawnEntry = drawnTreeEntry(sc.altTrees?.data, sc.treeVariant);
   const treeNote =
     tree.status === "ok"
-      ? t(`components.single-cell.tree.${tree.method}`)
+      ? drawnEntry && tree.method === "file"
+        ? drawnEntry.label || drawnEntry.name
+        : t(`components.single-cell.tree.${tree.method}`)
       : t("components.single-cell.tree.none");
   const altIndex = useSelector((s) => s.SingleCell.altTrees?.data);
-  const treeQuality = treeQualityNote(altIndex); // e.g. "weak: relaxed site set, 356 sites" (trees/index.json note)
+  const treeQuality = drawnEntry && tree.method === "file" ? drawnEntry.note || null : treeQualityNote(altIndex); // e.g. "weak: relaxed site set, 356 sites" (trees/index.json note)
   const lengthVariants = useMemo(() => treeVariants(altIndex), [altIndex]); // branch-length versions of the drawn tree (trees/index.json topology_of) and drawable trees
   const otherTopologies = hasOtherTopologies(altIndex);
   const notInTree = tree.status === "ok" && tree.method === "file" && sc.treeVariant && sc.treeVariant !== "gos" ? (tree.data?.unplaced || []).length : 0;

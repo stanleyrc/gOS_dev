@@ -57,6 +57,12 @@ export function hasOtherTopologies(index) {
   return (Array.isArray(index) ? index : []).some((t) => t && t.name !== BASE_TREE && t.drawable === true && t.topology_of !== BASE_TREE);
 }
 
+/** Index entry of the drawn tree when it is not tree.nwk (null for the pipeline tree or an unknown name). */
+export function drawnTreeEntry(index, name) {
+  if (!name || name === BASE_TREE) return null;
+  return (Array.isArray(index) ? index : []).find((t) => t && t.name === name) || null;
+}
+
 /** True when `name` is the pipeline tree or one of its re-scalings (same splits: SNV anchors of the pipeline tree apply). */
 export function sameTopologyAsBase(name, index) {
   if (!name || name === BASE_TREE) return true;

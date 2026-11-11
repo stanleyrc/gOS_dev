@@ -1,4 +1,4 @@
-import { BASE_TREE, activeTreeVariant, defaultTreeVariant, hasOtherTopologies, sameTopologyAsBase, serializeVariant, supportKeys, treeVariants, variantFile, variantShortLabel } from "./treeVariants";
+import { BASE_TREE, activeTreeVariant, defaultTreeVariant, drawnTreeEntry, hasOtherTopologies, sameTopologyAsBase, serializeVariant, supportKeys, treeVariants, variantFile, variantShortLabel } from "./treeVariants";
 import { defaultPair, defaultTreeB, usableTrees } from "./treeCompare";
 
 const index = [
@@ -68,5 +68,8 @@ describe("treeVariants", () => {
     expect(sameTopologyAsBase("alt_mut", adopted)).toBe(false);
     expect(sameTopologyAsBase("alt_sps", adopted)).toBe(false);
     expect(supportKeys("alt_sps", adopted)).toEqual(["alt_sps", "alt_mut"]);
+    expect(drawnTreeEntry(adopted, "alt_mut").short_label).toBe("Alt · mutations");
+    expect(drawnTreeEntry(adopted, "gos")).toBeNull();
+    expect(drawnTreeEntry(adopted, "missing")).toBeNull();
   });
 });
