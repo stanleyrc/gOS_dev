@@ -19,10 +19,34 @@ export const VERDICT_COLOR = { "ecDNA-like": "magenta", "chromosomal / integrate
 export const CALL_COLOR = { unstable: "#c41d7f", "unstable (sister untested)": "#eb7bb5", stable: "#1d39c4", indeterminate: "#8c8c8c", "not enough": "#bfbfbf" };
 const DECISIVE = new Set(["ecDNA-like", "chromosomal / integrated", "mixed", "nested"]);
 
+
+export const VARMEAN_THRESHOLD = 3.27;
+export const VARMEAN_RULE_TEXT =
+  `ecDNA call (primary): var/mean = variance / mean of copy number across carrier cells (CN >= max(4, 1.5 x ploidy)); ecDNA-like when >= ${VARMEAN_THRESHOLD} with >= 10 carriers. D (below) is kept as a check.`;
+export const VARMEAN_COLOR = { "ecDNA-like": "magenta", "not ecDNA-like (stable)": "blue", "not callable": "default", "not available": "default" };
+const NA = "not available";
 export const RULE_TEXT =
-  "ecDNA status (CN dispersion): D = per-cell CN variance beyond measurement noise / mean, within SNV-tree clades (S-phase cells excluded). " +
+  VARMEAN_RULE_TEXT + " Check: D = per-cell CN variance beyond measurement noise / mean, within SNV-tree clades (S-phase cells excluded). " +
   "Unstable (ecDNA-like): D 95% CI > 1; stable (chromosomal / integrated): D CI < 0.5, i.e. tighter than one round of random segregation; " +
   "not enough: < 10 carrier cells or CN < 5. gGnome DM is a junction-pattern call and can coexist with stable inheritance (integrated ecDNA).";
+
+/** var/mean of one amplicon (exporter fields cn_var_mean, varmean_call). { available, value, call, color, reason }. Missing fields -> "not available". */
+export function varMeanOf(amplicon) {
+  const value = amplicon?.cn_var_mean;
+  const call = amplicon?.varmean_call;
+  if (!Number.isFinite(value) || !call) return { available: false, value: null, call: NA, color: "default", reason: "cn_var_mean / varmean_call not in this ecdna_status.json export" };
+  const key = /^not callable/.test(call) ? "not callable" : call;
+  return { available: true, value, call, color: VARMEAN_COLOR[key] || "default", reason: "" };
+}
+
+/** Combine amplicon var/mean calls: any ecDNA-like -> ecDNA-like; else any stable -> stable; else not callable; none available -> not available. */
+export function combineVarMean(amplicons = []) {
+  const v = amplicons.map(varMeanOf).filter((x) => x.available);
+  if (!v.length) return { available: false, call: NA, text: NA, color: "default", value: null };
+  const pick = v.find((x) => x.call === "ecDNA-like") || v.find((x) => x.call === "not ecDNA-like (stable)") || v[0];
+  const best = pick.call === "ecDNA-like" ? Math.max(...v.filter((x) => x.call === "ecDNA-like").map((x) => x.value)) : pick.value;
+  return { available: true, call: pick.call, text: pick.call, color: pick.color, value: best };
+}
 
 export const isEcdnaKind = (k) => /^(dm|cpxdm)$/i.test(`${k || ""}`);
 
@@ -63,7 +87,13 @@ export function statusForFootprint(doc, location) {
   const amps = doc.amplicons.filter((a) => a.kind === "amplicon" && fp.some((f) => `${f.chromosome}` === `${a.chrom}` && f.start <= a.end && f.end >= a.start));
   if (!amps.length) return null;
   const verdict = combineVerdicts(amps.map((a) => a.verdict));
-  return { verdict, text: VERDICT_TEXT[verdict] || verdict, color: VERDICT_COLOR[verdict] || "default", amplicons: amps };
+  const vm = combineVarMean(amps);
+  return { verdict, text: VERDICT_TEXT[verdict] || verdict, color: VERDICT_COLOR[verdict] || "default", amplicons: amps, vm, chipText: chipTextFor(vm, VERDICT_TEXT[verdict] || verdict), chipColor: vm.available ? vm.color : VERDICT_COLOR[verdict] || "default" };
+}
+
+/** Chip text: var/mean call first; D verdict as the check. Missing var/mean reads "not available". */
+function chipTextFor(vm, dText) {
+  return vm.available ? `var/mean ${fmt(vm.value, 3)}: ${vm.call} (D check: ${dText})` : `var/mean: ${NA} (D: ${dText})`;
 }
 
 /** Status for a driver entry / event, only for gGnome DM / Cpxdm calls (null otherwise). */
@@ -112,12 +142,14 @@ export function cladeSummary(amplicon) {
 /** Tooltip lines for a status (per amplicon: label, verdict, clade summary, all-cell D). */
 export function statusLines(status, { maxAmplicons = 4 } = {}) {
   if (!status) return [];
-  const lines = [`ecDNA status (CN dispersion): ${status.text}`];
+  const vm = status.vm || combineVarMean(status.amplicons);
+  const lines = [`ecDNA call (var/mean): ${vm.available ? `${vm.call}, var/mean ${fmt(vm.value, 3)}` : NA}; D check: ${status.text}`];
   status.amplicons.slice(0, maxAmplicons).forEach((a) => {
     const all = (a.groups || []).find((g) => g.group === "ALL");
     const where = `chr${a.chrom}:${(a.start / 1e6).toFixed(1)}-${(a.end / 1e6).toFixed(1)} Mb${a.label ? ` (${a.label})` : ""}`;
     const cs = cladeSummary(a);
-    lines.push(`${where}: ${VERDICT_TEXT[a.verdict] || a.verdict}${cs ? `; ${cs}` : ""}${all && Number.isFinite(all.D) ? `; all cells D ${fmt(all.D)} (${fmt(all.D_lo)} to ${fmt(all.D_hi)})` : ""}`);
+    const av = varMeanOf(a);
+    lines.push(`${where}: var/mean ${av.available ? `${fmt(av.value, 3)} (${av.call})` : NA}; D check ${VERDICT_TEXT[a.verdict] || a.verdict}${cs ? `; ${cs}` : ""}${all && Number.isFinite(all.D) ? `; all cells D ${fmt(all.D)} (${fmt(all.D_lo)} to ${fmt(all.D_hi)})` : ""}`);
   });
   if (status.amplicons.length > maxAmplicons) lines.push(`+${status.amplicons.length - maxAmplicons} more amplicons`);
   return lines;

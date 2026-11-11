@@ -10,6 +10,8 @@ import {
   statusHoverText,
   dotPlotLayout,
   VERDICT_TEXT,
+  varMeanOf,
+  combineVarMean,
 } from "./ecdnaStatus";
 
 // synthetic fixture (no patient data)
@@ -70,8 +72,8 @@ describe("ecdnaStatus", () => {
     expect(rows.find((r) => r.key === "P_n3").clade).toBe("n3");
     expect(cladeSummary(doc.amplicons[0])).toBe("ecDNA-like in n2; stable in n3");
     const lines = statusLines(statusForFootprint(doc, "12:1-1000000000"));
-    expect(lines[0]).toBe("ecDNA status (CN dispersion): mixed");
-    expect(lines[1]).toMatch(/chr12:1\.0-2\.0 Mb \(MDM2\): mixed; ecDNA-like in n2; stable in n3; all cells D 5/);
+    expect(lines[0]).toBe("ecDNA call (var/mean): not available; D check: mixed");
+    expect(lines[1]).toMatch(/chr12:1\.0-2\.0 Mb \(MDM2\): var\/mean not available; D check mixed; ecDNA-like in n2; stable in n3; all cells D 5/);
     expect(statusHoverText(null)).toBe("");
   });
 
@@ -95,7 +97,31 @@ describe("ecdnaHoverLines", () => {
     const items = [{ event: { vartype: "DM", Genome_Location: "12:1-1500000" } }, { event: { vartype: "DM", Genome_Location: "12:1200000-1300000" } }, { event: { vartype: "TIC", Genome_Location: "7:5000000-5100000" } }];
     const lines = ecdnaHoverLines(items, doc);
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatch(/^ecDNA status \(CN dispersion\): mixed/);
+    expect(lines[0]).toMatch(/^ecDNA call \(var\/mean\): not available; D check: mixed/);
     expect(ecdnaHoverLines(items, null)).toEqual([]);
+  });
+});
+
+describe("var/mean display", () => {
+  const amp = (extra) => ({ id: "a", kind: "amplicon", chrom: "1", start: 1, end: 100, verdict: "mixed", groups: [], ...extra });
+  it("reads var/mean fields and renders missing as not available", () => {
+    expect(varMeanOf(amp({ cn_var_mean: 12.5, varmean_call: "ecDNA-like" }))).toMatchObject({ available: true, value: 12.5, call: "ecDNA-like" });
+    expect(varMeanOf(amp({}))).toMatchObject({ available: false, call: "not available" });
+    expect(varMeanOf(amp({ cn_var_mean: 2, varmean_call: "not callable (< 10 carriers)" })).color).toBe("default");
+  });
+  it("combines calls, ecDNA-like first", () => {
+    const a = amp({ cn_var_mean: 1, varmean_call: "not ecDNA-like (stable)" });
+    const b = amp({ cn_var_mean: 9, varmean_call: "ecDNA-like" });
+    expect(combineVarMean([a, b])).toMatchObject({ call: "ecDNA-like", value: 9 });
+    expect(combineVarMean([a]).call).toBe("not ecDNA-like (stable)");
+    expect(combineVarMean([amp({})]).available).toBe(false);
+  });
+  it("puts var/mean first in the chip text and tooltip, D as check", () => {
+    const d = { amplicons: [amp({ cn_var_mean: 9, varmean_call: "ecDNA-like", groups: [{ group: "ALL", call: "stable", D: 0.1, D_lo: 0, D_hi: 0.2 }] })] };
+    const st = statusForFootprint(d, "1:1-100");
+    expect(st.chipText).toMatch(/^var\/mean 9\.00: ecDNA-like \(D check: mixed\)$/);
+    expect(statusLines(st)[0]).toMatch(/^ecDNA call \(var\/mean\): ecDNA-like, var\/mean 9\.00; D check: mixed/);
+    const old = statusForFootprint({ amplicons: [amp({})] }, "1:1-100");
+    expect(old.chipText).toBe("var/mean: not available (D: mixed)");
   });
 });

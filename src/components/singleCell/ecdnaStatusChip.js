@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Table, Tag, Tooltip, Typography } from "antd";
 import { casePath, tryGet } from "../../redux/singleCell/loaders";
-import { CALL_COLOR, RULE_TEXT, STATUS_FILE, VERDICT_COLOR, VERDICT_TEXT, cladeRows, dotPlotLayout, statusForEvent, statusLines, isEcdnaEvent } from "../../helpers/singleCell/ecdnaStatus";
+import { CALL_COLOR, RULE_TEXT, STATUS_FILE, VERDICT_COLOR, VERDICT_TEXT, cladeRows, varMeanOf, dotPlotLayout, statusForEvent, statusLines, isEcdnaEvent } from "../../helpers/singleCell/ecdnaStatus";
 
 const { Text } = Typography;
 const cache = new Map();
@@ -49,8 +49,8 @@ export function EcdnaStatusChip({ status, missing = false, style }) {
         </div>
       }
     >
-      <Tag color={status.color} style={style} data-ecdna-status={status.verdict}>
-        {status.text}
+      <Tag color={status.chipColor || status.color} style={style} data-ecdna-status={status.verdict} data-ecdna-varmean={status.vm?.call}>
+        {status.chipText || status.text}
       </Tag>
     </Tooltip>
   );
@@ -108,20 +108,29 @@ export function EcdnaStatusBlock({ entry }) {
     { title: "Carriers", render: (_, r) => `${r.n}/${r.nGroup}` },
     { title: "Median CN", render: (_, r) => fmt(r.median, 3) },
     { title: "CV", render: (_, r) => fmt(r.cv) },
-    { title: "D (95% CI)", render: (_, r) => `${fmt(r.D)} (${fmt(r.ci[0])} to ${fmt(r.ci[1])})` },
-    { title: "Sister D", render: (_, r) => fmt(r.dSib) },
+    { title: "D check (95% CI)", render: (_, r) => `${fmt(r.D)} (${fmt(r.ci[0])} to ${fmt(r.ci[1])})` },
+    { title: "Sister D (check)", render: (_, r) => fmt(r.dSib) },
     { title: "gGnome DM cells", render: (_, r) => (Number.isFinite(r.ggDm) ? r.ggDm : "n/a") },
   ];
   return (
     <div style={{ marginBottom: 10 }} data-ecdna-status-block>
       <div style={{ marginBottom: 4 }}>
-        <Text strong>ecDNA status by clade </Text>
+        <Text strong>ecDNA call (var/mean), D check by clade </Text>
         <EcdnaStatusChip status={status} />
       </div>
       <Text type="secondary" style={{ fontSize: 12 }}>{RULE_TEXT}</Text>
       {status.amplicons.slice(0, 3).map((a) => (
         <div key={a.id} style={{ marginTop: 8 }}>
           <Text>{`chr${a.chrom}:${(a.start / 1e6).toFixed(2)}-${(a.end / 1e6).toFixed(2)} Mb${a.label ? ` (${a.label})` : ""}: `}</Text>
+          {(() => {
+            const vm = varMeanOf(a);
+            return vm.available ? (
+              <Tag color={vm.color} data-ecdna-varmean-amplicon>{`var/mean ${fmt(vm.value, 3)}: ${vm.call}`}</Tag>
+            ) : (
+              <Tooltip title={vm.reason}><Tag data-ecdna-varmean-amplicon>var/mean: not available</Tag></Tooltip>
+            );
+          })()}
+          <Text type="secondary">D check: </Text>
           <Tag color={VERDICT_COLOR[a.verdict]}>{VERDICT_TEXT[a.verdict] || a.verdict}</Tag>
           {a.verdict_with_sphase && a.verdict_with_sphase !== a.verdict && <Text type="secondary">{`(with S-phase cells: ${a.verdict_with_sphase})`}</Text>}
           <Table size="small" pagination={false} rowKey="key" dataSource={cladeRows(a)} columns={columns} style={{ marginTop: 4 }} />
