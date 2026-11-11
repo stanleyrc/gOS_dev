@@ -5,7 +5,11 @@
 // and splits, only the branch lengths differ (e.g. mutation counts instead of
 // substitutions per site). The entry with `default: true` is drawn when the
 // page opens; ?treebl=<name> picks another one. Without such entries the page
-// draws tree.nwk as before. d3-free so it can be unit tested.
+// draws tree.nwk as before. Entries with `drawable: true` are other trees (other
+// topology, e.g. an adopted collaborator tree) that may also be drawn and be the
+// default; their cells missing from the tree are listed below it ("not in tree"),
+// and branch SNVs (anchored on the pipeline tree) are not drawn on them.
+// `short_label` overrides the toggle text. d3-free so it can be unit tested.
 
 export const BASE_TREE = "gos";
 export const TREE_VARIANT_PARAM = "treebl";
@@ -19,7 +23,7 @@ const UNIT_LABELS = {
 export function treeVariants(index) {
   const list = Array.isArray(index) ? index.filter((t) => t && t.name) : [];
   const base = list.find((t) => t.name === BASE_TREE) || { name: BASE_TREE, label: "Pipeline tree" };
-  const others = list.filter((t) => t.name !== BASE_TREE && t.topology_of === BASE_TREE);
+  const others = list.filter((t) => t.name !== BASE_TREE && (t.topology_of === BASE_TREE || t.drawable === true));
   return others.length ? [withPreviousDefault(base, list), ...others] : [];
 }
 
@@ -28,7 +32,7 @@ const PREV = " (previous default)";
 export function withPreviousDefault(entry, index) {
   if (!entry || entry.name !== BASE_TREE) return entry;
   const list = Array.isArray(index) ? index : [];
-  const replaced = list.some((t) => t && t.name !== BASE_TREE && t.topology_of === BASE_TREE && t.default === true);
+  const replaced = list.some((t) => t && t.name !== BASE_TREE && (t.topology_of === BASE_TREE || t.drawable === true) && t.default === true);
   if (!replaced) return entry;
   const label = `${entry.label ?? ""}`;
   return { ...entry, previous_default: true, label: label.endsWith(PREV) ? label : `${label}${PREV}` };
@@ -48,11 +52,30 @@ export function activeTreeVariant(index, urlChoice = null) {
   return defaultTreeVariant(index);
 }
 
-/** Short toggle label: "Mutations" / "Substitutions per site" (from `branch_units`), else the entry label. */
-export function variantShortLabel(entry) {
+/** True when the index lists a drawable tree with another topology than the pipeline tree. */
+export function hasOtherTopologies(index) {
+  return (Array.isArray(index) ? index : []).some((t) => t && t.name !== BASE_TREE && t.drawable === true && t.topology_of !== BASE_TREE);
+}
+
+/** True when `name` is the pipeline tree or one of its re-scalings (same splits: SNV anchors of the pipeline tree apply). */
+export function sameTopologyAsBase(name, index) {
+  if (!name || name === BASE_TREE) return true;
+  const entry = (Array.isArray(index) ? index : []).find((t) => t && t.name === name);
+  return Boolean(entry) && entry.topology_of === BASE_TREE;
+}
+
+/**
+ * Short toggle label: `short_label`, else "Mutations" / "Substitutions per site" (from `branch_units`), else the entry label.
+ * With `index` listing trees of other topologies, the pipeline tree and its re-scalings read "Our tree" / "Our tree · Mutations".
+ */
+export function variantShortLabel(entry, index = null) {
   if (!entry) return "";
   const u = `${entry.branch_units ?? ""}`;
-  const base = UNIT_LABELS[u] || (u ? u[0].toUpperCase() + u.slice(1) : entry.label || entry.name);
+  const units = UNIT_LABELS[u] || (u ? u[0].toUpperCase() + u.slice(1) : "");
+  let base;
+  if (entry.short_label) base = `${entry.short_label}`;
+  else if (hasOtherTopologies(index) && (entry.name === BASE_TREE || entry.topology_of === BASE_TREE)) base = entry.name === BASE_TREE ? "Our tree" : `Our tree · ${units || entry.label || entry.name}`;
+  else base = units || entry.label || entry.name;
   return entry.previous_default ? `${base}${PREV}` : base;
 }
 

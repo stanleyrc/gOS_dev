@@ -1,4 +1,4 @@
-import { BASE_TREE, activeTreeVariant, defaultTreeVariant, serializeVariant, supportKeys, treeVariants, variantFile, variantShortLabel } from "./treeVariants";
+import { BASE_TREE, activeTreeVariant, defaultTreeVariant, hasOtherTopologies, sameTopologyAsBase, serializeVariant, supportKeys, treeVariants, variantFile, variantShortLabel } from "./treeVariants";
 import { defaultPair, defaultTreeB, usableTrees } from "./treeCompare";
 
 const index = [
@@ -44,5 +44,29 @@ describe("treeVariants", () => {
     expect(defaultPair(index, "gos_mapped")).toEqual(["gos_mapped", "other"]);
     expect(defaultPair(index)).toEqual(["gos", "other"]);
     expect(defaultTreeB(index.slice(0, 2), "gos_mapped")).toBe("gos");
+  });
+  it("drawable trees of another topology can be listed and be the default", () => {
+    const adopted = [
+      { name: "gos", label: "Synthetic pipeline tree" },
+      { name: "gos_mapped", branch_units: "mutations", topology_of: "gos", n_matched: 5 },
+      { name: "alt_mut", short_label: "Alt · mutations", branch_units: "mutations", drawable: true, default: true, n_matched: 4 },
+      { name: "alt_sps", branch_units: "substitutions per site", drawable: true, topology_of: "alt_mut", n_matched: 4 },
+      { name: "other", label: "Another tree", n_matched: 5 },
+    ];
+    expect(treeVariants(adopted).map((t) => t.name)).toEqual(["gos", "gos_mapped", "alt_mut", "alt_sps"]);
+    expect(defaultTreeVariant(adopted)).toBe("alt_mut");
+    expect(activeTreeVariant(adopted, "gos")).toBe("gos");
+    expect(hasOtherTopologies(adopted)).toBe(true);
+    expect(hasOtherTopologies(index)).toBe(false);
+    const [base, mapped, mut, sps] = treeVariants(adopted);
+    expect(variantShortLabel(base, adopted)).toBe("Our tree (previous default)");
+    expect(variantShortLabel(mapped, adopted)).toBe("Our tree · Mutations");
+    expect(variantShortLabel(mut, adopted)).toBe("Alt · mutations");
+    expect(variantShortLabel(sps, adopted)).toBe("Substitutions per site");
+    expect(sameTopologyAsBase("gos", adopted)).toBe(true);
+    expect(sameTopologyAsBase("gos_mapped", adopted)).toBe(true);
+    expect(sameTopologyAsBase("alt_mut", adopted)).toBe(false);
+    expect(sameTopologyAsBase("alt_sps", adopted)).toBe(false);
+    expect(supportKeys("alt_sps", adopted)).toEqual(["alt_sps", "alt_mut"]);
   });
 });

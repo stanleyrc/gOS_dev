@@ -1,7 +1,7 @@
 import { findEntryByKey } from "../../helpers/singleCell/complexFamilies";
 import { splitMissingGenomes } from "../../helpers/singleCell/missingGenomes";
 import { treeNoteDisplay, treeQualityNote } from "../../helpers/singleCell/compareChoices";
-import { treeVariants, variantShortLabel } from "../../helpers/singleCell/treeVariants";
+import { hasOtherTopologies, sameTopologyAsBase, treeVariants, variantShortLabel } from "../../helpers/singleCell/treeVariants";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -697,7 +697,9 @@ export default function CellHeatmapPanel() {
   const [besideHeader, setBesideHeader] = useState(null); // annotation strips above the SNV matrix beside the heatmap
 
   // SNVs per branch: sites placed on the file tree by their anchors (needs tree.nwk)
-  const canShowBranchSnvs = Boolean(fullTreeLayout && hasTree && snvReady && hasAnchors(snv.data));
+  // anchors belong to the pipeline tree: not drawn on a tree of another topology (trees/index.json drawable entries)
+  const drawnSameTopology = sameTopologyAsBase(sc.treeVariant, sc.altTrees?.data);
+  const canShowBranchSnvs = Boolean(fullTreeLayout && hasTree && snvReady && hasAnchors(snv.data) && drawnSameTopology);
   const showBranchSnvs = canShowBranchSnvs && Boolean(layout.branchSnvs);
   // "Paint on tree" from the selection bar counts only the selected mutations on the branches
   const paintSelected = Boolean(layout.snvPaintSelected) && snvSelected?.length > 0;
@@ -1222,7 +1224,9 @@ export default function CellHeatmapPanel() {
       : t("components.single-cell.tree.none");
   const altIndex = useSelector((s) => s.SingleCell.altTrees?.data);
   const treeQuality = treeQualityNote(altIndex); // e.g. "weak: relaxed site set, 356 sites" (trees/index.json note)
-  const lengthVariants = useMemo(() => treeVariants(altIndex), [altIndex]); // branch-length versions of the drawn tree (trees/index.json topology_of)
+  const lengthVariants = useMemo(() => treeVariants(altIndex), [altIndex]); // branch-length versions of the drawn tree (trees/index.json topology_of) and drawable trees
+  const otherTopologies = hasOtherTopologies(altIndex);
+  const notInTree = tree.status === "ok" && tree.method === "file" && sc.treeVariant && sc.treeVariant !== "gos" ? (tree.data?.unplaced || []).length : 0;
 
   const ticks = useMemo(
     () => (heatmapType === "cn" && chromoBins ? genomicTicks(chromoBins, domainExtents(domains, heatWidth, DOMAIN_GAP)) : []),
@@ -1468,15 +1472,21 @@ export default function CellHeatmapPanel() {
           )}
           {tree.status === "ok" && tree.method === "file" && lengthVariants.length > 1 && (
             <Space size={4} data-testid="sc-branch-length">
-              <Tooltip title={t("components.single-cell.toolbar.branch-length-help")}>
-                <Text type="secondary">{t("components.single-cell.toolbar.branch-length")}</Text>
+              <Tooltip title={t(otherTopologies ? "components.single-cell.toolbar.tree-choice-help" : "components.single-cell.toolbar.branch-length-help")}>
+                <Text type="secondary">{t(otherTopologies ? "components.single-cell.toolbar.tree-choice" : "components.single-cell.toolbar.branch-length")}</Text>
               </Tooltip>
               <Segmented
                 size="small"
                 value={sc.treeVariant || "gos"}
                 onChange={(v) => dispatch(singleCellActions.requestTreeVariant(v))}
-                options={lengthVariants.map((v) => ({ value: v.name, label: <Tooltip title={v.label}>{variantShortLabel(v)}</Tooltip> }))}
+                options={lengthVariants.map((v) => ({ value: v.name, label: <Tooltip title={v.note ? `${v.label}. ${v.note}` : v.label}>{variantShortLabel(v, altIndex)}</Tooltip> }))}
               />
+              {notInTree > 0 && (
+                <Tooltip title={t("components.single-cell.toolbar.not-in-tree-help")}>
+                  <Text type="warning" data-testid="sc-not-in-tree">{t("components.single-cell.toolbar.not-in-tree", { count: notInTree })}</Text>
+                </Tooltip>
+              )}
+              {!drawnSameTopology && snvReady && hasAnchors(snv.data) && <Text type="secondary">{t("components.single-cell.toolbar.branch-snvs-other-tree")}</Text>}
               {sc.treeVariantError && <Text type="warning">{sc.treeVariantError}</Text>}
             </Space>
           )}
