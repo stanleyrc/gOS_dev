@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Alert, Button, Card, Input, InputNumber, Select, Space, Switch, Table, Tag, Typography } from "antd";
 import { DownloadOutlined, UnorderedListOutlined } from "@ant-design/icons";
-import { CATALOG_TYPES, TYPE_LABEL, UNAVAILABLE_TYPES, buildPatientRows, catalogLinkQuery, catalogToCsv, countOmittedNoncoding, countsByType, emptyCatalogFilters, filterCatalogRows, missingSources, sortCatalogRows } from "../../../helpers/singleCell/eventsCatalog";
+import { CATALOG_TYPES, TYPE_LABEL, UNAVAILABLE_TYPES, buildPatientRows, catalogLinkQuery, catalogToCsv, countOmittedNoncoding, countSpliceMimics, countsByType, emptyCatalogFilters, filterCatalogRows, missingSources, sortCatalogRows } from "../../../helpers/singleCell/eventsCatalog";
 import { DataSwatch } from "../neutralTag";
 import { INK } from "../../../helpers/singleCell/plotTheme";
 
@@ -38,6 +38,7 @@ export default function EventsCatalogTable({ filesByPatient, patients, datasetKe
   const missing = useMemo(() => ids.flatMap((id) => (filesByPatient[id] ? missingSources(filesByPatient[id]).map((m) => ({ ...m, patient: id })) : [])), [filesByPatient, ids.join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = useMemo(() => sortCatalogRows(filterCatalogRows(rows, filters), sort.key, sort.dir), [rows, filters, sort]);
   const counts = useMemo(() => countsByType(rows), [rows]);
+  const nMimic = useMemo(() => countSpliceMimics(rows), [rows]);
   const nLoaded = ids.filter((id) => filesByPatient[id]).length;
   const onSort = (key) => (sort.key === key ? setSort({ key, dir: sort.dir === "desc" ? "asc" : "desc" }) : setSort({ key, dir: key === "patient" || key === "gene" || key === "type" || key === "locus" ? "asc" : "desc" }));
   const head = (key, title) => ({ title, sorter: true, sortOrder: sort.key === key ? (sort.dir === "asc" ? "ascend" : "descend") : null, onHeaderCell: () => ({ onClick: () => onSort(key) }) });
@@ -93,6 +94,12 @@ export default function EventsCatalogTable({ filesByPatient, patients, datasetKe
           <Text>Drivers only</Text>
           <Switch size="small" checked={includeNoncoding} onChange={setIncludeNoncoding} />
           <Text>Include non-coding SNVs</Text>
+          {nMimic > 0 && (
+            <>
+              <Switch size="small" checked={filters.showSpliceMimics} onChange={(showSpliceMimics) => set({ showSpliceMimics })} />
+              <Text>{`Show splice mimics (${nMimic.toLocaleString("en-US")})`}</Text>
+            </>
+          )}
           {versionToggle && (
             <>
               <Switch size="small" checked={versionToggle.checked} onChange={versionToggle.onChange} />
@@ -119,6 +126,7 @@ export default function EventsCatalogTable({ filesByPatient, patients, datasetKe
       <div style={{ padding: "8px 12px", fontSize: 12.5 }}>
         <Text type="secondary">
           {omitted > 0 ? `${omitted.toLocaleString("en-US")} non-coding SNV sites are not listed (switch on "Include non-coding SNVs"). ` : ""}
+          {nMimic > 0 && !filters.showSpliceMimics ? `${nMimic.toLocaleString("en-US")} junctions are hidden as exon-exon splice mimics (both ends on exon boundaries: spliced cDNA in the DNA library, not genomic junctions; switch on "Show splice mimics"). ` : ""}
           Cells = carrier cells; for SNV sites, the fraction is of cells with coverage. Clonality: exported call, else the carrier-cell fraction rule.
         </Text>
         {missing.length > 0 && (

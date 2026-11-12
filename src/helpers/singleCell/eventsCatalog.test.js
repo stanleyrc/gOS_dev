@@ -1,4 +1,4 @@
-import { buildPatientRows, inferCnClass, isReportVersion, catalogLinkQuery, catalogToCsv, countOmittedNoncoding, countsByType, emptyCatalogFilters, filterCatalogRows, missingSources, siteKeyOfEvent, siteKeyOfVariantId, sortCatalogRows } from "./eventsCatalog";
+import { buildPatientRows, inferCnClass, isReportVersion, catalogLinkQuery, catalogToCsv, countOmittedNoncoding, countSpliceMimics, countsByType, emptyCatalogFilters, filterCatalogRows, missingSources, siteKeyOfEvent, siteKeyOfVariantId, sortCatalogRows } from "./eventsCatalog";
 
 const ev = (o) => ({ gene: "", Tier: 3, n_cells: 5, cell_fraction: 0.5, seqnames: "7", start: "100", end: "900", ...o });
 const files = {
@@ -75,5 +75,19 @@ describe("eventsCatalog", () => {
   });
   it("reports missing source files", () => {
     expect(missingSources({ events: [] }).map((m) => m.reason)).toEqual(["SNV matrix (snv_variants.json) not available", "rna/fusions.json not available", "walks.json not available", "arm_events.json not exported for this report", "junctions_table.json not exported for this report"]);
+  });
+});
+
+describe("splice-mimic junctions", () => {
+  const junctions = { junctions: [
+    { chrA: "chr1", posA: 100, strA: "-", chrB: "chr1", posB: 900, strB: "+", class: "DEL-like", span: 800, n_cells_tumour: 9, genes: "GENE1", splice_mimic: true },
+    { chrA: "chr1", posA: 100, strA: "+", chrB: "chr1", posB: 5000, strB: "+", class: "INV-like", span: 4900, n_cells_tumour: 5, genes: "GENE1", splice_mimic: false },
+  ] };
+  const rows = buildPatientRows("P1", { junctions });
+  it("hides flagged junctions by default and shows them on request", () => {
+    expect(countSpliceMimics(rows)).toBe(1);
+    expect(filterCatalogRows(rows, emptyCatalogFilters()).map((r) => r.junction.class)).toEqual(["INV-like"]);
+    expect(filterCatalogRows(rows, { ...emptyCatalogFilters(), showSpliceMimics: true })).toHaveLength(2);
+    expect(rows.find((r) => r.junction.splice_mimic).detail).toMatch(/splice mimic/);
   });
 });

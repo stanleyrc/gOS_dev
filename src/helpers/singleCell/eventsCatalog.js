@@ -159,7 +159,7 @@ function junctionRow(patient, j, i, nTumour) {
     type: "junction",
     gene: j.genes || "",
     locus: `${j.chrA}:${j.posA}${j.strA} | ${j.chrB}:${j.posB}${j.strB}`,
-    detail: [j.class, num(j.span) != null ? `${(j.span / 1e6).toFixed(j.span < 1e6 ? 3 : 1)} Mb` : "", j.tier, num(j.n_reads_normal) ? `${j.n_reads_normal} normal reads` : "", j.splice_mimic ? "splice mimic" : ""].filter(Boolean).join(", "),
+    detail: [j.class, num(j.span) != null ? `${(j.span / 1e6).toFixed(j.span < 1e6 ? 3 : 1)} Mb` : "", j.tier, num(j.n_reads_normal) ? `${j.n_reads_normal} normal reads` : "", j.splice_mimic ? "splice mimic (exon-exon cDNA)" : ""].filter(Boolean).join(", "),
     nCells: n,
     fraction: nTumour ? n / nTumour : null,
     clonality: null,
@@ -269,15 +269,22 @@ export function missingSources(files = {}) {
   return out;
 }
 
-export const emptyCatalogFilters = () => ({ query: "", types: [], minCells: 0, driverOnly: false, clonality: [] });
+export const emptyCatalogFilters = () => ({ query: "", types: [], minCells: 0, driverOnly: false, clonality: [], showSpliceMimics: false });
 
-/** Filter rows: text over patient / type / gene / locus / detail, type multi-select, min carrier cells, driver-only. */
+/** A junction row the exporter flagged as an exon-exon splice mimic (spliced cDNA in the DNA library, not a genomic junction). */
+export const isSpliceMimicRow = (r) => r.type === "junction" && !!r.junction?.splice_mimic;
+
+/** Number of splice-mimic junction rows (hidden unless showSpliceMimics). */
+export const countSpliceMimics = (rows) => rows.filter(isSpliceMimicRow).length;
+
+/** Filter rows: text over patient / type / gene / locus / detail, type multi-select, min carrier cells, driver-only; splice-mimic junctions hidden by default. */
 export function filterCatalogRows(rows, f = emptyCatalogFilters()) {
   const terms = `${f.query || ""}`.toUpperCase().split(/\s+/).filter(Boolean);
   const types = f.types?.length ? new Set(f.types) : null;
   const clon = f.clonality?.length ? new Set(f.clonality) : null;
   const min = Number(f.minCells) || 0;
   return rows.filter((r) => {
+    if (!f.showSpliceMimics && isSpliceMimicRow(r)) return false;
     if (types && !types.has(r.type)) return false;
     if (min && r.nCells < min) return false;
     if (f.driverOnly && !r.driver) return false;
