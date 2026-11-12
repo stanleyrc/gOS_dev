@@ -82,12 +82,19 @@ describe("splice-mimic junctions", () => {
   const junctions = { junctions: [
     { chrA: "chr1", posA: 100, strA: "-", chrB: "chr1", posB: 900, strB: "+", class: "DEL-like", span: 800, n_cells_tumour: 9, genes: "GENE1", splice_mimic: true },
     { chrA: "chr1", posA: 100, strA: "+", chrB: "chr1", posB: 5000, strB: "+", class: "INV-like", span: 4900, n_cells_tumour: 5, genes: "GENE1", splice_mimic: false },
+    { chrA: "chr2", posA: 100, strA: "-", chrB: "chr2", posB: 900, strB: "+", class: "DEL-like", span: 800, n_cells_tumour: 50, genes: "GENE2", splice_mimic: true, in_graph: 40 },
   ] };
   const rows = buildPatientRows("P1", { junctions });
   it("hides flagged junctions by default and shows them on request", () => {
-    expect(countSpliceMimics(rows)).toBe(1);
-    expect(filterCatalogRows(rows, emptyCatalogFilters()).map((r) => r.junction.class)).toEqual(["INV-like"]);
-    expect(filterCatalogRows(rows, { ...emptyCatalogFilters(), showSpliceMimics: true })).toHaveLength(2);
-    expect(rows.find((r) => r.junction.splice_mimic).detail).toMatch(/splice mimic/);
+    expect(countSpliceMimics(rows)).toBe(1);   // only the mimic that no graph uses
+    expect(filterCatalogRows(rows, emptyCatalogFilters()).map((r) => r.gene)).toEqual(["GENE1", "GENE2"]);
+    expect(filterCatalogRows(rows, { ...emptyCatalogFilters(), showSpliceMimics: true })).toHaveLength(3);
+    const inGraph = rows.find((r) => r.gene === "GENE2");
+    expect(inGraph.spliceMimic).toBe(true);
+    expect(inGraph.spliceMimicNote).toMatch(/in the graph of 40 cells/);
+  });
+  it("flags fusion events that rest on in-graph mimic junctions", () => {
+    const r = buildPatientRows("P1", { events: [{ type: "Fusion", gene: "MARS::TSFM", fusion_genes: "MARS::TSFM", n_cells: 128, Tier: 3, splice_mimic: true }] });
+    expect(r[0].spliceMimic).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Alert, Button, Card, Input, InputNumber, Select, Space, Switch, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Input, InputNumber, Select, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
 import { DownloadOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { CATALOG_TYPES, TYPE_LABEL, UNAVAILABLE_TYPES, buildPatientRows, catalogLinkQuery, catalogToCsv, countOmittedNoncoding, countSpliceMimics, countsByType, emptyCatalogFilters, filterCatalogRows, missingSources, sortCatalogRows } from "../../../helpers/singleCell/eventsCatalog";
 import { DataSwatch } from "../neutralTag";
@@ -47,7 +47,22 @@ export default function EventsCatalogTable({ filesByPatient, patients, datasetKe
     { ...head("type", "Type"), dataIndex: "type", width: 190, render: (t) => <DataSwatch color={TYPE_COLORS[t]}>{TYPE_LABEL[t]}</DataSwatch> },
     { ...head("gene", "Gene(s)"), dataIndex: "gene", width: 170, render: (g) => (g ? <Text strong>{g}</Text> : <Text type="secondary">intergenic / unnamed</Text>) },
     { ...head("locus", "Locus"), dataIndex: "locus", width: 190, ellipsis: true, render: (v) => <Text type="secondary" style={{ fontSize: 13 }}>{v}</Text> },
-    { title: "Detail", dataIndex: "detail", width: 260, ellipsis: true, render: (v) => <Text type="secondary" style={{ fontSize: 13 }}>{v}</Text> },
+    {
+      title: "Detail",
+      dataIndex: "detail",
+      width: 260,
+      ellipsis: true,
+      render: (v, r) => (
+        <Space size={4}>
+          {r.spliceMimic && (
+            <Tooltip title={r.spliceMimicNote}>
+              <Tag color="gold" style={{ marginInlineEnd: 0 }}>splice mimic</Tag>
+            </Tooltip>
+          )}
+          <Text type="secondary" style={{ fontSize: 13 }}>{v}</Text>
+        </Space>
+      ),
+    },
     {
       ...head("nCells", "Cells"),
       dataIndex: "nCells",
@@ -97,7 +112,7 @@ export default function EventsCatalogTable({ filesByPatient, patients, datasetKe
           {nMimic > 0 && (
             <>
               <Switch size="small" checked={filters.showSpliceMimics} onChange={(showSpliceMimics) => set({ showSpliceMimics })} />
-              <Text>{`Show splice mimics (${nMimic.toLocaleString("en-US")})`}</Text>
+              <Text>{`Show splice mimics not in graph (${nMimic.toLocaleString("en-US")})`}</Text>
             </>
           )}
           {versionToggle && (
@@ -126,7 +141,7 @@ export default function EventsCatalogTable({ filesByPatient, patients, datasetKe
       <div style={{ padding: "8px 12px", fontSize: 12.5 }}>
         <Text type="secondary">
           {omitted > 0 ? `${omitted.toLocaleString("en-US")} non-coding SNV sites are not listed (switch on "Include non-coding SNVs"). ` : ""}
-          {nMimic > 0 && !filters.showSpliceMimics ? `${nMimic.toLocaleString("en-US")} junctions are hidden as exon-exon splice mimics (both ends on exon boundaries: spliced cDNA in the DNA library, not genomic junctions; switch on "Show splice mimics"). ` : ""}
+          {nMimic > 0 && !filters.showSpliceMimics ? `${nMimic.toLocaleString("en-US")} junctions are hidden as exon-exon splice mimics that no cell graph uses (both ends on exon boundaries: spliced cDNA pattern; switch on "Show splice mimics not in graph"). Mimics that are graph edges stay listed with a "splice mimic" badge. ` : ""}
           Cells = carrier cells; for SNV sites, the fraction is of cells with coverage. Clonality: exported call, else the carrier-cell fraction rule.
         </Text>
         {missing.length > 0 && (

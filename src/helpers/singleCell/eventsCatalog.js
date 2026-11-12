@@ -99,6 +99,8 @@ function eventRow(patient, e, i, ctx) {
     driver: tier != null && tier <= 2,
     clade: q.cladeF1 != null ? `F1 ${q.cladeF1.toFixed(2)}` : null,
     source: "filtered.events.json",
+    spliceMimic: !!e.splice_mimic,
+    spliceMimicNote: e.splice_mimic ? "rests on an exon-exon splice-mimic junction that is in the cell graphs" : null,
     link: { tab: type === "fusion" || type === "complex" ? 7 : 7, heatmap: type === "snv" ? "snv" : type === "fusion" ? "junctions" : "cn", gene: e.gene && /^[A-Za-z0-9.-]+$/.test(e.gene) ? e.gene : null, location: type === "fusion" || type === "complex" ? null : locusOfEvent(e) },
     event: e,
   };
@@ -159,7 +161,9 @@ function junctionRow(patient, j, i, nTumour) {
     type: "junction",
     gene: j.genes || "",
     locus: `${j.chrA}:${j.posA}${j.strA} | ${j.chrB}:${j.posB}${j.strB}`,
-    detail: [j.class, num(j.span) != null ? `${(j.span / 1e6).toFixed(j.span < 1e6 ? 3 : 1)} Mb` : "", j.tier, num(j.n_reads_normal) ? `${j.n_reads_normal} normal reads` : "", j.splice_mimic ? "splice mimic (exon-exon cDNA)" : ""].filter(Boolean).join(", "),
+    detail: [j.class, num(j.span) != null ? `${(j.span / 1e6).toFixed(j.span < 1e6 ? 3 : 1)} Mb` : "", j.tier, num(j.n_reads_normal) ? `${j.n_reads_normal} normal reads` : "", ].filter(Boolean).join(", "),
+    spliceMimic: !!j.splice_mimic,
+    spliceMimicNote: j.splice_mimic ? (num(j.in_graph) > 0 ? `exon-exon splice mimic, in the graph of ${num(j.in_graph)} cells` : "exon-exon splice mimic, not in any cell graph") : null,
     nCells: n,
     fraction: nTumour ? n / nTumour : null,
     clonality: null,
@@ -271,10 +275,11 @@ export function missingSources(files = {}) {
 
 export const emptyCatalogFilters = () => ({ query: "", types: [], minCells: 0, driverOnly: false, clonality: [], showSpliceMimics: false });
 
-/** A junction row the exporter flagged as an exon-exon splice mimic (spliced cDNA in the DNA library, not a genomic junction). */
-export const isSpliceMimicRow = (r) => r.type === "junction" && !!r.junction?.splice_mimic;
+/** A junction row flagged as an exon-exon splice mimic (spliced cDNA pattern) that NO cell graph uses: hidden by default.
+ * Mimics that are ALT edges of the report's cell graphs (in_graph > 0) stay visible, with a badge. */
+export const isSpliceMimicRow = (r) => r.type === "junction" && !!r.junction?.splice_mimic && !(num(r.junction?.in_graph) > 0);
 
-/** Number of splice-mimic junction rows (hidden unless showSpliceMimics). */
+/** Number of splice-mimic junction rows not in any graph (hidden unless showSpliceMimics). */
 export const countSpliceMimics = (rows) => rows.filter(isSpliceMimicRow).length;
 
 /** Filter rows: text over patient / type / gene / locus / detail, type multi-select, min carrier cells, driver-only; splice-mimic junctions hidden by default. */
