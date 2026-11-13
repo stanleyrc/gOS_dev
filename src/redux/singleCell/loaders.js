@@ -137,7 +137,8 @@ export async function loadCellHeatmapFiles(dataset, cellId, cancelToken) {
 export function arrowScatter(buffer, slope, intercept, inCn = false) {
   const table = tableFromIPC(buffer);
   const counts = Array.from(table.getChild("y").toArray());
-  const fit = Number.isFinite(slope) && Number.isFinite(intercept);
+  // slope must be positive: Number(null) is 0, which would flatten the track
+  const fit = Number.isFinite(slope) && slope > 0 && Number.isFinite(intercept);
   const hasFit = fit || inCn;
   const dataPointsX = Array.from(table.getChild("x").toArray());
   const dataPointsXHigh = [];
