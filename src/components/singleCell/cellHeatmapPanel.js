@@ -45,6 +45,7 @@ import settingsActions from "../../redux/settings/actions";
 import scaActions from "../../redux/scAnalysis/actions";
 import useTreeView from "./useTreeView";
 import HideLowQcControl from "./hideLowQcControl";
+import HideSPhaseControl from "./hideSPhaseControl";
 import { useQcCells } from "./useCovQc";
 import { withQcColumn } from "../../helpers/singleCell/cellQc";
 import {
@@ -1353,6 +1354,7 @@ export default function CellHeatmapPanel() {
           </Space>}
           <PinGenesControl />
           <HideLowQcControl />
+          <HideSPhaseControl />
           {cloneNames.length > 1 && (
             <Space size={4}>
               <Text type="secondary">{t("components.single-cell.toolbar.hide")}</Text>

@@ -8,7 +8,7 @@ import {
   isMissingDataResponse,
 } from "../../helpers/dataAvailability";
 import { allelicToGenome, dataToGenome, splitFloat64 } from "../../helpers/utility";
-import { SC_FETCHED_TRACKS } from "./actions";
+import { SC_FETCHED_TRACKS, SC_RAW_ARROW_TRACKS } from "./actions";
 import { hetBlocksToGraph } from "../../helpers/singleCell/hetTracks";
 import { parseRnaSummary, readMatrixBuffers } from "../../helpers/singleCell/staticRna";
 import { GZ_INDEX_FILE, dataRootOf, gunzipText, gzEntry, parseGzIndex, sourceIsFresh } from "../../helpers/singleCell/gzIndex";
@@ -222,6 +222,7 @@ export async function loadCellTrack(dataset, cellId, track, chromoBins) {
       const res = await tryGet(casePath(dataset, cellId, filename), { responseType: arrow ? "arraybuffer" : "json" });
       if (res.status !== "ok") return res;
       if (track === "total" || track === "mutations") return { status: "ok", data: res.data || { settings: {}, intervals: [], connections: [] } };
+      if (arrow && SC_RAW_ARROW_TRACKS.includes(track)) return { status: "ok", data: arrowScatter(res.data, NaN, NaN, true) };
       if (arrow) {
         const meta = await tryGet(casePath(dataset, cellId, "metadata.json"));
         const record = meta.status === "ok" ? (Array.isArray(meta.data) ? meta.data[0] : meta.data) || {} : {};

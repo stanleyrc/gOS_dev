@@ -121,6 +121,7 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
     );
   }
   const isHets = track === "hetsnps";
+  const isAtac = track === "atac" || track === "atac_pool";
   return (
     <ScatterPlotPanel
       {...{
@@ -132,14 +133,14 @@ export function TrackPlot({ cellId, track, data, status = "ok", error = null, ch
         dataPointsXLow: data.dataPointsXLow,
         dataPointsColor: data.dataPointsColor,
         error: null,
-        filename: track === "coverage" ? "coverage.arrow" : "hetsnps.arrow",
+        filename: isAtac ? `${track}.arrow` : track === "coverage" ? "coverage.arrow" : "hetsnps.arrow",
         title: `${label} · ${cellLabels.label(cellId)}`,
-        notification: isHets ? noNotification : data.hasFit ? noNotification : { status: "warning", heading: t("components.tracks-modal.missing-counts-axis"), messages: [t("components.single-cell.tracks.no-fit")] },
+        notification: isHets || isAtac ? noNotification : data.hasFit ? noNotification : { status: "warning", heading: t("components.tracks-modal.missing-counts-axis"), messages: [t("components.single-cell.tracks.no-fit")] },
         chromoBins,
         visible: true,
         height,
-        yAxisTitle: isHets ? t("components.single-cell.tracks.hetsnps-y") : data.hasFit ? t("components.tracks-modal.coverage-copy-number") : t("components.tracks-modal.coverage-count"),
-        yAxis2Title: t("components.tracks-modal.coverage-count"),
+        yAxisTitle: isAtac ? t("components.single-cell.tracks.atac-y") : isHets ? t("components.single-cell.tracks.hetsnps-y") : data.hasFit ? t("components.tracks-modal.coverage-copy-number") : t("components.tracks-modal.coverage-count"),
+        yAxis2Title: isAtac ? t("components.single-cell.tracks.atac-y") : t("components.tracks-modal.coverage-count"),
         commonRangeY: isHets ? HET_SNPS_RANGE : track === "coverage" && data.hasFit ? commonRangeY : null,
         windowRangesY: track === "coverage" && data.hasFit ? windowRangesY : null,
       }}

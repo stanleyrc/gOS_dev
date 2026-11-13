@@ -7,6 +7,7 @@ import axios from "axios";
 import actions, {
   SC_FETCH_CONCURRENCY,
   SC_FETCHED_TRACKS,
+  SC_RAW_ARROW_TRACKS,
   SC_MAX_TRACK_CELLS,
   SC_LAYOUT_STORAGE_KEY,
   SC_PALETTE_STORAGE_KEY,
@@ -334,7 +335,9 @@ function* fetchPerCellTrack(action) {
         track === "coverage"
           ? [meta.cov_slope, meta.cov_intercept]
           : [meta.hets_slope, meta.hets_intercept];
-      data = arrowScatter(res.data, Number(slope), Number(intercept), track === "coverage");
+      data = SC_RAW_ARROW_TRACKS.includes(track)
+        ? arrowScatter(res.data, NaN, NaN, true)
+        : arrowScatter(res.data, Number(slope), Number(intercept), track === "coverage");
     } else {
       const raw = res.data || { settings: {}, intervals: [], connections: [] };
       data = track === "hetblocks" ? dataToGenome(hetBlocksToGraph(raw), chromoBins) : dataToGenome(allelicToGenome(raw), chromoBins);

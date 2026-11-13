@@ -16,6 +16,7 @@ import { splitFromSearch } from "../../helpers/singleCell/panelSplit";
 import { driverLayoutFromSearch } from "../../helpers/singleCell/driverColumns";
 import { junctionFocusFromSearch } from "../../helpers/singleCell/junctionFocus";
 import { hideLowQcFromSearch, thresholdsFromSearch } from "../../helpers/singleCell/cellQc";
+import { hideSPhaseFromSearch, withSPhaseRule } from "../../helpers/singleCell/precompute";
 import { effectiveSignatures, sigFitMode } from "../../helpers/singleCell/signatureJoint";
 import { annotationFromSearch } from "../../helpers/singleCell/cellSignatures";
 import { readLayout, readPref } from "../../helpers/singleCell/viewSettingsStore";
@@ -32,11 +33,14 @@ const withUrlGroups = (layout) => {
     // ?hidelowqc=1 / ?qcthr=mapd:0.2 open with the low-QC cells hidden (coverage QC)
     const hide = hideLowQcFromSearch(window.location.search);
     const thr = thresholdsFromSearch(window.location.search);
+    // ?hidesphase=1 opens with the S-phase cells hidden (the "s_phase" cell-filter rule)
+    const hideS = hideSPhaseFromSearch(window.location.search);
     return {
       ...withDrivers,
       ...annotationFromSearch(window.location.search),
       ...(hide != null ? { hideLowQc: hide } : {}),
       ...(thr ? { covQcThresholds: { ...(withDrivers.covQcThresholds || {}), ...thr } } : {}),
+      ...(hideS != null ? { qcExcludeRules: withSPhaseRule(withDrivers.qcExcludeRules, hideS) } : {}),
     };
   } catch (error) {
     return withGroups;
