@@ -313,6 +313,7 @@ export class TracksLegendPanel extends Component {
                           exportName="genome-genes"
                           showControls={!(tight && compact)}
                           denseControls={tight}
+                          trimCollapsed={tight}
                         />
                       </Col>
                       )}

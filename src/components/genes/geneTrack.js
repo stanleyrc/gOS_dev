@@ -122,13 +122,13 @@ function clampDomain(domains, index, selection) {
  * shared `genemode` URL value), priorityGenes (override), exportName, hoverLine, maxHeight (collapsed-mode height
  * budget of a fixed-height host: rows that do not fit are left unlabelled, never cut), onHeightChange(px incl. controls),
  * interactive (false: no pan / zoom / click-zoom, for fixed windows such as the driver locus plots),
- * denseControls (24 px controls row, no gap: tight hosts), geneSearch (adds a gene type-ahead to the controls; picked genes are highlighted and the shared domains move to them),
+ * denseControls (24 px controls row, no gap: tight hosts), trimCollapsed (no empty band under collapsed rows), geneSearch (adds a gene type-ahead to the controls; picked genes are highlighted and the shared domains move to them),
  * homeDomains (the event's own windows: with geneSearch, a "Back to event" button restores them).
  */
 export default function GeneTrack({
   width, domains: domainsProp, gapX = 50, gapRight = null, showControls = true, mode: modeProp, onModeChange, priorityGenes: prioProp,
   onGeneShiftClick, exportName = "genes", hoverLine = true, maxHeight = null, interactive = true, onHeightChange = null,
-  geneSearch = false, homeDomains = null, denseControls = false,
+  geneSearch = false, homeDomains = null, denseControls = false, trimCollapsed = false,
 }) {
   const dispatch = useDispatch();
   const theme = usePlotTheme();
@@ -234,7 +234,8 @@ export default function GeneTrack({
   const anyIso = panels.some((p) => p.mode !== "collapsed");
   const heightMode = anyIso ? mode : "collapsed";
   const h = trackHeight(heightMode, rows);
-  const contentH = stripH + h.content;
+  // collapsed rows draw their labels inside the row: trimCollapsed drops the unused label band + bottom pad (keeps 4 px)
+  const contentH = stripH + h.content - (trimCollapsed && heightMode === "collapsed" ? GEOMETRY.collapsed.labelH + 4 : 0);
   // maxHeight is the host's budget for collapsed mode; squished / expanded keep their own caps (the host grows)
   const cap = heightMode === "collapsed" ? maxHeight : GEOMETRY[heightMode].cap + stripH;
   const visibleH = cap ? Math.min(contentH, cap) : contentH;
