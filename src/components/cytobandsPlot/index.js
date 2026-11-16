@@ -242,8 +242,10 @@ class CytobandsPlot extends Component {
     } = this.props;
     const { tooltip, selectedCytoband } = this.state;
 
+    // gapY / yExtent props: a host can draw the ideogram flush in a short strip (single-cell genome header)
+    const gapY = this.props.gapY ?? margins.gapY;
     let stageWidth = width - 2 * margins.gapX;
-    let stageHeight = height - 2 * margins.gapY;
+    let stageHeight = height - 2 * gapY;
 
     let panelWidth =
       (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
@@ -288,7 +290,7 @@ class CytobandsPlot extends Component {
         .domain(defaultDomain)
         .range([0, panelWidth]);
 
-      let yExtent = [-1, 2];
+      let yExtent = this.props.yExtent || [-1, 2];
 
       let yScale = d3
         .scaleLinear()

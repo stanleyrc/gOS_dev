@@ -33,6 +33,7 @@ import CytobandsPlot from "../cytobandsPlot";
 import LegendMultiBrush from "./legend-multi-brush";
 import GenomeRangePanel from "./genomeRangePanel";
 import HoverLine from "../hoverLine";
+import { TIGHT_HEADER, tightGenesBudget } from "../../helpers/singleCell/genomeHeader";
 
 const { updateDomains } = settingsActions;
 const { locateGenes } = genesActions;
@@ -121,6 +122,8 @@ export class TracksLegendPanel extends Component {
       plotHeight = null,
       compactKeepsGenes = false,
       cellYscaleOption = false,
+      // tight: single-cell genome header (panel sizes to its content, flush ideogram, no gene controls while compact)
+      tight = false,
     } = this.props;
     if (!visible) {
       return null;
@@ -134,7 +137,7 @@ export class TracksLegendPanel extends Component {
       <Wrapper>
         <Card
           size="small"
-          className={compact ? "tracks-legend-compact" : undefined}
+          className={[compact ? "tracks-legend-compact" : null, tight ? "tracks-legend-tight" : null].filter(Boolean).join(" ") || undefined}
           title={compact ? null : (
             <Space>
               <span role="img" className="anticon anticon-dashboard">
@@ -262,7 +265,9 @@ export class TracksLegendPanel extends Component {
               className="ant-wrapper"
               ref={(elem) => (this.container = elem)}
               style={{
-                ...(compact
+                ...(tight
+                  ? { height: "auto" }
+                  : compact
                   ? { height: compactKeepsGenes ? 150 + this.state.geneExtra : "auto" }
                   : { height: (plotHeight || 280) + this.state.geneExtra }),
                 // Optional padding so the genome plots line up with another
@@ -286,7 +291,10 @@ export class TracksLegendPanel extends Component {
                       : plotHeight
                       ? Math.max(40, height - 144)
                       : height / 2.5;
-                  const cytobandsHeight = plotHeight ? 120 : height / 2;
+                  const cytobandsHeight = tight ? TIGHT_HEADER.cytobands : plotHeight ? 120 : height / 2;
+                  const genesBudget = tight
+                    ? tightGenesBudget({ plotHeight, compact })
+                    : Math.max(81, genesHeight - 28);
                   return (
                     <Row style={{ width }} gutter={[margins.gap, 0]}>
                       <Col span={24}>
@@ -300,9 +308,11 @@ export class TracksLegendPanel extends Component {
                         <GeneTrack
                           width={width}
                           domains={domains}
-                          maxHeight={Math.max(81, genesHeight - 28)}
-                          onHeightChange={(h) => this.handleGeneHeight(genesHeight, h)}
+                          maxHeight={genesBudget}
+                          onHeightChange={tight ? null : (h) => this.handleGeneHeight(genesHeight, h)}
                           exportName="genome-genes"
+                          showControls={!(tight && compact)}
+                          denseControls={tight}
                         />
                       </Col>
                       )}
@@ -313,12 +323,13 @@ export class TracksLegendPanel extends Component {
                             width,
                             height: cytobandsHeight,
                             domains,
+                            ...(tight ? { gapY: 0, yExtent: TIGHT_HEADER.cytobandsYExtent } : {}),
                           }}
                         />
                         <HoverLine
                           width={width}
                           height={cytobandsHeight}
-                          margins={{ gapX: 50, gapY: 24, gapYUnits: 2 }}
+                          margins={tight ? { gapX: 50, gapY: 0, gapYUnits: 0 } : { gapX: 50, gapY: 24, gapYUnits: 2 }}
                         />
                       </Col>
                       )}

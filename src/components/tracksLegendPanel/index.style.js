@@ -10,6 +10,14 @@ const Wrapper = styled.div`
   .tracks-legend-compact.ant-card-small > .ant-card-body {
     padding: 4px 12px;
   }
+  /* single-cell genome header: no inline-svg baseline gap under the strip, gene track or ideogram */
+  .tracks-legend-tight .ant-wrapper svg.legend-container,
+  .tracks-legend-tight .ant-wrapper svg.plot-container-cytobands {
+    display: block;
+  }
+  .tracks-legend-tight.ant-card-small > .ant-card-body {
+    padding-bottom: 4px !important;
+  }
   .ant-wrapper-legend {
     background: white;
     padding: 0px;

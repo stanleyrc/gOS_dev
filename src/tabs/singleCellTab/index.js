@@ -180,6 +180,7 @@ export default function SingleCellTab() {
                 plotInsets,
                 plotHeight: dragNav ?? layout.navHeight,
                 compactKeepsGenes: Boolean(layout.keepGeneTrack),
+                tight: true,
               }}
             />
             </div>

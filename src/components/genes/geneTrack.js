@@ -122,13 +122,13 @@ function clampDomain(domains, index, selection) {
  * shared `genemode` URL value), priorityGenes (override), exportName, hoverLine, maxHeight (collapsed-mode height
  * budget of a fixed-height host: rows that do not fit are left unlabelled, never cut), onHeightChange(px incl. controls),
  * interactive (false: no pan / zoom / click-zoom, for fixed windows such as the driver locus plots),
- * geneSearch (adds a gene type-ahead to the controls; picked genes are highlighted and the shared domains move to them),
+ * denseControls (24 px controls row, no gap: tight hosts), geneSearch (adds a gene type-ahead to the controls; picked genes are highlighted and the shared domains move to them),
  * homeDomains (the event's own windows: with geneSearch, a "Back to event" button restores them).
  */
 export default function GeneTrack({
   width, domains: domainsProp, gapX = 50, gapRight = null, showControls = true, mode: modeProp, onModeChange, priorityGenes: prioProp,
   onGeneShiftClick, exportName = "genes", hoverLine = true, maxHeight = null, interactive = true, onHeightChange = null,
-  geneSearch = false, homeDomains = null,
+  geneSearch = false, homeDomains = null, denseControls = false,
 }) {
   const dispatch = useDispatch();
   const theme = usePlotTheme();
@@ -239,7 +239,8 @@ export default function GeneTrack({
   const cap = heightMode === "collapsed" ? maxHeight : GEOMETRY[heightMode].cap + stripH;
   const visibleH = cap ? Math.min(contentH, cap) : contentH;
   const scrolls = contentH > visibleH;
-  const totalH = visibleH + (showControls ? 30 : 0);
+  const controlsH = denseControls ? 24 : 28;
+  const totalH = visibleH + (showControls ? controlsH + (denseControls ? 0 : 2) : 0);
   useEffect(() => {
     if (onHeightChange) onHeightChange(totalH);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -432,7 +433,7 @@ export default function GeneTrack({
   return (
     <div ref={containerRef} className="gos-gene-track" style={{ position: "relative", width }}>
       {showControls && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, height: 28, marginBottom: 2, paddingLeft: gapX, paddingRight: right, whiteSpace: "nowrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, height: controlsH, marginBottom: denseControls ? 0 : 2, paddingLeft: gapX, paddingRight: right, whiteSpace: "nowrap" }}>
           <Segmented size="small" value={mode} onChange={setMode} options={MODE_OPTIONS} />
           <Text type="secondary" ellipsis={{ tooltip: true }} style={{ fontSize: TYPE.tick, minWidth: 0, flex: "0 1 auto" }}>
             {[
