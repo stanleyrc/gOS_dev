@@ -15,9 +15,9 @@ import CnZoomLayer from "./cnZoomLayer";
 import GenomeTrackLayer from "./genomeTrackLayer";
 import CellGraphLens from "./cellGraphLens";
 import { createPopupController } from "../../../helpers/singleCell/hoverPopup";
-import { focusWindows } from "../../../helpers/singleCell/paperCellGraph";
+import { focusWindows, loadedFor, tagLoaded } from "../../../helpers/singleCell/paperCellGraph";
 import SnvLensLayer, { loadSnvLookup } from "./snvLensLayer";
-import { highlightRects, hitAt, markPositions, panelTables, parseSidecar, plotHitAt, rowBand, rowsBetween, selectionTable, sidecarExtras, tableTsv, toPage } from "../../../helpers/singleCell/paperSidecar";
+import { highlightRects, hitAt, markPositions, panelTables, paperLinkUrl, parseSidecar, plotHitAt, rowBand, rowsBetween, selectionTable, sidecarExtras, tableTsv, toPage, visibleFields } from "../../../helpers/singleCell/paperSidecar";
 import { applyPaperTokens, paperTokensVersion } from "../../../helpers/singleCell/paperPalette";
 import { encodeGroups } from "../../../helpers/singleCell/savedGroups";
 import { cellFromLabel, lensContains, lensToDisplay, lensIsHome, lensOn, lensPan, lensToPage, lensView, lensZoom, marksInBox, nearestJunction, pinchFactor, regionWindow } from "../../../helpers/singleCell/paperZoom";
@@ -154,12 +154,14 @@ function PaperFigureInteractive({ label, navLabel = null }) {
   const regions = useMemo(() => (fig?.widthPt ? panelRegions(anchors, fig.widthPt, fig.heightPt) : []), [anchors, fig]);
   const [imgReady, setImgReady] = useState(false);
   useEffect(() => setImgReady(false), [fig?.id]);
-  const [sidecar, setSidecar] = useState(null);
+  // the sidecar is tagged with the file it came from, so a figure change never applies the previous figure's hit regions
+  const [sidecarLoad, setSidecarLoad] = useState(null);
+  const sidecar = loadedFor(sidecarLoad, `${fig?.id}|${fig?.interactive}`);
   useEffect(() => {
-    setSidecar(null);
     if (!fig?.interactive || !imgReady) return undefined;
     let live = true;
-    tryGet(fig.interactive).then((r) => live && setSidecar(r.status === "ok" ? parseSidecar(r.data) : null));
+    const key = `${fig.id}|${fig.interactive}`;
+    tryGet(fig.interactive).then((r) => live && setSidecarLoad(tagLoaded(key, r.status === "ok" ? parseSidecar(r.data) : null)));
     return () => {
       live = false;
     };
@@ -262,6 +264,8 @@ function PaperFigureInteractive({ label, navLabel = null }) {
     setLens(null);
     setPatientOpen(null);
     popupCtl.current.close();
+    clearHoverRef.current(); // a hover card / tooltip of the previous figure must not survive the figure change
+    graphs.current.clear();
   }, [label]);
   const extras = useMemo(() => (sidecar ? sidecarExtras(sidecar, sidecar.data?.walk_names?.patient || sidecar.data?.ecdna_snvs?.patient) : {}), [sidecar]);
   const walkPatient = sidecar?.data?.walk_names?.patient || null;
@@ -894,6 +898,11 @@ function PaperFigureInteractive({ label, navLabel = null }) {
             select([`${cell}`], ph.fields.patient || ph.region.patient || null, null, e);
             return;
           }
+          const href = paperLinkUrl(ph?.fields?.link, window.location.search, window.location.pathname);
+          if (href) {
+            window.open(href, "_blank", "noopener");
+            return;
+          }
           if (ph?.fields?.patient) {
             setPatientOpen({ patient: `${ph.fields.patient}`, fields: ph.fields, panel: `${fig.label}${ph.region.panel || ""}` });
             return;
@@ -967,11 +976,10 @@ function PaperFigureInteractive({ label, navLabel = null }) {
           <div className="sc-tooltip" style={tooltipStyle}>
             <div style={{ fontWeight: 600 }}>{plotHit.fields ? plotHit.fields.cell || plotHit.fields.patient || plotHit.fields.gene || plotHit.fields.row || plotHit.fields.label || `${fig.label}${plotHit.region.panel || ""}` : `${fig.label}${plotHit.region.panel || ""}`}</div>
             {plotHit.fields &&
-              Object.entries(plotHit.fields)
-                .filter(([key]) => key !== "cell")
+              visibleFields(plotHit.fields)
                 .map(([key, v]) => <div key={key}>{`${key}: ${fmtVal(v)}`}</div>)}
             {plotHit.axis && <div>{`x: ${plotHit.axis.x == null ? "–" : fmtVal(plotHit.axis.x)} · y: ${plotHit.axis.y == null ? "–" : fmtVal(plotHit.axis.y)}`}</div>}
-            <div style={{ opacity: 0.8 }}>{plotHit.fields?.cell ? "click to select · shift adds · drag a box to select many" : plotHit.fields?.patient ? "click for the patient summary" : "drag a box to select cells · click to open the panel"}</div>
+            <div style={{ opacity: 0.8 }}>{plotHit.fields?.cell ? "click to select · shift adds · drag a box to select many" : plotHit.fields?.link ? `click to open ${plotHit.fields.link_label || "its gOS view"} (new tab)` : plotHit.fields?.patient ? "click for the patient summary" : "drag a box to select cells · click to open the panel"}</div>
           </div>
         )}
         {geneHover && tip && (

@@ -220,3 +220,23 @@ export function focusWindows(region, { zoom = null, view = null, rect = region }
   const ws = regionWindows(region, a, b).map(({ chr, from, to }) => ({ chr, from, to }));
   return ws.length ? ws : null;
 }
+
+// ---- hover freshness: async graph loads must never show another cell's graph
+
+/** Tag a loaded value with the request it answers (cell, dataset path ...): { key, value }. */
+export const tagLoaded = (key, value) => ({ key: `${key}`, value });
+
+/**
+ * The value of a tagged load only while it answers the current request, else null. Loads resolve asynchronously and,
+ * with React 18 batching, a cached result for the next hovered cell can land in the same render as the reset, so a
+ * component must compare keys instead of trusting "data was reset on change".
+ */
+export const loadedFor = (tagged, key) => (tagged && tagged.key === `${key}` ? tagged.value : null);
+
+/**
+ * Identity of a drawn cell graph: changes whenever the cell, the windows or the CN axis change. Used as the React key
+ * of the genome plot, whose shouldComponentUpdate compares genome objects by toString() ("[object Object]") and so
+ * misses a new cell on the same window and CN axis.
+ */
+export const lensPlotKey = (cell, wins, yMax) =>
+  `${cell}|${normWins(wins).map((w) => `${w.chr}:${Math.round(w.from)}-${Math.round(w.to)}`).join(",")}|${yMax}`;

@@ -4,7 +4,7 @@ import { Button, Typography } from "antd";
 import { CloseOutlined, ExportOutlined } from "@ant-design/icons";
 import GenomePlot from "../../genomePlot";
 import { dataToGenome } from "../../../helpers/utility";
-import { lensGraph, lensYMax, subgraphForWindows, windowsToDomains } from "../../../helpers/singleCell/paperCellGraph";
+import { lensGraph, lensPlotKey, lensYMax, loadedFor, subgraphForWindows, tagLoaded, windowsToDomains } from "../../../helpers/singleCell/paperCellGraph";
 import { loadCellGraph } from "./genomeTrackLayer";
 
 const { Text } = Typography;
@@ -38,7 +38,9 @@ const fmtWin = (w) => `chr${w.chr}:${(w.from / 1e6).toFixed(3)}–${(w.to / 1e6)
 export default function CellGraphLens({ cell, patient, wins, width, height = 260, href, onClose, onPin, pinned }) {
   const dataset = useSelector((s) => s.Settings?.dataset);
   const chromoBins = useSelector((s) => s.Settings?.chromoBins);
-  const [data, setData] = useState(null);
+  const [loaded, setLoaded] = useState(null); // { key, value }: only shown while it answers the current cell
+  const loadKey = `${dataset?.dataPath}|${cell}`;
+  const data = loadedFor(loaded, loadKey);
   const cvRef = useRef(null);
   const rootRef = useRef(null);
   // the page zooms the figure on wheel: inside the graph the wheel scrolls the page instead
@@ -51,8 +53,10 @@ export default function CellGraphLens({ cell, patient, wins, width, height = 260
   }, []);
   useEffect(() => {
     let live = true;
-    setData(null);
-    loadCellGraph(dataset, cell, chromoBins).then((d) => live && setData(d || { graph: null, coverage: null }));
+    const key = `${dataset?.dataPath}|${cell}`;
+    loadCellGraph(dataset, cell, chromoBins)
+      .then((d) => live && setLoaded(tagLoaded(key, d || { graph: null, coverage: null })))
+      .catch(() => live && setLoaded(tagLoaded(key, { graph: null, coverage: null })));
     return () => {
       live = false;
     };
@@ -123,7 +127,7 @@ export default function CellGraphLens({ cell, patient, wins, width, height = 260
         <canvas ref={cvRef} style={{ position: "absolute", left: 0, top: 0, width, height: plotH, pointerEvents: "none" }} />
         {genome && domains.length > 0 && (
           <div style={{ position: "absolute", left: 0, top: 0 }}>
-            <GenomePlot width={width} height={plotH} genome={genome} localDomains={domains} windowRangesY={windowRangesY} yAxisTitle="CN" />
+            <GenomePlot key={lensPlotKey(cell, wins, yMax)} width={width} height={plotH} genome={genome} localDomains={domains} windowRangesY={windowRangesY} yAxisTitle="CN" />
           </div>
         )}
       </div>

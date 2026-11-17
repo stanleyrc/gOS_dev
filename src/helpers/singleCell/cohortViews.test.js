@@ -15,6 +15,15 @@ describe("cohort views", () => {
     expect(COHORT_VIEWS.slice(k, k + 3).map((v) => v.key)).toEqual(["overview", "portrait", "reports"]);
     expect(paperFigureLabel("paperfigS1")).toBe("Fig S1");
     expect(paperFigureLabel("overview")).toBeNull();
+    expect(paperFigureLabel("paperfigS16")).toBe("Fig S16");
+  });
+  it("shows the v7 figure tabs; the 11-09 supplements resolve from old links but get no tab", () => {
+    const { viewsInGroup } = require("./cohortViews");
+    const tabs = viewsInGroup("paper").map((v) => v.key);
+    expect(tabs).toContain("paperfigS8");
+    expect(tabs).toContain("paperfigS15");
+    expect(tabs).not.toContain("paperfigV1");
+    expect(resolveCohortView("paperfigV1")).toBe("paperfigV1");
   });
   it("resolves unknown keys to the overview", () => {
     expect(resolveCohortView("qc")).toBe("qc");

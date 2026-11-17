@@ -121,3 +121,22 @@ describe("selection table", () => {
     expect(t.rows).toEqual([["c2", null, null, "Clone2", "AC"], ["c1", "Clone1", "NPC", "Clone1", null]]);
   });
 });
+
+describe("mark links", () => {
+  const { paperLinkUrl, visibleFields } = require("./paperSidecar");
+  it("keeps the dataset and the link's own parameters only", () => {
+    const u = paperLinkUrl("report=BWH70&tab=14&walk=EGFR+1", "?dataset=gbm-sc&scview=paperfig4&figpanel=c&report=X", "/sclarke/gOS_dev/");
+    expect(u).toBe("/sclarke/gOS_dev/?dataset=gbm-sc&report=BWH70&tab=14&walk=EGFR+1");
+    const q = new URLSearchParams(u.split("?")[1]);
+    expect(q.get("walk")).toBe("EGFR 1");
+    expect(q.get("scview")).toBeNull();
+  });
+  it("rejects empty links and links without a report", () => {
+    expect(paperLinkUrl("", "?dataset=x")).toBeNull();
+    expect(paperLinkUrl(null)).toBeNull();
+    expect(paperLinkUrl("tab=7", "?dataset=x")).toBeNull();
+  });
+  it("hides link plumbing from tooltips", () => {
+    expect(visibleFields({ cell: "c1", link: "report=A", link_label: "x", origin: "excision" }).map(([k]) => k)).toEqual(["origin"]);
+  });
+});

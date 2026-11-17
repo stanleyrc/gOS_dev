@@ -312,3 +312,23 @@ export function selectionTable(sidecar, ids, recordOf = () => null, cladeOf = (c
   });
   return { title: "selected cells", columns: [...cols, ...extraCols], rows };
 }
+
+// ---- click-through links on marks (sidecar field `link`: a gOS query string, e.g. "report=BWH70&tab=14&walk=EGFR+1")
+
+/**
+ * gOS URL of a mark's link: the current page path with only the dataset kept from the current URL, plus the link's
+ * parameters (report, tab, walk, location ...). null for an empty / malformed link or one without a report.
+ */
+export function paperLinkUrl(link, search = "", pathname = "/") {
+  if (link == null || `${link}`.trim() === "") return null;
+  const want = new URLSearchParams(`${link}`.replace(/^\?/, ""));
+  if (!want.get("report")) return null;
+  const cur = new URLSearchParams(search);
+  const out = new URLSearchParams();
+  if (cur.get("dataset")) out.set("dataset", cur.get("dataset"));
+  want.forEach((v, k) => k !== "dataset" && out.set(k, v));
+  return `${pathname}?${out.toString()}`;
+}
+
+/** Fields of a mark worth listing in a tooltip (link plumbing hidden). */
+export const visibleFields = (fields) => Object.entries(fields || {}).filter(([k]) => k !== "cell" && k !== "link" && k !== "link_label");

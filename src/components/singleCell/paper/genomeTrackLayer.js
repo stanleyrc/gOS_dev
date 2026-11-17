@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { loadCellTrack } from "../../../redux/singleCell/loaders";
-import { basisOps, cnTicks, connectorPoints, lensGraph, lensYMax, loosePoints } from "../../../helpers/singleCell/paperCellGraph";
+import { basisOps, cnTicks, connectorPoints, lensGraph, lensYMax, loadedFor, loosePoints, tagLoaded } from "../../../helpers/singleCell/paperCellGraph";
 
 const cache = new Map(); // `${dataPath}|${cell}` -> Promise<{ graph, coverage }>
 
@@ -32,21 +32,30 @@ export default function GenomeTrackLayer({ cell, box, win, onGraph }) {
   const dataset = useSelector((s) => s.Settings?.dataset);
   const chromoBins = useSelector((s) => s.Settings?.chromoBins);
   const ref = useRef(null);
-  const [data, setData] = useState(null);
+  const [loaded, setLoaded] = useState(null); // { key, value }: a previous cell's graph is never drawn for this one
+  const data = loadedFor(loaded, `${dataset?.dataPath}|${cell}`);
   useEffect(() => {
     let live = true;
-    loadCellGraph(dataset, cell, chromoBins).then((d) => {
-      if (!live) return;
-      setData(d);
-      if (d?.graph) onGraph?.(cell, d.graph);
-    });
+    const key = `${dataset?.dataPath}|${cell}`;
+    loadCellGraph(dataset, cell, chromoBins)
+      .then((d) => {
+        if (!live) return;
+        setLoaded(tagLoaded(key, d || { graph: null, coverage: null }));
+        if (d?.graph) onGraph?.(cell, d.graph);
+      })
+      .catch(() => live && setLoaded(tagLoaded(key, { graph: null, coverage: null })));
     return () => {
       live = false;
     };
   }, [dataset, cell, chromoBins]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const cv = ref.current;
-    if (!cv || !data) return;
+    if (!cv) return;
+    if (!data) {
+      // the cell changed and its graph is still loading: blank the canvas instead of keeping the previous cell's drawing
+      cv.getContext("2d")?.clearRect(0, 0, cv.width, cv.height);
+      return;
+    }
     const pr = window.devicePixelRatio || 1;
     const W = Math.max(1, Math.round(box.width));
     const H = Math.max(1, Math.round(box.height));

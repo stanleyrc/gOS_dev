@@ -93,3 +93,20 @@ describe("paperCellGraph", () => {
     expect(focusWindows(region, { view: { x0: 200, x1: 300, y0: 0, y1: 10 } })).toBeNull();
   });
 });
+
+describe("hover freshness (stale graph bug)", () => {
+  const { tagLoaded, loadedFor, lensPlotKey } = require("./paperCellGraph");
+  it("returns a load only for the request it answers", () => {
+    const t = tagLoaded("data/|cellA", { graph: 1 });
+    expect(loadedFor(t, "data/|cellA")).toEqual({ graph: 1 });
+    expect(loadedFor(t, "data/|cellB")).toBeNull();
+    expect(loadedFor(null, "data/|cellA")).toBeNull();
+  });
+  it("gives a new plot key for another cell on the same window and CN axis", () => {
+    const w = [{ chr: "chr7", from: 55e6, to: 56e6 }];
+    expect(lensPlotKey("cellA", w, 8)).not.toBe(lensPlotKey("cellB", w, 8));
+    expect(lensPlotKey("cellA", w, 8)).toBe(lensPlotKey("cellA", [{ chr: "7", from: 55e6, to: 56e6 }], 8));
+    expect(lensPlotKey("cellA", w, 8)).not.toBe(lensPlotKey("cellA", [{ chr: "7", from: 54e6, to: 56e6 }], 8));
+    expect(lensPlotKey("cellA", w, 8)).not.toBe(lensPlotKey("cellA", w, 16));
+  });
+});
