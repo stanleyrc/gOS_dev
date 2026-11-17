@@ -140,3 +140,16 @@ describe("mark links", () => {
     expect(visibleFields({ cell: "c1", link: "report=A", link_label: "x", origin: "excision" }).map(([k]) => k)).toEqual(["origin"]);
   });
 });
+
+describe("click follows the tooltip", () => {
+  const { clickTarget } = require("./paperSidecar");
+  const hov = { fields: { cell: "A" } };
+  it("uses the hovered mark for a click at the hover point (rounded pixels)", () => {
+    expect(clickTarget(hov, { px: 100.4, py: 50.6 }, 100, 51)).toBe(hov);
+  });
+  it("re-hit-tests when the click is elsewhere or nothing is hovered", () => {
+    expect(clickTarget(hov, { px: 100, py: 50 }, 110, 50)).toBeNull();
+    expect(clickTarget(null, { px: 100, py: 50 }, 100, 50)).toBeNull();
+    expect(clickTarget({ axis: {} }, { px: 100, py: 50 }, 100, 50)).toBeNull();
+  });
+});

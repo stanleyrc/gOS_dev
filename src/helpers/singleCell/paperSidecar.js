@@ -332,3 +332,9 @@ export function paperLinkUrl(link, search = "", pathname = "/") {
 
 /** Fields of a mark worth listing in a tooltip (link plumbing hidden). */
 export const visibleFields = (fields) => Object.entries(fields || {}).filter(([k]) => k !== "cell" && k !== "link" && k !== "link_label");
+
+/** The hovered plot hit when a click lands within `tolPx` display px of the hover point (the tooltip's mark), else null. */
+export function clickTarget(hovered, tip, px, py, tolPx = 2) {
+  if (!hovered?.fields || !tip || !Number.isFinite(px) || !Number.isFinite(py)) return null;
+  return Math.hypot((tip.px ?? NaN) - px, (tip.py ?? NaN) - py) <= tolPx ? hovered : null;
+}

@@ -17,7 +17,7 @@ import CellGraphLens from "./cellGraphLens";
 import { createPopupController } from "../../../helpers/singleCell/hoverPopup";
 import { dockBelow, focusWindows, loadedFor, tagLoaded } from "../../../helpers/singleCell/paperCellGraph";
 import SnvLensLayer, { loadSnvLookup } from "./snvLensLayer";
-import { highlightRects, hitAt, markPositions, panelTables, paperLinkUrl, parseSidecar, plotHitAt, rowBand, rowsBetween, selectionTable, sidecarExtras, tableTsv, toPage, visibleFields } from "../../../helpers/singleCell/paperSidecar";
+import { clickTarget, highlightRects, hitAt, markPositions, panelTables, paperLinkUrl, parseSidecar, plotHitAt, rowBand, rowsBetween, selectionTable, sidecarExtras, tableTsv, toPage, visibleFields } from "../../../helpers/singleCell/paperSidecar";
 import { applyPaperTokens, paperTokensVersion } from "../../../helpers/singleCell/paperPalette";
 import { encodeGroups } from "../../../helpers/singleCell/savedGroups";
 import { cellFromLabel, lensContains, lensToDisplay, lensIsHome, lensOn, lensPan, lensToPage, lensView, lensZoom, marksInBox, nearestJunction, pinchFactor, regionWindow } from "../../../helpers/singleCell/paperZoom";
@@ -890,7 +890,7 @@ function PaperFigureInteractive({ label, navLabel = null }) {
             sheetRef.current.dataset.dragged = "";
             return;
           }
-          const [x, y] = at(e);
+          const [x, y, cpx, cpy] = at(e);
           const gc = isGene ? geneAt(x, y) : null;
           if (gc) {
             setGeneCard({ gene: gc.gene, genes: gc.genes, anchor: { x: e.clientX, y: e.clientY } });
@@ -901,7 +901,9 @@ function PaperFigureInteractive({ label, navLabel = null }) {
             select([t.cell], t.patient, `${t.cell} (${fig.label}${t.panel || ""})`, e);
             return;
           }
-          const ph = plotHitAt(sidecar, x, y);
+          // click acts on the mark the tooltip names: overlapping marks (< 1 px apart) could otherwise resolve to a
+          // neighbour, because click coordinates are whole pixels and pointer moves are fractional
+          const ph = clickTarget(plotHit, tip, cpx, cpy) || plotHitAt(sidecar, x, y);
           const cell = ph?.fields?.cell || ph?.fields?.cell_id;
           if (cell) {
             select([`${cell}`], ph.fields.patient || ph.region.patient || null, null, e);
