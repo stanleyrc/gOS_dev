@@ -67,6 +67,7 @@ export function parsePaperManifest(json, base = "") {
         label: figureLabelOf(f),
         title: f.title || `${f.id}`,
         group: figureGroupOf(f),
+        explicitGroup: !!`${f.group ?? ""}`.trim(), // written by the current sync (older entries carry no group)
         svg: url(f.svg),
         png: url(f.png),
         pdf: url(f.pdf),

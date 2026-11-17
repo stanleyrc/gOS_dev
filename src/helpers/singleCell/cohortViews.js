@@ -62,11 +62,14 @@ export function cohortView(key) {
 /**
  * Figure tab numbers ("1" ... "7", "S8" ... "S16c") from the paper-figure manifest: the labels "Fig <n>" of the current
  * (non-previous) figures in manifest order; variants ("Fig S10 method") are reached from their main figure. Falls back to
- * the static list while the manifest loads.
+ * the static list while the manifest loads. Figures without an explicit group are skipped when others have one.
  */
 export function paperTabsOf(figures) {
   const out = [];
-  (figures || []).forEach((f) => {
+  // when the sync marks its figures with a group, entries without one are older builds (e.g. the 11-09 S1 / V1 pages)
+  const all = figures || [];
+  const synced = all.some((f) => f?.explicitGroup) ? all.filter((f) => f?.explicitGroup) : all;
+  synced.forEach((f) => {
     if (!f || f.group === "previous") return;
     const m = /^Fig ([A-Z]?\d+[a-z]?)$/.exec(`${f.label ?? ""}`.trim());
     if (m && !out.includes(m[1])) out.push(m[1]);

@@ -31,6 +31,8 @@ describe("cohort views", () => {
       { label: "Fig S16c", group: "supplementary" }, { label: "Fig S1 (11-09)", group: "previous" }, { label: "Fig 1", group: "previous" }];
     expect(paperTabsOf(figs)).toEqual(["1", "2", "S10", "S16c"]);
     expect(paperTabsOf(null)[0]).toBe("1");
+    const mixed = [{ label: "Fig 1", group: "main", explicitGroup: true }, { label: "Fig S8", group: "supplementary", explicitGroup: true }, { label: "Fig S1", group: "supplementary", explicitGroup: false }];
+    expect(paperTabsOf(mixed)).toEqual(["1", "S8"]);
     expect(resolveCohortView("paperfigS12")).toBe("paperfigS12");
     expect(cohortView("paperfigS99").group).toBe("paper");
   });
