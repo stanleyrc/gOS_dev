@@ -15,7 +15,7 @@ import CnZoomLayer from "./cnZoomLayer";
 import GenomeTrackLayer from "./genomeTrackLayer";
 import CellGraphLens from "./cellGraphLens";
 import { createPopupController } from "../../../helpers/singleCell/hoverPopup";
-import { focusWindows, loadedFor, tagLoaded } from "../../../helpers/singleCell/paperCellGraph";
+import { dockBelow, focusWindows, loadedFor, tagLoaded } from "../../../helpers/singleCell/paperCellGraph";
 import SnvLensLayer, { loadSnvLookup } from "./snvLensLayer";
 import { highlightRects, hitAt, markPositions, panelTables, paperLinkUrl, parseSidecar, plotHitAt, rowBand, rowsBetween, selectionTable, sidecarExtras, tableTsv, toPage, visibleFields } from "../../../helpers/singleCell/paperSidecar";
 import { applyPaperTokens, paperTokensVersion } from "../../../helpers/singleCell/paperPalette";
@@ -165,7 +165,7 @@ function PaperFigureInteractive({ label, navLabel = null }) {
     return () => {
       live = false;
     };
-  }, [fig?.interactive, imgReady]);
+  }, [fig?.id, fig?.interactive, imgReady]);
   const [tokens, setTokens] = useState("loading");
   useEffect(() => {
     if (!manifest) return undefined;
@@ -465,7 +465,7 @@ function PaperFigureInteractive({ label, navLabel = null }) {
   const trackAt = (x, y) => tracks.find((t) => inRect(t.rect, x, y)) || null;
   const trackInfo = (t, x) => {
     const pos = regionWindow(t.region, x, x);
-    const g = graphs.current.get(t.cell);
+    const g = graphs.current.get(`${dataset?.dataPath}|${t.cell}`);
     const tolBp = (Math.abs(Number(t.region.axis.to) - Number(t.region.axis.from)) / (t.region.w * k * (lens ? lens.sx : 1))) * 6;
     const j = g ? nearestJunction(graphInWindow(g, { chr: pos.chr, from: pos.from - tolBp, to: pos.from + tolBp }).juncs, pos.chr, pos.from, tolBp) : null;
     return { track: t, pos, junction: j };
@@ -530,8 +530,8 @@ function PaperFigureInteractive({ label, navLabel = null }) {
             box={{ left: (w.x0 - lens.ox) * sx, top: (y0 - lens.oy) * sy, width: (w.x1 - w.x0) * sx, height: (y1 - y0) * sy }}
             win={{ chr: w.chr, from: w.from, to: w.to }}
             onGraph={(c, g) => {
-              if (!graphs.current.has(c)) {
-                graphs.current.set(c, g);
+              if (!graphs.current.has(`${dataset?.dataPath}|${c}`)) {
+                graphs.current.set(`${dataset?.dataPath}|${c}`, g);
                 setGraphTick((n) => n + 1);
               }
             }}
@@ -575,7 +575,15 @@ function PaperFigureInteractive({ label, navLabel = null }) {
     if (!wins) return null;
     const bottom = rect.y + rect.h;
     const inLens = !wz && lens && lensContains(lens, k, region.x * k + 1, bottom * k);
-    const below = inLens ? Math.min(lensToDisplay(lens, k, rect.x, bottom)[1], (lens.rect.y + lens.rect.h) * k) : bottom * k;
+    // heatmap rows dock under the whole region (a dock over the rows below caught the pointer and kept the old cell's graph)
+    const lensOn = !!(lens && !wz && (t ? inLens : true));
+    const below = dockBelow({
+      rowBottomPt: bottom,
+      regionBottomPt: region.y + region.h,
+      isTrack: !!t,
+      toDisplay: (yPt) => (lensOn ? lensToDisplay(lens, k, rect.x, yPt)[1] : yPt * k),
+      lensBottom: lensOn ? (lens.rect.y + lens.rect.h) * k : null,
+    });
     // tracks: dock above the track so the other example tracks stay reachable; heatmap rows: under the row
     const DOCK_H = 316;
     const above = t ? (inLens ? Math.max(lensToDisplay(lens, k, rect.x, rect.y)[1], lens.rect.y * k) : rect.y * k) - DOCK_H - 4 : -1;
@@ -856,6 +864,7 @@ function PaperFigureInteractive({ label, navLabel = null }) {
             const r = d.h.region;
             const cells = d.moved ? rowsBetween(r, d.y0, y) : [d.h.id];
             if (cells.length) select(cells, r.patient, d.moved ? `${cells.length} rows of ${fig.label}${r.panel || ""}` : null, d.moved ? { shiftKey: true } : e);
+            if (!d.moved && graphFocus && graphFocus.cell === d.h.id && !graphFocus.pinned) popupCtl.current.pin(); // click keeps its graph open
             d.handled = true;
           } else if (d.kind === "box" && d.moved) {
             const m = marksInBox(sidecar, d.x0, d.y0, x, y, toPage);
@@ -956,7 +965,7 @@ function PaperFigureInteractive({ label, navLabel = null }) {
             ))}
             {hit.position && <div>{`chr${hit.position.chr}:${hit.position.pos.toLocaleString()}`}</div>}
             {hit.site && <div>{`${hit.site.id}${hit.site.gene ? ` (${hit.site.gene})` : ""} · ${hit.site.vaf == null ? "no reads" : `VAF ${hit.site.vaf.toFixed(2)} (${hit.site.alt}/${hit.site.alt + hit.site.ref})`}`}</div>}
-            <div style={{ opacity: 0.8 }}>{`${ids.has(hit.id) ? "click to unselect" : "click to select"} · drag rows · shift adds${hit.region.axis?.type === "genome" ? (cnZoom[hit.region.id] || (lens && lens.s >= 1.6) ? " · its genome graph opens under the row" : " · scroll to zoom, then the cell's genome graph opens") : ""}`}</div>
+            <div style={{ opacity: 0.8 }}>{`${ids.has(hit.id) ? "click to unselect" : "click to select"} · drag rows · shift adds${hit.region.axis?.type === "genome" ? (cnZoom[hit.region.id] || (lens && lens.s >= 1.6) ? " · its genome graph opens under the heatmap (click also pins it)" : " · scroll to zoom, then the cell's genome graph opens") : ""}`}</div>
           </div>
         )}
         {trackHit && tip && (
@@ -967,7 +976,7 @@ function PaperFigureInteractive({ label, navLabel = null }) {
             {trackHit.junction ? (
               <div>{`junction ${trackHit.junction.type || ""} JCN ${trackHit.junction.cn} · chr${trackHit.junction.chrA}:${trackHit.junction.a.toLocaleString()} → chr${trackHit.junction.chrB}:${trackHit.junction.b.toLocaleString()}`}</div>
             ) : (
-              <div style={{ opacity: 0.8 }}>{graphs.current.has(trackHit.track.cell) ? "no junction under the cursor" : "zoom in to load the cell's genome graph"}</div>
+              <div style={{ opacity: 0.8 }}>{graphs.current.has(`${dataset?.dataPath}|${trackHit.track.cell}`) ? "no junction under the cursor" : "zoom in to load the cell's genome graph"}</div>
             )}
             <div style={{ opacity: 0.8 }}>{lens && lens.s >= 1.6 ? "its genome graph opens above the track · click to select (shift adds)" : "zoom in for its genome graph · click to select (shift adds)"}</div>
           </div>

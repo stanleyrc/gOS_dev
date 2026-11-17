@@ -7,7 +7,7 @@ export const COHORT_VIEW_GROUPS = ["paper", "findings", "genome", "evolution", "
 // one tab per manuscript figure, in the paper's order (paperFigureId maps a key to the manifest's figure label)
 // outline v7 (2026-11-17): main figures 1-7 and supplements S8-S16; the 11-09 set (S1, S3, S6, S7, V1-V6) stays reachable
 // as "previous" builds through each figure's version menu and through old links (LEGACY_PAPER_TABS)
-export const PAPER_FIGURE_TABS = ["1", "2", "3", "4", "5", "6", "7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16"];
+export const PAPER_FIGURE_TABS = ["1", "2", "3", "4", "5", "6", "7", "S8", "S9", "S10", "S11", "S12", "S13", "S14", "S15", "S16c"];
 export const LEGACY_PAPER_TABS = ["S1", "S3", "S6", "S7", "V1", "V2", "V3", "V4", "V5", "V6"];
 
 export const COHORT_VIEWS = [
@@ -67,6 +67,6 @@ export const viewsInGroup = (group) => COHORT_VIEWS.filter((v) => v.group === gr
 
 /** Figure label ("Fig 4") of a paper-figure tab key ("paperfig4"), else null. */
 export function paperFigureLabel(key) {
-  const m = /^paperfig([A-Z]?\d+)$/.exec(`${key ?? ""}`);
+  const m = /^paperfig([A-Z]?\d+[a-z]?)$/.exec(`${key ?? ""}`);
   return m ? `Fig ${m[1]}` : null;
 }

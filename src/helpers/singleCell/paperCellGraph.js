@@ -240,3 +240,14 @@ export const loadedFor = (tagged, key) => (tagged && tagged.key === `${key}` ? t
  */
 export const lensPlotKey = (cell, wins, yMax) =>
   `${cell}|${normWins(wins).map((w) => `${w.chr}:${Math.round(w.from)}-${Math.round(w.to)}`).join(",")}|${yMax}`;
+
+/**
+ * Display y (px) where the docked cell graph starts. Heatmap rows: under the whole rows region, never over the rows below
+ * the hovered one (there the pointer moving down the heatmap landed on the dock, which counts as "entered the popup", so
+ * the previous cell's graph stayed open); tracks: under the track. toDisplay(yPt) -> px; lensBottom: the zoom lens'
+ * bottom edge (px) when the figure is zoomed, else null.
+ */
+export function dockBelow({ rowBottomPt, regionBottomPt, isTrack = false, toDisplay = (y) => y, lensBottom = null }) {
+  const y = toDisplay(isTrack ? rowBottomPt : Math.max(rowBottomPt, regionBottomPt));
+  return lensBottom == null ? y : Math.min(y, lensBottom);
+}

@@ -110,3 +110,14 @@ describe("hover freshness (stale graph bug)", () => {
     expect(lensPlotKey("cellA", w, 8)).not.toBe(lensPlotKey("cellA", w, 16));
   });
 });
+
+describe("graph dock placement (stale graph when moving down a zoomed heatmap)", () => {
+  const { dockBelow } = require("./paperCellGraph");
+  it("docks heatmap rows under the whole region, tracks under the track", () => {
+    expect(dockBelow({ rowBottomPt: 110, regionBottomPt: 250, toDisplay: (y) => 2 * y })).toBe(500);
+    expect(dockBelow({ rowBottomPt: 110, regionBottomPt: 250, isTrack: true, toDisplay: (y) => 2 * y })).toBe(220);
+  });
+  it("never below the zoom lens", () => {
+    expect(dockBelow({ rowBottomPt: 110, regionBottomPt: 250, toDisplay: (y) => 3 * y, lensBottom: 600 })).toBe(600);
+  });
+});
