@@ -43,9 +43,9 @@ import { buildPatientReport } from "../../helpers/singleCell/patientReport";
 import { isRescued } from "../../helpers/singleCell/cohortStats";
 import useHotspotRescue from "./cohort/useHotspotRescue";
 import { ecdnaWalks } from "../../helpers/singleCell/cohortHeadline";
-import { COHORT_VIEWS, COHORT_VIEW_GROUPS, PAPER_FIGURE_TABS, paperFigureLabel, resolveCohortView, viewsInGroup } from "../../helpers/singleCell/cohortViews";
+import { COHORT_VIEW_GROUPS, cohortView, paperFigureLabel, paperTabsOf, resolveCohortView, viewsInGroup } from "../../helpers/singleCell/cohortViews";
 import CohortEventDrawer from "./cohort/cohortEventDrawer";
-import PaperFigurePage, { PaperFigureLinks } from "./paper/paperFigurePage";
+import PaperFigurePage, { PaperFigureLinks, usePaperManifest } from "./paper/paperFigurePage";
 import HelpDrawer from "./helpDrawer";
 import { announceCohortView, peekHelpTarget, subscribeHelpTarget } from "../../helpers/singleCell/helpNav";
 import { cladeFitScore } from "../../helpers/singleCell/cladeFit";
@@ -481,6 +481,16 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
     return blocks;
   }, [heatRows]);
 
+  const { manifest: paperManifest } = usePaperManifest();
+  const paperTabs = useMemo(() => paperTabsOf(paperManifest?.figures), [paperManifest]);
+  // paper views: the description comes from the manifest's figure title (kept current by the figure sync)
+  const paperFig = useMemo(() => {
+    const lab = paperFigureLabel(view);
+    return lab ? (paperManifest?.figures || []).find((f) => f.label === lab && f.group !== "previous") || null : null;
+  }, [paperManifest, view]);
+  const paperPurpose = paperFig
+    ? `${paperFig.label}: ${paperFig.title}. The figure exactly as in the manuscript${paperFig.interactive ? ", with an interactive layer: hover for details, click or drag to select cells, click genes for their card and linked marks for their gOS view" : " (PDF page; no interactive layer yet)"}; panels open large.`
+    : null;
   if (!summaries.length) {
     return <Empty description={t("components.single-cell.cohort.empty")} />;
   }
@@ -494,9 +504,13 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
 
   const openCell = (cell) => cell?._patient && dispatch(datasetsActions.openCaseReport(cell._patient.record.datasetId, cell.cell_id));
   // two-level navigation: a row of groups, then the views of the active group (every ?scview= key still resolves)
-  const activeGroup = COHORT_VIEWS.find((v) => v.key === view)?.group || COHORT_VIEW_GROUPS[0];
+  const activeGroup = cohortView(view)?.group || COHORT_VIEW_GROUPS[0];
   const groupTabs = COHORT_VIEW_GROUPS.map((g) => ({ key: g, label: <span style={{ fontWeight: 600 }}>{t(`components.single-cell.cohort.group-${g}`)}</span> }));
-  const analysisTabs = viewsInGroup(activeGroup).map((v) => ({ key: v.key, label: <span>{t(`components.single-cell.cohort.view-${v.key}`)}</span> }));
+  // paper tabs follow the manifest (main figures, then supplements), other groups the static view list
+  const analysisTabs =
+    activeGroup === "paper"
+      ? paperTabs.map((n) => ({ key: `paperfig${n}`, label: <span>{`Fig ${n}`}</span> }))
+      : viewsInGroup(activeGroup).map((v) => ({ key: v.key, label: <span>{t(`components.single-cell.cohort.view-${v.key}`)}</span> }));
 
   const geneDataset = datasets.find((d) => `${d.id}` === `${summaries[0]?.record.datasetId}`) || null;
   const quickLook = {
@@ -557,7 +571,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
           </div>
           <Tabs size="middle" className="sc-cohort-tabs sc-cohort-group-tabs" activeKey={activeGroup} onChange={(g) => setView(viewsInGroup(g)[0].key)} items={groupTabs} />
           <Tabs size="small" type="card" className="sc-cohort-tabs sc-cohort-view-tabs" activeKey={view} onChange={setView} items={analysisTabs} />
-          <div className="sc-view-purpose">{t(`components.single-cell.cohort.purpose-${view}`)}</div>
+          <div className="sc-view-purpose">{paperPurpose || t(`components.single-cell.cohort.purpose-${view}`)}</div>
         </Col>
         <React.Suspense fallback={<Col span={24}><Text type="secondary">{t("components.single-cell.loading")}</Text></Col>}>
         {view === "story" && (
@@ -627,7 +641,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         {view === "overview" && (
           <>
             <Col span={24}>
-              <PaperFigureLinks onView={setView} views={PAPER_FIGURE_TABS.map((n) => ({ key: `paperfig${n}`, label: `Fig ${n}` }))} />
+              <PaperFigureLinks onView={setView} views={paperTabs.map((n) => ({ key: `paperfig${n}`, label: `Fig ${n}` }))} />
             </Col>
             <Col span={24}>
               <PortraitHeadlineCard dataset={geneDataset} onView={setView} />
@@ -812,7 +826,7 @@ export default function SingleCellCohortPanel({ datafiles = [] }) {
         )}
         {view === "welcome" && (
           <Col span={24}>
-            <PaperFigureLinks onView={setView} views={PAPER_FIGURE_TABS.map((n) => ({ key: `paperfig${n}`, label: `Fig ${n}` }))} />
+            <PaperFigureLinks onView={setView} views={paperTabs.map((n) => ({ key: `paperfig${n}`, label: `Fig ${n}` }))} />
             <WelcomeView onFind={openFinder} />
           </Col>
         )}

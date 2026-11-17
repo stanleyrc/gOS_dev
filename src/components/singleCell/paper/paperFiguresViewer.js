@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Empty, Modal, Segmented, Space, Tag, Tooltip, Typography } from "antd";
+import { Button, Empty, Modal, Segmented, Select, Space, Tag, Tooltip, Typography } from "antd";
 import { CompressOutlined, DownloadOutlined, LeftOutlined, LinkOutlined, RightOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import { navAction, neighbourKey } from "../../../helpers/singleCell/figureNav";
 import PanelDataTable from "./panelDataTable";
@@ -139,13 +139,26 @@ export default function PaperFiguresViewer({ manifest, initialFigure = null, onO
       <div className="sc-paper-bar">
         <Space wrap size={[12, 6]}>
           <Segmented size="small" value={fig.id} onChange={(v) => { setFigId(v); setPanel(null); }} options={groups.main.map(option)} />
-          {groups.supplementary.length > 0 && <Segmented size="small" value={fig.group === "supplementary" ? fig.id : null} onChange={setFigId} options={groups.supplementary.map(option)} />}
-          {groups.extra.length > 0 && <Segmented size="small" value={fig.group === "extra" ? fig.id : null} onChange={setFigId} options={groups.extra.map(option)} />}
-          {groups.previous.length > 0 && (
-            <Space size={6}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Previous versions:</Text>
-              <Segmented size="small" value={fig.group === "previous" ? fig.id : null} onChange={(v) => { setFigId(v); setPanel(null); }} options={groups.previous.map(option)} />
-            </Space>
+          {/* many supplements / earlier builds: compact pickers instead of one long segmented row (it overflowed the bar) */}
+          {[["supplementary", "Supplementary"], ["extra", "Extra"], ["previous", "Previous versions"]].map(([g, name]) =>
+            groups[g].length > 0 ? (
+              <Select
+                key={g}
+                size="small"
+                showSearch
+                optionFilterProp="label"
+                placeholder={`${name} (${groups[g].length})`}
+                value={fig.group === g ? fig.id : undefined}
+                onChange={(v) => {
+                  setFigId(v);
+                  setPanel(null);
+                }}
+                options={groups[g].map((f) => ({ value: f.id, label: `${f.label}${f.title ? ` · ${f.title}` : ""}` }))}
+                style={{ minWidth: 150, maxWidth: 320 }}
+                popupMatchSelectWidth={false}
+                aria-label={name}
+              />
+            ) : null
           )}
         </Space>
         <Space size={10} wrap>

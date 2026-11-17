@@ -25,6 +25,15 @@ describe("cohort views", () => {
     expect(tabs).not.toContain("paperfigV1");
     expect(resolveCohortView("paperfigV1")).toBe("paperfigV1");
   });
+  it("derives the figure tabs from the manifest (current figures only, variants folded)", () => {
+    const { paperTabsOf } = require("./cohortViews");
+    const figs = [{ label: "Fig 1", group: "main" }, { label: "Fig 2", group: "main" }, { label: "Fig S10", group: "supplementary" }, { label: "Fig S10 method", group: "supplementary" },
+      { label: "Fig S16c", group: "supplementary" }, { label: "Fig S1 (11-09)", group: "previous" }, { label: "Fig 1", group: "previous" }];
+    expect(paperTabsOf(figs)).toEqual(["1", "2", "S10", "S16c"]);
+    expect(paperTabsOf(null)[0]).toBe("1");
+    expect(resolveCohortView("paperfigS12")).toBe("paperfigS12");
+    expect(cohortView("paperfigS99").group).toBe("paper");
+  });
   it("resolves unknown keys to the overview", () => {
     expect(resolveCohortView("qc")).toBe("qc");
     expect(resolveCohortView("nope")).toBe("overview");

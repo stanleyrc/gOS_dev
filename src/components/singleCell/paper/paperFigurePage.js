@@ -6,7 +6,7 @@ import useContainerWidth from "../useContainerWidth";
 import useCohortExport from "../cohort/useCohortExport";
 import { PAPER_FIGURES_DIR, PAPER_MANIFEST_FILE, anchoredPanels, bestImage, figureVariants, formatBuilt, panelAt, panelRegions, panelTarget, parsePaperManifest, targetSearch } from "../../../helpers/singleCell/paperManifest";
 import { announceCohortView, requestHelpTarget } from "../../../helpers/singleCell/helpNav";
-import { PAPER_FIGURE_TABS } from "../../../helpers/singleCell/cohortViews";
+import { paperTabsOf } from "../../../helpers/singleCell/cohortViews";
 import { ORIGINAL_DIR, ORIGINAL_MANIFEST_FILE, isOriginalOnly, parseOriginalManifest } from "../../../helpers/singleCell/paperOriginal";
 import { counterText, framedFocus, navAction, neighbourKey } from "../../../helpers/singleCell/figureNav";
 import { PanelModal, STATUS_TAG_COLOR, ZoomPanImage, targetLabel } from "./paperFiguresViewer";
@@ -331,7 +331,7 @@ function PaperFigureInteractive({ label, navLabel = null }) {
   const lensRef = useRef(null);
   lensRef.current = lens;
   // left / right arrows (and the < > buttons) cycle through the paper figures in manifest order, wrapping; the URL follows (scview)
-  const navKeys = useMemo(() => PAPER_FIGURE_TABS.map((n) => `paperfig${n}`), []);
+  const navKeys = useMemo(() => paperTabsOf(manifest?.figures).map((n) => `paperfig${n}`), [manifest]);
   const curKey = (navLabel || label) ? `paperfig${`${navLabel || label}`.replace(/^Fig /, "")}` : null;
   const blocked = !!(lens || liveView || open || zoom);
   const goFigure = useCallback(
@@ -1120,7 +1120,7 @@ export default function PaperFigurePage({ label }) {
   const variants = useMemo(() => figureVariants(manifest?.figures, label), [manifest, label]);
   const shown = variants.some((v) => v.value === version) ? version : label;
   useEffect(() => setVersion(null), [label]);
-  const navKeys = useMemo(() => PAPER_FIGURE_TABS.map((n) => `paperfig${n}`), []);
+  const navKeys = useMemo(() => paperTabsOf(manifest?.figures).map((n) => `paperfig${n}`), [manifest]);
   const curKey = label ? `paperfig${`${label}`.replace(/^Fig /, "")}` : null;
   const item = original?.byLabel?.[label] || null;
   const only = status !== "loading" && isOriginalOnly(label, manifest?.figures, original);

@@ -46,14 +46,32 @@ export const COHORT_VIEWS = [
 
 const KEYS = new Set(COHORT_VIEWS.map((v) => v.key));
 
-/** The view to open: a known key, else the overview. */
+const PAPER_KEY = /^paperfig([A-Z]?\d+[a-z]?)$/;
+
+/** The view to open: a known key or any paper-figure key (tabs come from the manifest), else the overview. */
 export function resolveCohortView(key) {
-  return KEYS.has(key) ? key : "overview";
+  return KEYS.has(key) || PAPER_KEY.test(`${key ?? ""}`) ? key : "overview";
 }
 
-/** View record by key (overview for unknown keys). */
+/** View record by key (overview for unknown keys; paper-figure keys not in the static list belong to "paper"). */
 export function cohortView(key) {
-  return COHORT_VIEWS.find((v) => v.key === resolveCohortView(key));
+  const k = resolveCohortView(key);
+  return COHORT_VIEWS.find((v) => v.key === k) || { key: k, group: "paper" };
+}
+
+/**
+ * Figure tab numbers ("1" ... "7", "S8" ... "S16c") from the paper-figure manifest: the labels "Fig <n>" of the current
+ * (non-previous) figures in manifest order; variants ("Fig S10 method") are reached from their main figure. Falls back to
+ * the static list while the manifest loads.
+ */
+export function paperTabsOf(figures) {
+  const out = [];
+  (figures || []).forEach((f) => {
+    if (!f || f.group === "previous") return;
+    const m = /^Fig ([A-Z]?\d+[a-z]?)$/.exec(`${f.label ?? ""}`.trim());
+    if (m && !out.includes(m[1])) out.push(m[1]);
+  });
+  return out.length ? out : PAPER_FIGURE_TABS;
 }
 
 /** Whether a view starts a new group in the tab bar (gets a divider before it). */
@@ -67,6 +85,6 @@ export const viewsInGroup = (group) => COHORT_VIEWS.filter((v) => v.group === gr
 
 /** Figure label ("Fig 4") of a paper-figure tab key ("paperfig4"), else null. */
 export function paperFigureLabel(key) {
-  const m = /^paperfig([A-Z]?\d+[a-z]?)$/.exec(`${key ?? ""}`);
+  const m = PAPER_KEY.exec(`${key ?? ""}`);
   return m ? `Fig ${m[1]}` : null;
 }
