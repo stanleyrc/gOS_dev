@@ -73,6 +73,7 @@ export function useTreeSiteFit(snv, layout) {
 export function useSnvAnnot(snv, phylo = null, fit = null) {
   const model = useSignatureModel();
   const sigSets = useSelector((s) => s.SingleCell.signatures);
+  const categoryLabels = useSelector((s) => s.SingleCell.snv?.data?.categoryLabels) || null; // report overrides of tree-site labels (snv_matrix.json categoryLabels)
   // per-site signature from the fit of the site's own tree-site set (truncal / subclonal / private), else the joint fit
   const assignment = useMemo(() => {
     if (!model.ready) return null;
@@ -88,7 +89,7 @@ export function useSnvAnnot(snv, phylo = null, fit = null) {
     const tagOf = (sig) => aetiologyTag(`${signatureMetadata.metadata[sig]?.full || ""}`.replace(/<[^>]+>/g, ""));
     return (c) => formatSiteSignature(post.forVariant(snv.variants[c]), { tagOf });
   }, [model, sigSets, snv]);
-  return useMemo(() => (snv ? siteAnnotations(snv, { signatures: assignment, phylo, fit, sigText }) : null), [snv, assignment, phylo, fit, sigText]);
+  return useMemo(() => (snv ? siteAnnotations(snv, { signatures: assignment, phylo, fit, sigText, categoryLabels }) : null), [snv, assignment, phylo, fit, sigText, categoryLabels]);
 }
 
 /** Selected tracks, the click-to-filter state and handler to pass to MutationSidePanel. */

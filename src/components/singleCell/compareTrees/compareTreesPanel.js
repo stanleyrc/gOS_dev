@@ -33,6 +33,7 @@ import {
 } from "../../../helpers/singleCell/treeCompare";
 import { rowMap, snvColumnOrder, snvMetricMax, treeColumnOrder } from "../../../helpers/singleCell/matrix";
 import { filterSnvColumns, hasCladeScores } from "../../../helpers/singleCell/snvSites";
+import { snvCategoryLabel } from "../../../helpers/singleCell/snvCategoryLabels";
 import singleCellActions, { SC_MAX_TRACK_CELLS } from "../../../redux/singleCell/actions";
 import CellIgvPanel from "../cellIgvPanel";
 import { SnvTrackControls, tracksHeight, useSnvAnnot, useSnvTracks, useTreeSiteFit } from "../snvAnnotTracks";
@@ -90,6 +91,7 @@ export default function CompareTreesPanel() {
   const snvOrder = useSelector((s) => s.SingleCell.snvOrder);
   const siteFilter = useSelector((s) => s.SingleCell.layout) || {};
   const events = useSelector((s) => s.FilteredEvents?.filteredEvents);
+  const storeCategoryLabels = useSelector((s) => s.SingleCell.snv?.data?.categoryLabels) || null;
   const trees = useMemo(() => usableTrees(index), [index]);
   const drawnTree = useSelector((s) => s.SingleCell.treeVariant) || CURRENT_TREE;
   const [defA, defB] = useMemo(() => defaultPair(trees, drawnTree), [trees, drawnTree]);
@@ -608,7 +610,7 @@ export default function CompareTreesPanel() {
                 placeholder={t("components.single-cell.snv.all-sites")}
                 value={siteFilter.snvCategories || []}
                 onChange={(value) => setLayout({ snvCategories: value.length ? value : null })}
-                options={SNV_CATEGORIES.filter((c) => categoryCounts[c.key]).map((c) => ({ value: c.key, label: `${t(`components.single-cell.snv.category-${c.key}`)} (${categoryCounts[c.key]})` }))}
+                options={SNV_CATEGORIES.filter((c) => categoryCounts[c.key]).map((c) => ({ value: c.key, label: `${snvCategoryLabel(c.key, t, snvCalls?.categoryLabels || storeCategoryLabels)} (${categoryCounts[c.key]})` }))}
               />
             ) : null}
             <Checkbox checked={Boolean(siteFilter.snvCellphyOnly)} onChange={(e) => setLayout({ snvCellphyOnly: e.target.checked })}>{t("components.single-cell.snv.cellphy-only")}</Checkbox>

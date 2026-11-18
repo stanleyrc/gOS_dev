@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Alert, Button, Drawer, Space, Table, Tag, Typography } from "antd";
 import { fitSignatures, sbs96Counts } from "../../helpers/singleCell/signatures";
 import { SNV_CATEGORIES } from "./mutationSidePanel";
 import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
+import { snvCategoryLabel } from "../../helpers/singleCell/snvCategoryLabels";
 import { ActivityBars, AetiologyLegend, Profile, loadCosmic } from "./signaturePanel";
 import singleCellActions from "../../redux/singleCell/actions";
 
@@ -20,6 +21,8 @@ const categoryColor = Object.fromEntries(SNV_CATEGORIES.map((c) => [c.key, c.col
 export default function BranchSnvDrawer({ open, onClose, snv, variantIdx, cellIds, embedded = false }) {
   const { t } = useTranslation("common");
   const dispatch = useDispatch();
+  const storeLabels = useSelector((s) => s.SingleCell.snv?.data?.categoryLabels) || null;
+  const categoryLabels = snv?.categoryLabels || storeLabels;
   const [fit, setFit] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -81,7 +84,7 @@ export default function BranchSnvDrawer({ open, onClose, snv, variantIdx, cellId
       title: t("components.single-cell.snv.category"),
       dataIndex: "category",
       key: "category",
-      render: (c) => (c ? <Tag color={categoryColor[c]}>{t(`components.single-cell.snv.category-${c}`)}</Tag> : "–"),
+      render: (c) => (c ? <Tag color={categoryColor[c]}>{snvCategoryLabel(c, t, categoryLabels)}</Tag> : "–"),
     },
     {
       title: t("components.single-cell.branch.alt-cells"),

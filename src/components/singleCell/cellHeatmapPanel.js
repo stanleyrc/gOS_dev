@@ -32,6 +32,7 @@ import { themePalette } from "../../helpers/singleCell/themes";
 import { layoutTree } from "../../helpers/singleCell/newick";
 import HeatmapLegend from "./heatmapLegend";
 import MutationSidePanel, { SNV_CATEGORIES } from "./mutationSidePanel";
+import { snvCategoryLabel } from "../../helpers/singleCell/snvCategoryLabels";
 import { filterSnvColumns, hasCladeScores } from "../../helpers/singleCell/snvSites";
 import { ampliconRegions, labelRegions } from "../../helpers/singleCell/ampliconRegions";
 import { useGeneModels } from "../genes/useGeneModels";
@@ -1617,7 +1618,7 @@ export default function CellHeatmapPanel() {
                       label: (
                         <span>
                           <span className="sc-swatch" style={{ background: c.color }} />
-                          {t(`components.single-cell.snv.category-${c.key}`)} ({categoryCounts[c.key]})
+                          {snvCategoryLabel(c.key, t, sc.snv?.data?.categoryLabels)} ({categoryCounts[c.key]})
                         </span>
                       ),
                     }))}

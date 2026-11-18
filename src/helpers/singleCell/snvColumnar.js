@@ -9,6 +9,7 @@
 // view works on it unchanged; per-cell arrays are views into one buffer per
 // field instead of one JSON array per (cell, site).
 import { snvVariantRecords } from "./cellFiles";
+import { normalizeCategoryLabels } from "./snvCategoryLabels";
 
 export const SNV_COLS_FORMAT = "gos-sc-snv-cols/1";
 export const MISSING_COUNT = 65535; // ref = alt = 65535: a genotype call without read counts
@@ -147,6 +148,7 @@ export function snvFromColumnar(table, dense, cellIds, chromoBins, { siteStart =
     hom: dense.hasHom ? rows.map((r) => view(dense.hom, r)) : null,
     source: "columnar",
     set: table?.set || null,
+    categoryLabels: normalizeCategoryLabels(table?.categoryLabels),
   };
 }
 

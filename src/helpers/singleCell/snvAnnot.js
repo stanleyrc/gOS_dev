@@ -4,6 +4,8 @@
 // summaries for tooltips and the site filter a click on a track value sets.
 // d3-free so it can be tested on synthetic fixtures.
 
+import { applyCategoryLabels, normalizeCategoryLabels } from "./snvCategoryLabels";
+
 const ARRAY_CACHE = new WeakMap();
 
 /** Region classes, in legend order. */
@@ -119,7 +121,7 @@ function baseArrays(snv) {
  * @param opts.phylo Map(variant index -> F1) on the current tree; falls back to the exported clade score
  * @param opts.sigText (variant index) -> "SBS13 (APOBEC) 0.72 · SBS2 0.20 …, set: subclonal, fit: joint" for the tooltip
  */
-export function siteAnnotations(snv, { signatures = null, phylo = null, fit = null, sigText = null } = {}) {
+export function siteAnnotations(snv, { signatures = null, phylo = null, fit = null, sigText = null, categoryLabels = null } = {}) {
   if (!snv?.variants?.length) return null;
   const base = baseArrays(snv);
   const n = base.n;
@@ -195,7 +197,7 @@ export function siteAnnotations(snv, { signatures = null, phylo = null, fit = nu
     }
     ranges[k] = Number.isFinite(lo) ? [lo, hi] : [0, 1];
   });
-  return { n, cat, num, available, sigProb, sigOrder, ranges, variants: snv.variants, sigText };
+  return { n, cat, num, available, sigProb, sigOrder, ranges, variants: snv.variants, sigText, categoryLabels: normalizeCategoryLabels(categoryLabels || snv.categoryLabels) };
 }
 
 /** Legend entries of a categorical track: [{ value, label, color, count }], commonest first for signatures. */
@@ -214,7 +216,7 @@ function catLegendUncached(annot, key) {
   const counts = {};
   annot.cat[key].forEach((v) => v != null && (counts[v] = (counts[v] || 0) + 1));
   let entries;
-  if (key === "category") entries = TREE_CATEGORIES.map((e) => ({ value: e.key, label: e.label, color: e.color }));
+  if (key === "category") entries = applyCategoryLabels(TREE_CATEGORIES.map((e) => ({ value: e.key, label: e.label, color: e.color })), annot.categoryLabels);
   else if (key === "region") entries = REGION_CLASSES.map((e) => ({ value: e.key, label: e.label, color: e.color }));
   else if (key === "driver") entries = [{ value: "driver", label: "driver", color: "#cf1322" }];
   else if (key === "cellphy")

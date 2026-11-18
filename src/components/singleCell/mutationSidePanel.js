@@ -21,6 +21,7 @@ import {
 } from "../../helpers/singleCell/matrix";
 import { setPlMarkNoRead, binLegendText, gtBinRGBA, homProb, isLoneRead, plBinRGBA, plBinSummary, plHomRGBA, snvBinIntensity, snvBinRGBA, strongCarriers } from "../../helpers/singleCell/snvBinning";
 import { siteDetail } from "../../helpers/singleCell/snvAnnot";
+import { snvCategoryLabel } from "../../helpers/singleCell/snvCategoryLabels";
 import { placeLabels, siteLabel } from "../../helpers/singleCell/snvLabels";
 
 export const LABEL_H = 96;
@@ -100,6 +101,7 @@ export default function MutationSidePanel({
 }) {
   const { t } = useTranslation("common");
   const layoutState = useSelector((st) => st.SingleCell.layout) || {};
+  const categoryLabels = useSelector((st) => st.SingleCell.snv?.data?.categoryLabels) || null;
   const naMode = layoutState.snvNaColor === "grey" ? "grey" : "white"; // white unless the user chose grey
   setSnvNaMode(naMode); // module setting read by the colour functions and the legend
   const markNoRead = Boolean(layoutState.snvMarkNoRead);
@@ -228,7 +230,7 @@ export default function MutationSidePanel({
     const covered = p >= 0 && snv.status[p][c] >= 0;
     const pAlt = snv.pl && p >= 0 ? snvMetricValue(snv, p, c, "gt") : undefined;
     const reads = altN == null ? (covered && snv.status[p][c] === 1 ? "alt present (count n/a)" : noReads) : `${altN} ALT / ${depth == null ? "?" : depth - altN} REF`;
-    const clade = v.category ? `${t(`components.single-cell.snv.category-${v.category}`)}${v.cladeCells != null ? ` (${v.cladeCells} cells)` : ""}` : null;
+    const clade = v.category ? `${snvCategoryLabel(v.category, t, snv.categoryLabels || categoryLabels)}${v.cladeCells != null ? ` (${v.cladeCells} cells)` : ""}` : null;
     const short = [
       ["Mutation", annot ? siteLabel(v, "protein") : [v.gene, v.protein || v.consequence].filter(Boolean).join(" ") || v.id],
       ["Reads", reads],

@@ -7,6 +7,7 @@ import { snvMetricValue } from "../../helpers/singleCell/matrix";
 import { SIG_PROB_TOOLTIP, formatSigProbability } from "../../helpers/singleCell/siteSignature";
 import { cnMappedRows } from "../../helpers/singleCell/cnMapped";
 import { cladeScoreDetail } from "../../helpers/singleCell/snvSites";
+import { snvCategoryLabel } from "../../helpers/singleCell/snvCategoryLabels";
 import { SNV_CATEGORIES } from "./mutationSidePanel";
 import { SBS96 } from "../../helpers/singleCell/signatures";
 import useSignatureModel from "./signatures/useSignatureModel";
@@ -74,7 +75,7 @@ export default function SnvSiteDrawer({ open, onClose, variant, order, rows, cli
           {(variant.oncogenic || variant.oncokbLevel) && <Descriptions.Item label="OncoKB">{[variant.oncogenic, variant.oncokbLevel].filter(Boolean).join(" · ")}{variant.driver && <Tag color="red" style={{ marginLeft: 6 }}>driver</Tag>}</Descriptions.Item>}
           {variant.category && (
             <Descriptions.Item label={t("components.single-cell.snv.category")}>
-              <Tag color={categoryColor[variant.category]}>{t(`components.single-cell.snv.category-${variant.category}`)}</Tag>
+              <Tag color={categoryColor[variant.category]}>{snvCategoryLabel(variant.category, t, snvDataProp?.categoryLabels || snv?.data?.categoryLabels)}</Tag>
               {variant.cladeCells != null && <Text type="secondary">{t("components.single-cell.site.clade-cells", { count: variant.cladeCells })}</Text>}
             </Descriptions.Item>
           )}

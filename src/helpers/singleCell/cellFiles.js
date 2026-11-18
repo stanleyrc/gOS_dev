@@ -1,6 +1,7 @@
 // Build single-cell views from the standard per-case files of each cell
 // (complex.json, mutations.json) and from datafiles.json manifest records.
 import { binAt, buildBinIndex, naturalCompare, resolveChromosome, toGlobal } from "./matrix";
+import { normalizeCategoryLabels } from "./snvCategoryLabels";
 
 /* ----------------------------------------------------------------------- */
 /* Manifest records                                                         */
@@ -517,5 +518,5 @@ export function snvFromSparse(sparse, cellIds, chromoBins) {
     alt.push(a);
     depth.push(dp);
   });
-  return { cells: [...cellIds], variants, status, alt, depth, gt: hasGt ? gt : null, pl: hasPl ? pl : null, source: "matrix" };
+  return { cells: [...cellIds], variants, status, alt, depth, gt: hasGt ? gt : null, pl: hasPl ? pl : null, source: "matrix", categoryLabels: normalizeCategoryLabels(sparse?.categoryLabels) };
 }
