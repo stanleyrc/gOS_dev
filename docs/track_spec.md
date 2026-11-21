@@ -91,6 +91,18 @@ v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; ev
 - `purity`, `ploidy`: the unit's JaBbA fit. They set the CN axis of coverage tracks (below). Missing purity means 1.
 - `mean_depth`: mean read depth of the unit (x), for the "expected depth" axis. Missing → that axis says "not available".
 - `group` and `groups[...].color`: clade / clone coloring of the tree and row labels.
+- `pseudobulk_graphs` (v0.3, optional): graphs fitted on a group's pooled cells (e.g. one JaBbA run per CN cluster),
+  drawn as extra rows right under that group's clade pseudobulk row (in `cells` mode: above the cells). An array, or
+  a URL (relative to the spec) to a JSON file `{ "pseudobulk_graphs": [...], "loci": [{ "label", "locus" }] }`.
+  Without a spec gOS looks for `{dataPath}{patient}/pseudobulk_graphs.json`; a missing file means no such rows.
+
+  ```json
+  { "id": "H1299_c1_nonS_pl3.17", "label": "c1 non-S pseudobulk", "group": "c1", "n_cells": 29, "ploidy": 3.17,
+    "purity": 1, "role": "recommended", "method": "JaBbA on pooled B reads", "url": "{dataPath}{unit}/complex.json" }
+  ```
+
+  `url` (gGnome.js JSON, `{unit}` = the entry id) defaults to `{dataPath}{unit}/complex.json`. Per group, an entry
+  whose `role` starts with `recommended` is drawn first. `loci` in the file are locus presets for the dataset.
 
 ## Tracks
 
@@ -210,6 +222,16 @@ Arcs (or stubs for inter-locus partners) with the number of supporting cells. *P
 discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_support`: format `bedpe.gz`
 (tabix) or `arrow`, columns `junction_id, unit, split, discordant, tier`.
 
+### `events` (v0.3: interval annotations, e.g. amplicon process classes and ecDNA calls)
+
+```json
+{ "id": "events", "type": "events", "url": "{dataPath}{patient}/events.json", "format": "gos-events-json", "height": 44 }
+```
+
+File: `{ "events": [ { "id", "kind": "amplicon" | "arm", "chrom", "start", "end", "class", "status", "confidence",
+"ecdna_call", "genes" } ] }`. Drawn in the header in two lanes (amplicons, arm events); hover shows the class, status
+and ecDNA-caller call. Without a spec gOS looks for `{dataPath}{patient}/events.json`; a missing file hides the lane.
+
 ### Reserved types (M2–M4; names fixed now)
 
 | type | format | notes |
@@ -230,6 +252,7 @@ units. gOS writes the current tree selection here on export.
 
 ## Changes
 
+- **0.3 (2026-11-21, dATAC):** `events` track type; `units.pseudobulk_graphs` (exported pseudobulk graphs per group, e.g. cluster JaBbA fits) and the per-dataset `pseudobulk_graphs.json` with locus presets.
 - **0.3 (2026-11-21, later):** `layout.graph_style`; `graph` tracks are drawn with the gOS genome-graph component (intervals at CN colored by chromosome, junction arcs, CN axis); pseudobulk graphs are passed to it as gGnome.js JSON.
 - **0.3 (2026-11-21):** `windows[i].y` per-window y scales; `layout` (row heights, auto-fit, pseudobulk mode, pins, share_y).
 

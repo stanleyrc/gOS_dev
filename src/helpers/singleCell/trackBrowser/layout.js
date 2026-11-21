@@ -11,11 +11,19 @@ export const clampHeight = (h) => Math.max(HEIGHT_MIN, Math.min(HEIGHT_MAX, Math
 
 /**
  * Rows in display order. mode "pseudobulk": one row per group (in order of first appearance in `units`, which are
- * in tree order), each followed by its cells when expanded. mode "cells": one row per unit.
- * Returns [{ key, kind: "clade" | "cell", group, id?, members?, depth }].
+ * in tree order), then that group's exported pseudobulk graphs (`pbGraphs`, entries with { id, group }; e.g. the
+ * cluster's JaBbA fit), then its cells when expanded. mode "cells": the exported pseudobulk graphs of the shown groups
+ * first, then one row per unit.
+ * Returns [{ key, kind: "clade" | "pbgraph" | "cell", group, id?, members?, depth }].
  */
-export function buildRows(units, mode = "pseudobulk", expanded = {}) {
-  if (mode !== "pseudobulk") return units.map((u) => ({ key: `cell:${u.id}`, kind: "cell", id: u.id, group: u.group, depth: 0 }));
+export function buildRows(units, mode = "pseudobulk", expanded = {}, pbGraphs = []) {
+  const pbRow = (e) => ({ key: `pbgraph:${e.id}`, kind: "pbgraph", id: e.id, group: e.group ?? "no clone", depth: 0 });
+  const pbOf = (g) => (pbGraphs || []).filter((e) => (e.group ?? "no clone") === g);
+  if (mode !== "pseudobulk") {
+    const shown = new Set(units.map((u) => u.group ?? "no clone"));
+    const pb = (pbGraphs || []).filter((e) => shown.has(e.group ?? "no clone")).map(pbRow);
+    return [...pb, ...units.map((u) => ({ key: `cell:${u.id}`, kind: "cell", id: u.id, group: u.group, depth: 0 }))];
+  }
   const order = [];
   const members = new Map();
   units.forEach((u) => {
@@ -29,6 +37,7 @@ export function buildRows(units, mode = "pseudobulk", expanded = {}) {
   const rows = [];
   order.forEach((g) => {
     rows.push({ key: `clade:${g}`, kind: "clade", group: g, members: members.get(g), depth: 0 });
+    pbOf(g).forEach((e) => rows.push(pbRow(e)));
     if (expanded[g]) members.get(g).forEach((id) => rows.push({ key: `cell:${id}`, kind: "cell", id, group: g, depth: 1 }));
   });
   return rows;
@@ -36,12 +45,12 @@ export function buildRows(units, mode = "pseudobulk", expanded = {}) {
 
 /**
  * Height (px) of each sub-row of a row. base: the slider value; overrides: { graph, coverage } (null = base);
- * tracks: { graph: bool, coverage: bool }. Clade rows show the graph only (pseudobulk coverage needs the gCells export).
+ * tracks: { graph: bool, coverage: bool }. Clade and exported pseudobulk-graph rows show the graph only, at clade height.
  */
 export function subRowHeights(row, base, overrides = {}, tracks = { graph: true, coverage: true }) {
   const g = clampHeight(overrides.graph ?? base);
   const c = clampHeight(overrides.coverage ?? base);
-  if (row.kind === "clade") return tracks.graph || tracks.coverage ? { graph: clampHeight(Math.max(g, AUTO_FIT_MIN) * PSEUDOBULK_FACTOR), coverage: 0 } : { graph: 0, coverage: 0 };
+  if (row.kind === "clade" || row.kind === "pbgraph") return tracks.graph || tracks.coverage ? { graph: clampHeight(Math.max(g, AUTO_FIT_MIN) * PSEUDOBULK_FACTOR), coverage: 0 } : { graph: 0, coverage: 0 };
   return { graph: tracks.graph ? g : 0, coverage: tracks.coverage ? c : 0 };
 }
 

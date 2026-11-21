@@ -450,3 +450,47 @@ export function hitTest(hits, x, y, tol = 4) {
   });
   return best;
 }
+
+const EVENT_COLORS = { amplicon: "#c0392b", BFB: "#8e44ad", arm: "#7f8c8d", junction: "#2c7fb8", whole: "#16a085" };
+const eventColor = (ev) => {
+  if (ev.kind === "amplicon") return /BFB/.test(ev.cls) ? EVENT_COLORS.BFB : EVENT_COLORS.amplicon;
+  if (/junction/.test(ev.cls)) return EVENT_COLORS.junction;
+  if (/whole-chromosome/.test(ev.cls)) return EVENT_COLORS.whole;
+  return EVENT_COLORS.arm;
+};
+
+/**
+ * Event track (spec v0.3 `events`) in two lanes: amplicons (top; process-caller class + ecDNA-caller call) and
+ * arm-level events (bottom). hits: [{ slot, start, end, event }] from eventsInWindows; label(ev) gives the text.
+ * Returns hover hits [{ x0, x1, y0, y1, event }].
+ */
+export function drawEvents(ctx, slots, hits, left, y, h, label) {
+  const px = (k, pos) => left + slots[k].x0 + bpToPx(slots[k], pos);
+  const laneH = Math.floor((h - 4) / 2);
+  const out = [];
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  hits.forEach((hit) => {
+    const lane = hit.event.kind === "amplicon" ? 0 : 1;
+    const y0 = y + 2 + lane * laneH;
+    const x0 = px(hit.slot, hit.start);
+    const x1 = Math.max(x0 + 2, px(hit.slot, hit.end));
+    ctx.fillStyle = eventColor(hit.event);
+    ctx.globalAlpha = hit.event.kind === "amplicon" ? 0.85 : 0.45;
+    ctx.fillRect(x0, y0 + 2, x1 - x0, laneH - 4);
+    ctx.globalAlpha = 1;
+    const text = label(hit.event);
+    if (x1 - x0 > 40) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x0, y0, x1 - x0, laneH);
+      ctx.clip();
+      ctx.fillStyle = hit.event.kind === "amplicon" ? "#fff" : "#222";
+      ctx.fillText(text, x0 + 3, y0 + laneH / 2);
+      ctx.restore();
+    }
+    out.push({ x0, x1, y0, y1: y0 + laneH, event: hit.event });
+  });
+  return out;
+}

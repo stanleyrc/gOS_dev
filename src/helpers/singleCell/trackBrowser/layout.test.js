@@ -17,6 +17,13 @@ describe("rows", () => {
     expect(buildRows(units, "pseudobulk", { C1: true }).map((r) => r.key)).toEqual(["clade:C1", "cell:a", "cell:b", "clade:C2"]);
     expect(buildRows(units, "cells").map((r) => r.kind)).toEqual(["cell", "cell", "cell"]);
   });
+  test("exported pseudobulk graphs follow their clade (pseudobulk) or lead the stack (cells)", () => {
+    const pb = [{ id: "C1_jabba", group: "C1" }, { id: "C3_jabba", group: "C3" }];
+    expect(buildRows(units, "pseudobulk", { C1: true }, pb).map((r) => r.key)).toEqual(["clade:C1", "pbgraph:C1_jabba", "cell:a", "cell:b", "clade:C2"]);
+    expect(buildRows(units, "cells", {}, pb).map((r) => r.key)).toEqual(["pbgraph:C1_jabba", "cell:a", "cell:b", "cell:c"]);
+    const h = subRowHeights({ kind: "pbgraph" }, 30, {}, tracks);
+    expect(h).toEqual(subRowHeights({ kind: "clade" }, 30, {}, tracks));
+  });
   test("heights: clamp, overrides, clade rows taller and graph only", () => {
     expect(clampHeight(5)).toBe(12);
     expect(clampHeight(999)).toBe(200);

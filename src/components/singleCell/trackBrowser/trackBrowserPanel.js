@@ -21,16 +21,18 @@ import {
 } from "../../../helpers/singleCell/trackBrowser/layout";
 import { expectedDepth, foregroundFromCn, unitFit } from "../../../helpers/singleCell/trackBrowser/coverageAxes";
 import { buildSpec, interimTracks, resolveUrl, unitsFromCells, validateSpec } from "../../../helpers/singleCell/trackBrowser/trackSpec";
+import { PSEUDOBULK_GRAPHS_URL, manifestLoci, normalizePseudobulkGraphs } from "../../../helpers/singleCell/trackBrowser/pseudobulkGraphs";
+import { EVENTS_URL, eventLabel, eventsInWindows, normalizeEvents } from "../../../helpers/singleCell/trackBrowser/events";
 import useUnitData from "./useUnitData";
-import { COLORS, drawGenes, drawJunctions, drawRuler, drawTree, hitTest, setupCanvas } from "./draw";
+import { COLORS, drawEvents, drawGenes, drawJunctions, drawRuler, drawTree, hitTest, setupCanvas } from "./draw";
 import { CanvasRow, GraphPlotRow, NoteRow } from "./trackRow";
 import { TrackLocusContext } from "./locusContext";
 
 const { Text } = Typography;
-const HEADER = { ruler: 34, genes: 46 };
+const HEADER = { ruler: 34, genes: 46, events: 44 };
 const ROW_GAP = 3;
 const GGRAPH_MIN = 32;
-const PIN_H = { graph: 150, coverage: 120, clade: 190 };
+const PIN_H = { graph: 150, coverage: 120, clade: 190, pbgraph: 190 };
 const HIGHLIGHT_GENES = ["CDK4", "MDM2", "GLI1", "DDIT3", "HMGA2", "FRS2", "LRIG3", "WIF1", "EGFR", "PDGFRA", "MYCN", "CDKN2A", "TSPAN31", "YEATS4", "CPM", "OS9", "AVIL", "CTDSP2"];
 export const DEFAULT_LOCI = {
   MGH303: [
@@ -181,6 +183,65 @@ export default function TrackBrowserPanel() {
   const dataPath = dataset?.dataPath || "";
   const genome = dataset?.reference || "hg38";
 
+  // ----- event track (spec `events`, or {dataPath}{patient}/events.json): amplicon classes, ecDNA calls, arm events
+  const [events, setEvents] = useState({ status: "loading", list: [] });
+  const specEvents = spec.status === "ok" ? (spec.data.tracks || []).find((t) => t.type === "events") : undefined;
+  useEffect(() => {
+    if (!patientId) return;
+    if (spec.status === "ok" && !specEvents) {
+      setEvents({ status: "none", list: [] });
+      return;
+    }
+    tryGet(resolveUrl(specEvents?.url || EVENTS_URL, { dataPath, patient: patientId, genome, base: specBase })).then((r) => setEvents(r.status === "ok" ? { status: "ok", list: normalizeEvents(r.data) } : { status: r.status, list: [] }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, dataPath, spec.status]);
+  const eventsH = events.list.length ? HEADER.events : 0;
+
+  // ----- exported pseudobulk graphs (spec units.pseudobulk_graphs, or {dataPath}{patient}/pseudobulk_graphs.json)
+  const [pbManifest, setPbManifest] = useState({ status: "loading", list: [], loci: [] });
+  const specPb = spec.status === "ok" ? spec.data.units?.pseudobulk_graphs : undefined;
+  useEffect(() => {
+    if (!patientId || spec.status === "loading") return;
+    if (Array.isArray(specPb)) {
+      setPbManifest({ status: "ok", list: normalizePseudobulkGraphs(specPb), loci: [] });
+      return;
+    }
+    const url = resolveUrl(typeof specPb === "string" ? specPb : PSEUDOBULK_GRAPHS_URL, { dataPath, patient: patientId, genome, base: specBase });
+    tryGet(url).then((r) => setPbManifest(r.status === "ok" ? { status: "ok", list: normalizePseudobulkGraphs(r.data), loci: manifestLoci(r.data) } : { status: r.status, list: [], loci: [] }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, dataPath, spec.status]);
+  const pbList = pbManifest.list;
+  const pbById = useMemo(() => new Map(pbList.map((e) => [e.id, e])), [pbList]);
+  const [pbData, setPbData] = useState({ graphs: new Map(), status: new Map() });
+  useEffect(() => {
+    let alive = true;
+    const graphs = new Map();
+    const status = new Map(pbList.map((e) => [e.id, "loading"]));
+    setPbData({ graphs, status: new Map(status) });
+    pbList.forEach((e) => {
+      tryGet(resolveUrl(e.url, { dataPath, patient: patientId, unit: e.id, genome, base: specBase })).then((r) => {
+        if (!alive) return;
+        status.set(e.id, r.status);
+        if (r.status === "ok") graphs.set(e.id, r.data);
+        setPbData({ graphs: new Map(graphs), status: new Map(status) });
+      });
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pbList, dataPath]);
+  // a dataset's own locus presets (manifest `loci`) replace the generic fallback unless a link or spec set the locus
+  const datasetPresets = pbManifest.loci;
+  const presetsShown = DEFAULT_LOCI[patientId] ? presets : datasetPresets.length ? datasetPresets : presets;
+  const presetApplied = useRef(false);
+  useEffect(() => {
+    if (presetApplied.current || !datasetPresets.length || DEFAULT_LOCI[patientId] || urlParam("tblocus") || urlParam("trackspec")) return;
+    presetApplied.current = true;
+    setLocusText(datasetPresets[0].locus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetPresets]);
+
   useEffect(() => {
     if (!haveBins) return;
     const { windows: w, errors } = parseLocus(locusText, chromoBins);
@@ -222,7 +283,7 @@ export default function TrackBrowserPanel() {
   }, [tree, unitIds]);
   const cellOrder = treeLayout.order;
   const orderedUnits = useMemo(() => cellOrder.map((id) => unitById.get(id)).filter(Boolean), [cellOrder, unitById]);
-  const rowsList = useMemo(() => buildRows(orderedUnits, mode, expanded), [orderedUnits, mode, expanded]);
+  const rowsList = useMemo(() => buildRows(orderedUnits, mode, expanded, pbList), [orderedUnits, mode, expanded, pbList]);
   const groupColor = useCallback((g) => allUnits.groups[g]?.color || "#999", [allUnits]);
 
   const tracksOn = useMemo(() => ({ graph: showGraph, coverage: showCov }), [showGraph, showCov]);
@@ -276,9 +337,13 @@ export default function TrackBrowserPanel() {
       if (!g) return;
       graphInWindows(g, slots).segments.forEach((sg) => Number.isFinite(sg.cn) && vals[sg.slot].push(sg.cn));
     });
+    rowsList.forEach((r) => {
+      const g = r.kind === "pbgraph" ? pbData.graphs.get(r.id) : null;
+      if (g) graphInWindows(g, slots).segments.forEach((sg) => Number.isFinite(sg.cn) && vals[sg.slot].push(sg.cn));
+    });
     return vals.map((v) => ({ max: valueQuantile(v, 1), p99: valueQuantile(v, 0.99) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unitIds, slots, data.version]);
+  }, [unitIds, slots, data.version, pbData, rowsList]);
   const yStates = useMemo(() => slots.map((_, i) => ({ ...DEFAULT_Y, ...(windowY[i] || {}) })), [slots, windowY]);
   const scales = useMemo(() => resolveWindowScales(yStates, windowStats, shareY), [yStates, windowStats, shareY]);
   const differ = scalesDiffer(scales);
@@ -423,7 +488,7 @@ export default function TrackBrowserPanel() {
   // ----- drawing
   const headerRef = useRef(null);
   const hitsRef = useRef({ header: [], body: [], pin: [], tree: [], pinRows: [] });
-  const headerH = HEADER.ruler + HEADER.genes + (junctionTrack ? junctionH : 0);
+  const headerH = HEADER.ruler + HEADER.genes + eventsH + (junctionTrack ? junctionH : 0);
 
   useEffect(() => {
     const ctx = setupCanvas(headerRef.current, width, headerH);
@@ -439,8 +504,15 @@ export default function TrackBrowserPanel() {
     };
     label("genes", HEADER.ruler + 4);
     let hits = [];
-    if (junctionTrack) {
+    let evHits = [];
+    if (eventsH) {
       const y = HEADER.ruler + HEADER.genes;
+      evHits = drawEvents(ctx, slots, eventsInWindows(events.list, slots), trackLeft, y, eventsH, eventLabel);
+      label("amplicons", y + 6);
+      label("arm events", y + 6 + Math.floor((eventsH - 4) / 2));
+    }
+    if (junctionTrack) {
+      const y = HEADER.ruler + HEADER.genes + eventsH;
       const maxCells = junctions.list.reduce((m, j) => Math.max(m, j.nCells), 1);
       hits = drawJunctions(ctx, slots, junctions.list, trackLeft, y, junctionH, maxCells);
       label(junctions.status === "ok" ? "junctions" : `junctions n/a (${junctions.status})`, y + 4);
@@ -448,23 +520,26 @@ export default function TrackBrowserPanel() {
       if (!narrow) label("height = cells", y + 31);
     }
     hitsRef.current.header = hits;
-  }, [width, headerH, slots, genes, chromoBins, junctions, junctionTrack, trackLeft, junctionH, narrow]);
+    hitsRef.current.events = evHits;
+  }, [width, headerH, slots, genes, chromoBins, junctions, junctionTrack, trackLeft, junctionH, narrow, events, eventsH]);
 
   // pinned rows (tall, above the stack)
   const pinnedRows = useMemo(
     () =>
       pinned
-        .map((k) => (k.startsWith("clade:")
-          ? { key: k, kind: "clade", group: k.slice(6), members: orderedUnits.filter((u) => u.group === k.slice(6)).map((u) => u.id), depth: 0 }
-          : { key: k, kind: "cell", id: k.slice(5), group: unitById.get(k.slice(5))?.group, depth: 0 }))
-        .filter((r) => (r.kind === "clade" ? r.members.length > 0 : unitById.has(r.id))),
-    [pinned, orderedUnits, unitById]
+        .map((k) => {
+          if (k.startsWith("clade:")) return { key: k, kind: "clade", group: k.slice(6), members: orderedUnits.filter((u) => u.group === k.slice(6)).map((u) => u.id), depth: 0 };
+          if (k.startsWith("pbgraph:")) return { key: k, kind: "pbgraph", id: k.slice(8), group: pbById.get(k.slice(8))?.group, depth: 0 };
+          return { key: k, kind: "cell", id: k.slice(5), group: unitById.get(k.slice(5))?.group, depth: 0 };
+        })
+        .filter((r) => (r.kind === "clade" ? r.members.length > 0 : r.kind === "pbgraph" ? pbById.has(r.id) : unitById.has(r.id))),
+    [pinned, orderedUnits, unitById, pbById]
   );
   const pinLayout = useMemo(() => {
     let top = 0;
     return pinnedRows.map((row) => {
-      const gH = row.kind === "clade" ? PIN_H.clade : showGraph ? PIN_H.graph : 0;
-      const cH = row.kind === "clade" ? 0 : showCov ? PIN_H.coverage : 0;
+      const gH = row.kind === "clade" || row.kind === "pbgraph" ? PIN_H[row.kind] : showGraph ? PIN_H.graph : 0;
+      const cH = row.kind === "clade" || row.kind === "pbgraph" ? 0 : showCov ? PIN_H.coverage : 0;
       const it = { row, top, graph: gH, coverage: cH, height: gH + cH };
       top += it.height + 6;
       return it;
@@ -489,13 +564,15 @@ export default function TrackBrowserPanel() {
     const cH = it.coverage;
     const color = groupColor(row.group);
     const isClade = row.kind === "clade";
-    const unit = isClade ? null : unitById.get(row.id) || { id: row.id, group: row.group };
+    const isPb = row.kind === "pbgraph";
+    const pbEntry = isPb ? pbById.get(row.id) : null;
+    const unit = isClade ? null : isPb ? { id: row.id, group: row.group, ploidy: pbEntry?.ploidy, purity: pbEntry?.purity } : unitById.get(row.id) || { id: row.id, group: row.group };
     const pb = isClade ? pseudobulk.get(row.group) : null;
     const members = row.members || [];
     const resolved = isClade && members.every((id) => data.status.get(`graph:${id}`) && data.status.get(`graph:${id}`) !== "loading");
     const missingAll = isClade && resolved && members.length && members.every((id) => data.status.get(`graph:${id}`) !== "ok") ? members.length : 0;
-    const raw = isClade ? null : data.graphs.get(row.id);
-    const gStatus = isClade ? (pb && pb.n ? "ok" : missingAll ? "missing" : "loading") : data.status.get(`graph:${row.id}`) || "loading";
+    const raw = isClade ? null : isPb ? pbData.graphs.get(row.id) : data.graphs.get(row.id);
+    const gStatus = isClade ? (pb && pb.n ? "ok" : missingAll ? "missing" : "loading") : isPb ? pbData.status.get(row.id) || "loading" : data.status.get(`graph:${row.id}`) || "loading";
     const short = isClade ? row.group : `${row.id}`.replace(`${patientId}_`, "");
     const pinKey = row.key;
     const isPinned = pinned.includes(pinKey);
@@ -504,20 +581,28 @@ export default function TrackBrowserPanel() {
       <div
         key={type}
         title={`drag to resize ${type} rows`}
-        onMouseDown={(e) => startResize(e, type, type === "graph" ? gH : cH, isClade)}
+        onMouseDown={(e) => startResize(e, type, type === "graph" ? gH : cH, isClade || isPb)}
         style={{ position: "absolute", left: treeW, width: labelW, top: y - 3, height: 6, cursor: "ns-resize", zIndex: 3 }}
       />
     );
-    const graphNote = gStatus === "missing" ? (isClade ? `graph not available (no complex.json for these ${missingAll} cells${row.group === "Normal" ? "; normal cells have no JaBbA fit" : ""})` : "graph not available (no complex.json)") : "graph: loading";
+    const graphNote = isPb && gStatus !== "loading" ? `pseudobulk graph not available (${gStatus}: no complex.json for ${row.id})` : gStatus === "missing" ? (isClade ? `graph not available (no complex.json for these ${missingAll} cells${row.group === "Normal" ? "; normal cells have no JaBbA fit" : ""})` : "graph not available (no complex.json)") : "graph: loading";
     return (
       <div key={`${pinnedRow ? "pin" : "row"}:${row.key}`} style={{ position: pinnedRow ? "relative" : "absolute", top: pinnedRow ? undefined : it.top, left: 0, width, height: it.height, marginBottom: pinnedRow ? 6 : 0, borderBottom: "1px solid #eee" }}>
         <div style={{ position: "absolute", left: treeW, top: 0, width: labelW - 4, height: it.height, overflow: "hidden", borderLeft: `6px solid ${color}`, paddingLeft: 6 + (row.depth ? 10 : 0), fontSize: 11, lineHeight: "14px", background: pinnedRow ? "#fffaf0" : "#fff" }}>
-          {isClade ? (
+          {isPb ? (
+            <>
+              <div style={{ marginTop: 2, fontWeight: 600, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }} title={`${pbEntry?.label || row.id}${pbEntry?.method ? ` · ${pbEntry.method}` : ""}`}>{row.group} · JaBbA</div>
+              <div style={{ color: COLORS.muted, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }} title={pbEntry?.role || ""}>
+                {pbEntry?.n_cells != null ? `${pbEntry.n_cells} cells` : "cells n/a"}{pbEntry?.ploidy ? ` · ψ ${pbEntry.ploidy.toFixed(2)}` : ""}
+              </div>
+              {it.height >= 58 && pbEntry?.role && <div style={{ color: COLORS.muted, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }} title={pbEntry.role}>{pbEntry.role}</div>}
+            </>
+          ) : isClade ? (
             <>
               <div style={{ fontWeight: 600, fontSize: 12, cursor: pinnedRow ? "default" : "pointer", marginTop: 2 }} onClick={() => !pinnedRow && setExpanded((ex) => ({ ...ex, [row.group]: !ex[row.group] }))}>
                 {pinnedRow ? "" : expanded[row.group] ? "▾ " : "▸ "}{short}
               </div>
-              <div style={{ color: COLORS.muted }}>pseudobulk · {members.length} cells</div>
+              <div style={{ color: COLORS.muted }}>median of {members.length} cells</div>
             </>
           ) : (
             <>
@@ -529,13 +614,13 @@ export default function TrackBrowserPanel() {
             <a style={{ fontSize: 11 }} onClick={togglePin}>{isPinned ? "unpin" : "pin tall"}</a>
           )}
           {it.height < 44 && <a style={{ fontSize: 11, position: "absolute", right: 2, top: 1 }} onClick={togglePin} title={isPinned ? "unpin" : "pin tall"}>{isPinned ? "×" : "⇕"}</a>}
-          {!isClade && it.height >= 60 && !narrow && gH > 0 && cH > 0 && <div style={{ color: COLORS.muted, position: "absolute", top: gH + 2 }}>coverage</div>}
+          {!isClade && !isPb && it.height >= 60 && !narrow && gH > 0 && cH > 0 && <div style={{ color: COLORS.muted, position: "absolute", top: gH + 2 }}>coverage</div>}
         </div>
         <div style={{ position: "absolute", left: leftW, top: 0, width: contentW }}>
           {gH > 0 && (graphStyle === "ggraph"
-            ? (gStatus === "ok" ? <GraphPlotRow raw={raw} pb={pb} height={gH} width={contentW} minFrac={minSupport / 100} onJunction={(j) => openReads(j, isClade ? null : row.id)} /> : <NoteRow text={graphNote} width={contentW} height={gH} />)
+            ? (gStatus === "ok" ? <GraphPlotRow raw={raw} pb={pb} height={gH} width={contentW} minFrac={minSupport / 100} onJunction={(j) => openReads(j, isClade || isPb ? null : row.id)} /> : <NoteRow text={graphNote} width={contentW} height={gH} />)
             : <CanvasRow kind={isClade ? "clade" : "cell"} unit={unit} row={row} pb={pb} graph={raw} graphH={gH} covH={0} width={contentW} minFrac={minSupport / 100} graphStatus={gStatus} missingAll={missingAll} />)}
-          {cH > 0 && !isClade && (
+          {cH > 0 && !isClade && !isPb && (
             <div onMouseMove={(e) => coverageHover(e, it, unit)} onMouseLeave={() => setHover(null)}>
               <CanvasRow kind="cell" unit={unit} row={row} graph={raw} coverage={data.coverage.get(row.id)} graphH={0} covH={cH} width={contentW} covStatus={data.status.get(`cov:${row.id}`)} />
             </div>
@@ -588,7 +673,8 @@ export default function TrackBrowserPanel() {
       }
       return;
     }
-    const hit = hitTest(hitsRef.current.header, x, y, 5);
+    const evHit = (hitsRef.current.events || []).find((b) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1);
+    const hit = hitTest(hitsRef.current.header, x, y, 5) || (evHit ? { kind: "event", event: evHit.event } : null);
     const k = slotAt(x);
     const pos = k >= 0 ? Math.round(pxToBp(slots[k], x - trackLeft - slots[k].x0)) : null;
     setHover(hit || k >= 0 ? { cx: e.clientX, cy: e.clientY, which: "header", hit, k, pos } : null);
@@ -661,7 +747,7 @@ export default function TrackBrowserPanel() {
       genome,
       patient: patientId,
       windows,
-      units: { ...allUnits, list: units },
+      units: { ...allUnits, list: units, ...(pbList.length ? { pseudobulk_graphs: pbList.map(({ order, ...e }) => e) } : {}) },
       tracks: tracks.map((t) => {
         if (t.type === "graph") return { ...t, visible: showGraph, height: overrides.graph ?? base };
         if (t.type === "coverage") return { ...t, visible: showCov, height: overrides.coverage ?? base };
@@ -711,7 +797,7 @@ export default function TrackBrowserPanel() {
     <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : "0.3 · interim gOS files"}</Text>}</Space>}>
       <Space wrap style={{ marginBottom: 6 }}>
         <Input.Search style={{ width: narrow ? Math.max(200, width - 10) : 470 }} size="small" value={locusText} onChange={(e) => setLocusText(e.target.value)} onSearch={(v) => setLocusText(v)} enterButton="Go" placeholder="chr12:57,000,000-70,000,000 | chr11:39.2m-39.7m" />
-        <Select size="small" style={{ width: 180 }} placeholder="preset loci" value={null} options={presets.map((p) => ({ label: p.label, value: p.locus }))} onChange={(v) => setLocusText(v)} />
+        <Select size="small" style={{ width: 180 }} placeholder="preset loci" value={null} options={presetsShown.map((p) => ({ label: p.label, value: p.locus }))} onChange={(v) => setLocusText(v)} />
         <Button size="small" icon={<LeftOutlined />} onClick={() => applyWindows(windows.map((w) => panWindow(w, -(w.end - w.start) * 0.25, chromLength(chromoBins, w.chrom))))} />
         <Button size="small" icon={<RightOutlined />} onClick={() => applyWindows(windows.map((w) => panWindow(w, (w.end - w.start) * 0.25, chromLength(chromoBins, w.chrom))))} />
         <Button size="small" icon={<ZoomInOutlined />} onClick={() => zoomAt(0.5)} />
@@ -745,7 +831,7 @@ export default function TrackBrowserPanel() {
       <div style={{ fontSize: 12, color: "#555", marginBottom: 4, lineHeight: 1.45 }}>
         {mode === "pseudobulk"
           ? graphStyle === "ggraph"
-            ? "Clade pseudobulk rows in the gOS genome-graph view: intervals at the median JaBbA CN of the clade's cells (blue band = interquartile range), junctions carried by at least the set % of the clade's cells (hover: cells carrying it). Computed in the browser from the per-cell graphs until the gCells export lands. Click a clade label to list its cells."
+            ? `Clade pseudobulk rows in the gOS genome-graph view: intervals at the median JaBbA CN of the clade's cells (blue band = interquartile range), junctions carried by at least the set % of the clade's cells (hover: cells carrying it). Computed in the browser from the per-cell graphs until the gCells export lands.${pbList.length ? " Rows marked JaBbA under a clade are the exported pseudobulk graphs (one JaBbA fit on the clade's pooled cells; label: cells and ploidy)." : ""} Click a clade label to list its cells.`
             : "Clade pseudobulk rows: black = median JaBbA CN of the clade's cells, blue band = interquartile range, arcs = junctions carried by at least the set % of the clade's cells (thicker = more cells; computed in the browser from the per-cell graphs until the gCells export lands). Click a clade label to list its cells."
           : `${cellOrder.length} cells in tree order. Graph rows: JaBbA segments at CN, arcs = junctions. Coverage rows: grey = binned coverage on the CN scale (each cell's ploidy ψ), red = segments, blue × = expected depth (f × the cell's mean depth, not raw depth).`}
         {" "}Graph rows use the standard gOS genome-graph view (hover for interval / junction details). Each window has its own y scale. Pin a row to read it tall; click a junction for reads at both breakends; drag the ruler to pan, wheel on it to zoom.
@@ -817,6 +903,14 @@ export default function TrackBrowserPanel() {
 function tooltipText(h, { data, slots, chromoBins, genes, pseudobulk, cellOrder, unitById }) {
   const lines = [];
   const hit = h.hit;
+  if (hit?.kind === "event") {
+    const ev = hit.event;
+    lines.push(`${ev.id} · chr${ev.chrom}:${ev.start.toLocaleString()}-${ev.end.toLocaleString()}`, `${ev.kind === "amplicon" ? "process caller" : "arm event"}: ${ev.cls || "n/a"}`);
+    if (ev.status) lines.push(`status: ${ev.status}${ev.confidence ? ` · confidence ${ev.confidence}` : ""}`);
+    if (ev.kind === "amplicon") lines.push(`ecDNA caller: ${ev.ecdna || "not available"}`);
+    if (ev.genes) lines.push(`genes: ${ev.genes}`);
+    return lines.join("\n");
+  }
   if (hit?.kind === "junction") {
     const j = hit.junction;
     lines.push(`${j.id}`, `${j.cls} · ${j.nCells} tumor cells · ${j.nReads} reads · ${j.nNormal} normal cells`, `genes: ${j.genes || "none"}`, "click: reads at both breakends");
