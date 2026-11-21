@@ -148,3 +148,34 @@ describe("precompute helpers", () => {
     expect(normaliseTelomeres(done)).toBe(done);
   });
 });
+
+describe("S-phase cell attribute (dATAC s_phase)", () => {
+  // eslint-disable-next-line global-require
+  const { excludedCellIds: ex, isSPhaseCell, hasSPhaseCalls, hideSPhaseFromSearch, withSPhaseSearch, withSPhaseRule } = require("./precompute");
+  const cells = [
+    { cell_id: "a", s_phase: "TRUE" },
+    { cell_id: "b", s_phase: "FALSE" },
+    { cell_id: "c", s_phase: "NA" },
+    { cell_id: "d", "DNA cycle": "S-phase" },
+    { cell_id: "e", s_phase: true },
+  ];
+  it("calls TRUE / true / precompute S-phase cells S-phase, NA and FALSE not", () => {
+    expect(cells.filter(isSPhaseCell).map((c) => c.cell_id)).toEqual(["a", "d", "e"]);
+    expect([...ex(cells, ["s_phase"], [])].sort()).toEqual(["a", "d", "e"]);
+    expect([...ex(cells, [], [])]).toEqual([]);
+  });
+  it("knows whether any cell has a call", () => {
+    expect(hasSPhaseCalls(cells)).toBe(true);
+    expect(hasSPhaseCalls([{ cell_id: "x", s_phase: "NA" }, { cell_id: "y" }])).toBe(false);
+  });
+  it("round-trips ?hidesphase and the rule list", () => {
+    expect(hideSPhaseFromSearch("?hidesphase=1")).toBe(true);
+    expect(hideSPhaseFromSearch("?hidesphase=0")).toBe(false);
+    expect(hideSPhaseFromSearch("?dataset=x")).toBe(null);
+    expect(withSPhaseSearch("?dataset=x", true)).toBe("?dataset=x&hidesphase=1");
+    expect(withSPhaseSearch("?dataset=x&hidesphase=1", false)).toBe("?dataset=x");
+    expect(withSPhaseRule(["doublet"], true)).toEqual(["doublet", "s_phase"]);
+    expect(withSPhaseRule(["s_phase", "doublet"], false)).toEqual(["doublet"]);
+    expect(withSPhaseRule(undefined, true)).toEqual(["s_phase"]);
+  });
+});

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Button, Card, Select, Space, Tag, Tooltip, Typography } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
 import singleCellActions from "../../../redux/singleCell/actions";
-import { QC_EXCLUDE_RULES, excludedCellIds } from "../../../helpers/singleCell/precompute";
+import { QC_EXCLUDE_RULES, excludedCellIds, hasSPhaseCalls } from "../../../helpers/singleCell/precompute";
 
 const { Text } = Typography;
 const NONE = [];
@@ -25,7 +25,7 @@ export default function CellFilterControl() {
   );
   const nHere = [...excluded].filter((id) => ids.has(id)).length;
   const manualHere = manual.filter((id) => ids.has(`${id}`));
-  const hasQc = cells.some((c) => c.pc_qc_flags != null || c["DNA cycle"] != null);
+  const hasQc = cells.some((c) => c.pc_qc_flags != null) || hasSPhaseCalls(cells);
   const counts = useMemo(
     () => Object.fromEntries(QC_EXCLUDE_RULES.map((r) => [r.value, excludedCellIds(cells, [r.value]).size])),
     [cells]

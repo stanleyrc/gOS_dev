@@ -3,7 +3,10 @@ import { DEFAULT_SIGNATURE_TRACK } from "../../helpers/singleCell/cellSignatures
 
 // Tracks shown for each selected cell. Coverage and total CN are on by
 // default; the others are toggles. All come from the cell's own case folder.
-export const SC_TRACKS = ["total", "coverage", "allelic", "hetsnps", "mutations"];
+export const SC_TRACKS = ["total", "coverage", "allelic", "hetsnps", "mutations", "atac", "atac_pool"];
+// Arrow tracks drawn with y as is (no slope/intercept): dATAC A-read accessibility,
+// per cell and the pool of the cell's cluster (CPM per CN bin; srctools inst/datac).
+export const SC_RAW_ARROW_TRACKS = ["atac", "atac_pool"];
 // Only total CN by default: coverage files are large (~30 MB per cell).
 export const SC_DEFAULT_TRACKS = ["total"];
 // Tracks fetched on demand when a cell is selected (total CN and SNVs are
@@ -14,6 +17,8 @@ export const SC_FETCHED_TRACKS = {
   hetsnps: "hetsnps.arrow",
   // het SNPs aggregated per allelic-CN segment; shown instead of hetsnps in block mode (not a toggle of its own)
   hetblocks: "hetblocks.json",
+  atac: "atac.arrow",
+  atac_pool: "atac_pool.arrow",
 };
 // Each coverage/het-SNP plot is its own WebGL canvas; browsers cap live contexts.
 export const SC_MAX_TRACK_CELLS = 6;

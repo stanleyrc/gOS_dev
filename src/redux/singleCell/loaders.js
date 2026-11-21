@@ -8,7 +8,7 @@ import {
   isMissingDataResponse,
 } from "../../helpers/dataAvailability";
 import { allelicToGenome, dataToGenome, splitFloat64 } from "../../helpers/utility";
-import { SC_FETCHED_TRACKS } from "./actions";
+import { SC_FETCHED_TRACKS, SC_RAW_ARROW_TRACKS } from "./actions";
 import { hetBlocksToGraph } from "../../helpers/singleCell/hetTracks";
 import { parseRnaSummary, readMatrixBuffers } from "../../helpers/singleCell/staticRna";
 import { GZ_INDEX_FILE, dataRootOf, gunzipText, gzEntry, parseGzIndex, sourceIsFresh } from "../../helpers/singleCell/gzIndex";
@@ -129,13 +129,17 @@ export async function loadCellHeatmapFiles(dataset, cellId, cancelToken) {
 /**
  * Coverage-style Arrow file (columns x, y, color) as ScatterPlotPanel inputs.
  * y is converted to copy number with slope/intercept when both are given,
- * exactly as the bulk coverage and het-SNP tracks do. inCn: the column is already copy number
- * (coverage.arrow's y is the exporter's foregroundabs), so slope / intercept are not applied again.
+ * exactly as the bulk coverage and het-SNP tracks do (genomeCoverage saga). The skilift exporter
+ * writes coverage.arrow y as relative coverage / read counts with cov_slope / cov_intercept in
+ * metadata.json, so the fit is always applied when present. inCn: only when no finite fit is given,
+ * treat y as already copy number (hasFit true, y plotted as is).
  */
 export function arrowScatter(buffer, slope, intercept, inCn = false) {
   const table = tableFromIPC(buffer);
   const counts = Array.from(table.getChild("y").toArray());
-  const hasFit = inCn || (Number.isFinite(slope) && Number.isFinite(intercept));
+  // slope must be positive: Number(null) is 0, which would flatten the track
+  const fit = Number.isFinite(slope) && slope > 0 && Number.isFinite(intercept);
+  const hasFit = fit || inCn;
   const dataPointsX = Array.from(table.getChild("x").toArray());
   const dataPointsXHigh = [];
   const dataPointsXLow = [];
@@ -148,7 +152,7 @@ export function arrowScatter(buffer, slope, intercept, inCn = false) {
     dataPointsX,
     dataPointsXHigh,
     dataPointsXLow,
-    dataPointsY1: hasFit && !inCn ? counts.map((d) => d * slope + intercept) : counts,
+    dataPointsY1: fit ? counts.map((d) => d * slope + intercept) : counts,
     dataPointsY2: counts,
     dataPointsColor: Array.from(table.getChild("color").toArray()),
     hasFit,
@@ -218,6 +222,7 @@ export async function loadCellTrack(dataset, cellId, track, chromoBins) {
       const res = await tryGet(casePath(dataset, cellId, filename), { responseType: arrow ? "arraybuffer" : "json" });
       if (res.status !== "ok") return res;
       if (track === "total" || track === "mutations") return { status: "ok", data: res.data || { settings: {}, intervals: [], connections: [] } };
+      if (arrow && SC_RAW_ARROW_TRACKS.includes(track)) return { status: "ok", data: arrowScatter(res.data, NaN, NaN, true) };
       if (arrow) {
         const meta = await tryGet(casePath(dataset, cellId, "metadata.json"));
         const record = meta.status === "ok" ? (Array.isArray(meta.data) ? meta.data[0] : meta.data) || {} : {};

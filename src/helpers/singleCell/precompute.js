@@ -321,6 +321,47 @@ export const QC_EXCLUDE_RULES = [
   { value: "s_phase", label: "S-phase cells (DNA)" },
 ];
 
+/**
+ * S-phase call of a cell: the precompute S-phase step ("DNA cycle" = S-phase) or an
+ * s_phase cell attribute from the manifest (TRUE / FALSE / NA, e.g. the dATAC early/late
+ * coverage call; srctools inst/datac). Cells without a call are never S-phase.
+ */
+export function isSPhaseCell(c) {
+  if (!c) return false;
+  if (c[PC_FIELDS.dnaCycle] === "S-phase") return true;
+  const v = c.s_phase;
+  return v === true || (typeof v === "string" && /^(true|yes|1|s)$/i.test(v.trim()));
+}
+
+/** Whether any cell carries an S-phase call (precompute step or s_phase attribute). */
+export function hasSPhaseCalls(cells = []) {
+  return cells.some((c) => c && (c[PC_FIELDS.dnaCycle] != null || (c.s_phase != null && !/^(na|)$/i.test(`${c.s_phase}`.trim()))));
+}
+
+export const S_PHASE_PARAM = "hidesphase";
+
+/** ?hidesphase=1 -> true, =0 -> false, absent -> null. */
+export function hideSPhaseFromSearch(search = "") {
+  const v = new URLSearchParams(search).get(S_PHASE_PARAM);
+  if (v == null) return null;
+  return /^(1|true|yes)$/i.test(v) ? true : /^(0|false|no)$/i.test(v) ? false : null;
+}
+
+/** Search string with ?hidesphase=1 set (on) or removed (off). */
+export function withSPhaseSearch(search = "", on = false) {
+  const params = new URLSearchParams(search);
+  if (on) params.set(S_PHASE_PARAM, "1");
+  else params.delete(S_PHASE_PARAM);
+  const s = params.toString();
+  return s ? `?${s}` : "";
+}
+
+/** qcExcludeRules with the "s_phase" rule added (on) or removed (off). */
+export function withSPhaseRule(rules = [], on = false) {
+  const rest = (rules || []).filter((r) => r !== "s_phase");
+  return on ? [...rest, "s_phase"] : rest;
+}
+
 /** Set of cell ids excluded by the rules and the manual list. */
 export function excludedCellIds(cells = [], rules = [], manual = [], covQc = null) {
   const out = new Set((manual || []).map(String));
@@ -330,7 +371,7 @@ export function excludedCellIds(cells = [], rules = [], manual = [], covQc = nul
   const want = new Set(rules);
   cells.forEach((c) => {
     const flags = new Set(`${c[PC_FIELDS.qcFlags] || ""}`.split(",").filter(Boolean));
-    const hit = [...flags].some((f) => want.has(f)) || (want.has("s_phase") && c[PC_FIELDS.dnaCycle] === "S-phase");
+    const hit = [...flags].some((f) => want.has(f)) || (want.has("s_phase") && isSPhaseCell(c));
     if (hit) out.add(`${c.cell_id}`);
   });
   return out;

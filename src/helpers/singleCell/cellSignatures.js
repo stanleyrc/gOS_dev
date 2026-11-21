@@ -64,6 +64,8 @@ export function annotationFromSearch(search) {
   if (p.has("annw") && number(p.get("annw")) != null) patch.stripWidth = annotationWidth(p.get("annw"));
   if (["0", "1"].includes(p.get("annsig"))) patch.signatureTrack = p.get("annsig") === "1";
   if (["auto", "dominant", "stacked", "cell"].includes(p.get("annsigmode"))) patch.cellSignatureMode = p.get("annsigmode");
+  // ?annf=library,s_phase opens with those cell-attribute strips beside the heatmap
+  if (p.get("annf") != null) patch.annotationFields = p.get("annf").split(",").map((f) => f.trim()).filter(Boolean);
   return patch;
 }
 
