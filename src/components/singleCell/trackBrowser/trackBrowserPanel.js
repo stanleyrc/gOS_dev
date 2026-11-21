@@ -744,7 +744,9 @@ export default function TrackBrowserPanel() {
       {spec.status === "error" && <Alert type="warning" showIcon message={spec.error} style={{ marginBottom: 6 }} />}
       <div style={{ fontSize: 12, color: "#555", marginBottom: 4, lineHeight: 1.45 }}>
         {mode === "pseudobulk"
-          ? "Clade pseudobulk rows: black = median JaBbA CN of the clade's cells, blue band = interquartile range, arcs = junctions carried by at least the set % of the clade's cells (thicker = more cells; computed in the browser from the per-cell graphs until the gCells export lands). Click a clade label to list its cells."
+          ? graphStyle === "ggraph"
+            ? "Clade pseudobulk rows in the gOS genome-graph view: intervals at the median JaBbA CN of the clade's cells (blue band = interquartile range), junctions carried by at least the set % of the clade's cells (hover: cells carrying it). Computed in the browser from the per-cell graphs until the gCells export lands. Click a clade label to list its cells."
+            : "Clade pseudobulk rows: black = median JaBbA CN of the clade's cells, blue band = interquartile range, arcs = junctions carried by at least the set % of the clade's cells (thicker = more cells; computed in the browser from the per-cell graphs until the gCells export lands). Click a clade label to list its cells."
           : `${cellOrder.length} cells in tree order. Graph rows: JaBbA segments at CN, arcs = junctions. Coverage rows: grey = binned coverage on the CN scale (each cell's ploidy ψ), red = segments, blue × = expected depth (f × the cell's mean depth, not raw depth).`}
         {" "}Graph rows use the standard gOS genome-graph view (hover for interval / junction details). Each window has its own y scale. Pin a row to read it tall; click a junction for reads at both breakends; drag the ruler to pan, wheel on it to zoom.
       </div>
