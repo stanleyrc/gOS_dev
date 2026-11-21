@@ -7,7 +7,7 @@ import useEnsureGeneList from "../cohort/useEnsureGeneList";
 import CellIgvPanel from "../cellIgvPanel";
 import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import { SC_MAX_TRACK_CELLS } from "../../../redux/singleCell/actions";
-import { treeForCells } from "../../../helpers/singleCell/newick";
+import { clipLongBranches, longBranchCap, treeForCells } from "../../../helpers/singleCell/newick";
 import {
   chromLength, formatLocus, layoutWindows, panWindow, parseLocus, pxToBp, toGlobal, zoomWindow,
 } from "../../../helpers/singleCell/trackBrowser/locus";
@@ -23,7 +23,7 @@ const TREE_W = 130;
 const LABEL_W = 92;
 const AXIS_L = 26;
 const AXIS_R = 30;
-const HEADER = { ruler: 26, genes: 34, junctions: 64 };
+const HEADER = { ruler: 34, genes: 34, junctions: 64 };
 const ROW_GAP = 3;
 const VIEW_H = 620;
 const HIGHLIGHT_GENES = ["CDK4", "MDM2", "GLI1", "DDIT3", "HMGA2", "FRS2", "LRIG3", "WIF1", "EGFR", "PDGFRA", "MYCN", "CDKN2A", "TSPAN31", "YEATS4", "CPM"];
@@ -172,7 +172,7 @@ export default function TrackBrowserPanel() {
     if (!source || !unitIds.length) return { layout: null, rows: unitIds };
     const built = treeForCells(source, unitIds);
     if (!built.layout) return { layout: null, rows: unitIds };
-    return { layout: built.layout, rows: [...built.layout.leaves, ...built.unplaced] };
+    return { layout: clipLongBranches(built.layout, longBranchCap(built.layout)), rows: [...built.layout.leaves, ...built.unplaced] };
   }, [tree, unitIds]);
   const rows = treeLayout.rows;
   const rowH = (showGraph ? graphH : 0) + (showCov ? covH : 0) + ROW_GAP;
@@ -186,7 +186,7 @@ export default function TrackBrowserPanel() {
 
   // patient junction table and the pooled junction slices' regions (reads)
   const [junctions, setJunctions] = useState({ status: "loading", list: [] });
-  const [sliceRegions, setSliceRegions] = useState(null);
+  const [sliceRegions, setSliceRegions] = useState(undefined); // undefined until fetched, null when absent
   useEffect(() => {
     if (!patientId || !junctionTrack) return;
     const url = resolveUrl(junctionTrack.url, { dataPath, patient: patientId, genome, base: specBase });
@@ -216,7 +216,7 @@ export default function TrackBrowserPanel() {
 
   // reads (split igv.js view, one frame per locus): at both breakends of a junction, or at SNV / positions.
   // Grouped by cell, by clade (pooled RG-tagged slices) or all cells pooled (docs/track_spec.md, reads.group_by).
-  const [readsGroupBy, setReadsGroupBy] = useState("unit");
+  const [readsGroupBy, setReadsGroupBy] = useState(() => (["unit", "group", "all"].includes(urlParam("tbgroup")) ? urlParam("tbgroup") : "unit"));
   const [snvText, setSnvText] = useState("");
   const pooledFor = useCallback(
     (points) => {
@@ -309,6 +309,33 @@ export default function TrackBrowserPanel() {
       groupBy,
     });
   };
+  // deep link: ?tbjx=chr11:39441830-|chr12:68168577+ opens reads at that junction once graphs and slices are in;
+  // ?tbsnv=chr12:57751234 opens SNV reads
+  const linkDone = useRef(false);
+  const graphsLoaded = unitIds.length > 0 && unitIds.every((id) => data.status.get(`graph:${id}`) && data.status.get(`graph:${id}`) !== "loading");
+  useEffect(() => {
+    if (linkDone.current || !graphsLoaded || sliceRegions === undefined) return;
+    const jx = urlParam("tbjx");
+    const snv = urlParam("tbsnv");
+    if (jx) {
+      const ends = jx.split("|").map((t) => t.trim().match(/^(?:chr)?([0-9XYM]+):(\d+)([+-])?$/i));
+      if (ends.length === 2 && ends.every(Boolean)) {
+        linkDone.current = true;
+        const [a, b] = ends.map((m) => ({ chrom: m[1].toUpperCase(), pos: Number(m[2]), sign: m[3] === "-" ? -1 : 1 }));
+        openReads({ id: jx, a, b });
+      }
+    } else if (snv) {
+      linkDone.current = true;
+      setSnvText(snv);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graphsLoaded, sliceRegions]);
+  useEffect(() => {
+    if (snvText && urlParam("tbsnv") === snvText && !reads) openSnvReads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snvText]);
+  useEffect(() => setUrlParam("tbgroup", readsGroupBy === "unit" ? null : readsGroupBy), [readsGroupBy]);
+
   // regroup the open reads view when the grouping changes
   const lastReads = useRef(null);
   lastReads.current = reads;

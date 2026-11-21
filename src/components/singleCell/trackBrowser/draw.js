@@ -89,7 +89,7 @@ export function drawRuler(ctx, slots, left, y, h) {
       ctx.moveTo(x, y + h - 6);
       ctx.lineTo(x, y + h);
       ctx.stroke();
-      text(ctx, bpLabel(v, span), x, y + h - 11, { color: COLORS.muted, size: 9, align: "center" });
+      text(ctx, bpLabel(v, span), x, y + h - 12, { color: COLORS.muted, size: 9, align: "center" });
     });
   });
 }
