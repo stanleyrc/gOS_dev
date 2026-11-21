@@ -62,12 +62,13 @@ v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; ev
 ```json
 "layout": { "row_height": 56, "overrides": { "graph": null, "coverage": 80 }, "auto_fit": true,
             "junction_height": 80, "reads_height": 220, "mode": "pseudobulk", "share_y": false,
-            "pinned": ["clade:Clone 3", "cell:MGH303_MR_2_pl3_5a"] }
+            "pinned": ["clade:Clone 3", "cell:MGH303_MR_2_pl3_5a"], "clade_min_support": 25 }
 ```
 
 - `row_height`: px per per-unit sub-row (12-200). Presets: compact 24, readable 56, large 120. `overrides` per track type.
 - `auto_fit`: rows grow to fill the viewport, never below 40 px before scrolling.
 - `mode`: `pseudobulk` (one row per clade, cells expandable under it) or `cells` (all units in tree order with the tree).
+- `clade_min_support`: pseudobulk rows draw junctions carried by at least this % of the clade's cells (default 25).
 - `pinned`: up to 3 rows (`clade:<group>` or `cell:<unit>`) drawn tall above the stack.
 
 ## Units

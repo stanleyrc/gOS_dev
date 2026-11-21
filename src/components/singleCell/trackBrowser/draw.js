@@ -320,7 +320,14 @@ function drawGraphSub(ctx, o, g, y, hh, hits, unitLike) {
       const yb = a.b.slot >= 0 ? yOn(scales[a.b.slot], a.b.cn, y, hh) : null;
       let pts;
       const w = a.frac != null ? 0.8 + 3 * a.frac : 1.3;
-      if (a.a.slot >= 0 && a.b.slot >= 0) pts = arc(ctx, px(a.a.slot, a.a.pos), ya, px(a.b.slot, a.b.pos), yb, y + 2, color, w);
+      if (a.a.slot >= 0 && a.b.slot >= 0) {
+        // bulge grows with the arc's span, so short junctions stay low and long ones rise toward the row top
+        const xa = px(a.a.slot, a.a.pos);
+        const xb = px(a.b.slot, a.b.pos);
+        const room = Math.max(4, Math.min(ya, yb) - y - 2);
+        const peak = Math.min(ya, yb) - Math.max(4, Math.min(room, Math.abs(xb - xa) * 0.35));
+        pts = arc(ctx, xa, ya, xb, yb, peak, color, w);
+      }
       else {
         const e = a.a.slot >= 0 ? a.a : a.b;
         pts = stub(ctx, px(e.slot, e.pos), e === a.a ? ya : yb, y + 3, color);
@@ -398,7 +405,7 @@ export function drawCladeRow(ctx, o) {
   if (!hh) return hits;
   rowFrame(ctx, slots, left, top, hh, scales);
   if (!pb || !pb.n) {
-    text(ctx, "pseudobulk: loading member graphs", left + 40, top + hh / 2, { color: COLORS.muted, size: 11 });
+    text(ctx, o.missingAll ? `graph not available (no complex.json for these ${o.missingAll} cells${clade.group === "Normal" ? "; normal cells have no JaBbA fit" : ""})` : "pseudobulk: loading member graphs", left + 40, top + hh / 2, { color: COLORS.muted, size: 11 });
     return hits;
   }
   const px = (k, pos) => left + slots[k].x0 + bpToPx(slots[k], pos);
@@ -414,7 +421,7 @@ export function drawCladeRow(ctx, o) {
     });
   });
   const segs = pb.steps.map((st) => ({ slot: st.slot, start: st.start, end: st.end, cn: st.median, q1: st.q1, q3: st.q3, n: st.n }));
-  const alts = pb.junctions.map((j) => ({ ...j, cn: j.cnMedian }));
+  const alts = pb.junctions.filter((j) => j.frac >= (o.minFrac || 0)).map((j) => ({ ...j, cn: j.cnMedian }));
   drawGraphSub(ctx, o, { segments: segs, alts }, top, hh, hits, { id: `${clade.group} pseudobulk`, group: clade.group, pseudobulk: true, n: pb.n });
   windowAxes(ctx, slots, left, top, hh, scales);
   return hits;

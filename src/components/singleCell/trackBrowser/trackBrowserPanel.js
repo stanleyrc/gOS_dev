@@ -125,6 +125,7 @@ export default function TrackBrowserPanel() {
   const [showCov, setShowCov] = useState(true);
   const [mode, setMode] = useState(() => (urlParam("tbmode") === "cells" ? "cells" : "pseudobulk"));
   const [expanded, setExpanded] = useState({});
+  const [minSupport, setMinSupport] = useState(() => (Number.isFinite(Number(urlParam("tbsupport"))) && urlParam("tbsupport") ? Number(urlParam("tbsupport")) : 25)); // % of a clade's cells
   const [pinned, setPinned] = useState(() => (urlParam("tbpin") ? urlParam("tbpin").split(",").filter(Boolean).slice(0, 3) : []));
   const [groups, setGroups] = useState([]);
   const [cladeIds, setCladeIds] = useState(null);
@@ -157,6 +158,7 @@ export default function TrackBrowserPanel() {
       if (L.reads_height) setReadsH(L.reads_height);
       if (L.mode) setMode(L.mode);
       if (L.share_y != null) setShareY(Boolean(L.share_y));
+      if (Number.isFinite(L.clade_min_support)) setMinSupport(L.clade_min_support);
       if (Array.isArray(L.pinned)) setPinned(L.pinned.slice(0, 3));
       if (s.selection?.clades) setGroups(s.selection.clades);
       if (s.selection?.units) setCladeIds(s.selection.units);
@@ -459,7 +461,10 @@ export default function TrackBrowserPanel() {
         ctx.fillStyle = COLORS.muted;
         ctx.fillText(`pseudobulk · ${row.members?.length ?? pb?.n ?? "?"} cells`, lx, top + 20);
         if (h >= 56 && !narrow) ctx.fillText(pinnedRow ? "click label to unpin" : open ? "click label: collapse" : "click label: cells", lx, top + 34);
-        hits.push(...drawCladeRow(ctx, { left: trackLeft, slots, scales, top, pb, graphH: gH, clade: row }));
+        const members = row.members || [];
+        const resolved = members.every((id) => data.status.get(`graph:${id}`) && data.status.get(`graph:${id}`) !== "loading");
+        const missingAll = resolved && members.length && members.every((id) => data.status.get(`graph:${id}`) !== "ok") ? members.length : 0;
+        hits.push(...drawCladeRow(ctx, { left: trackLeft, slots, scales, top, pb, graphH: gH, clade: row, minFrac: minSupport / 100, missingAll }));
       } else {
         const unit = unitById.get(row.id) || { id: row.id, group: row.group };
         const short = `${row.id}`.replace(`${patientId}_`, "");
@@ -488,7 +493,7 @@ export default function TrackBrowserPanel() {
       return hits;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [groupColor, treeW, labelW, trackLeft, slots, scales, pseudobulk, expanded, unitById, patientId, chromoBins, data.version, narrow]
+    [groupColor, treeW, labelW, trackLeft, slots, scales, pseudobulk, expanded, unitById, patientId, chromoBins, data.version, narrow, minSupport]
   );
 
   // pinned rows (tall, above the stack)
@@ -681,7 +686,7 @@ export default function TrackBrowserPanel() {
       provenance: { source: "gOS track browser export", data: "interim gOS per-cell files" },
     });
     s.windows = windows.map((w, i) => ({ locus: s.loci[i], y: { mode: yStates[i].mode, min: scales[i].min, max: scales[i].max, log: scales[i].log, robust: yStates[i].robust } }));
-    s.layout = { row_height: base, overrides, auto_fit: autoFit, junction_height: junctionH, reads_height: readsH, mode, share_y: shareY, pinned };
+    s.layout = { row_height: base, overrides, auto_fit: autoFit, junction_height: junctionH, reads_height: readsH, mode, share_y: shareY, pinned, clade_min_support: minSupport };
     const blob = new Blob([JSON.stringify(s, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -729,6 +734,7 @@ export default function TrackBrowserPanel() {
       </Space>
       <Space wrap style={{ marginBottom: 6 }}>
         <Segmented size="small" value={mode} onChange={(v) => { setMode(v); setScrollTop(0); if (scrollRef.current) scrollRef.current.scrollTop = 0; }} options={[{ label: "clade pseudobulk", value: "pseudobulk" }, { label: "all cells + tree", value: "cells" }]} />
+        {mode === "pseudobulk" && <Space size={4}><Text>clade junctions ≥</Text><InputNumber size="small" min={0} max={100} value={minSupport} onChange={(v) => setMinSupport(v ?? 0)} style={{ width: 62 }} /><Text>% of cells</Text></Space>}
         {mode === "pseudobulk" && <Button size="small" onClick={() => setExpanded(Object.values(expanded).some(Boolean) ? {} : Object.fromEntries(Object.keys(allUnits.groups).map((g) => [g, true])))}>{Object.values(expanded).some(Boolean) ? "collapse all" : "expand all"}</Button>}
         <Space size={4}><Switch size="small" checked={showGraph} onChange={setShowGraph} /><Text>graph</Text></Space>
         <Space size={4}><Switch size="small" checked={showCov} onChange={setShowCov} /><Text>coverage</Text></Space>
@@ -749,7 +755,7 @@ export default function TrackBrowserPanel() {
       {spec.status === "error" && <Alert type="warning" showIcon message={spec.error} style={{ marginBottom: 6 }} />}
       <div style={{ fontSize: 12, color: "#555", marginBottom: 4, lineHeight: 1.45 }}>
         {mode === "pseudobulk"
-          ? "Clade pseudobulk rows: black = median JaBbA CN of the clade's cells, blue band = interquartile range, arcs = junctions (thicker = carried by more of the clade's cells; computed in the browser from the per-cell graphs until the gCells export lands). Click a clade label to list its cells."
+          ? "Clade pseudobulk rows: black = median JaBbA CN of the clade's cells, blue band = interquartile range, arcs = junctions carried by at least the set % of the clade's cells (thicker = more cells; computed in the browser from the per-cell graphs until the gCells export lands). Click a clade label to list its cells."
           : `${cellOrder.length} cells in tree order. Graph rows: JaBbA segments at CN, arcs = junctions. Coverage rows: grey = binned coverage on the CN scale (each cell's ploidy ψ), red = segments, blue × = expected depth (f × the cell's mean depth, not raw depth).`}
         {" "}Each window has its own y scale (ticks 0 / 2 / max inside the window). Click a row to pin it tall; click a junction arc for reads at both breakends; drag to pan; wheel on the ruler to zoom.
       </div>
