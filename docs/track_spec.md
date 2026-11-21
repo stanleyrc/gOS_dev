@@ -216,7 +216,7 @@ discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_s
 { "id": "hic", "type": "hic", "title": "Hi-C contacts", "per_unit": true,
   "url": "{dataPath}{unit}/hic/index.json", "format": "gos-hic-tiles/1",
   "units": ["GBM39_cluster0", "GBM39_cluster2"], "mode": "triangle", "resolution": "auto",
-  "normalization": "raw", "color": { "scale": "log", "max": "p99", "palette": "white-red" },
+  "normalization": "raw", "color": { "scale": "log", "max": "p99", "palette": "white-red", "shared": false },
   "junctions": { "overlay": true, "source": "graph" }, "height": 420, "visible": true }
 ```
 
@@ -232,7 +232,8 @@ discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_s
   size in bp present in the export (used when its axis stays under the reader's cap, 1,400 bins).
 - `normalization`: `raw` (counts) or `balanced` (count × w1 × w2 with the export's ICE weights; filtered bins grey).
 - `color`: `scale` `log` (log1p(v) / log1p(max), default) or `linear`; `max` a percentile `"p<q>"` of the drawn
-  off-diagonal non-zero values (robust, default `p99`) or a number.
+  off-diagonal non-zero values (robust, default `p99`) or a number.  `shared: true` (default false) uses one max for all shown units (the largest of
+  their percentile maxima) so the maps compare directly.
 - `junctions.overlay`: the unit's `graph` track ALT edges drawn as circles at (bp1, bp2) when both breakends are in the
   windows (`source: "graph"`).
 - Pan and zoom follow the shared windows; dragging or wheeling on a map moves the window under the cursor.

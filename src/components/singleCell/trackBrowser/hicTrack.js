@@ -89,7 +89,7 @@ function recordFrame(ms) {
  * above) or square. Cis blocks on the diagonal, trans blocks between windows off it, window borders and labels,
  * optional graph ALT edges as marks at (bp1, bp2).
  */
-function HicMap({ label, entry, binUrl, settings, graph, height, onHover }) {
+function HicMap({ label, entry, binUrl, settings, graph, height, onHover, sharedMax = null, onAutoMax = null }) {
   const L = useTrackLocus();
   const { slots, windows, geometry, setWindows, chromoBins } = L;
   const { trackLeft, contentW, gapX } = geometry;
@@ -115,16 +115,13 @@ function HicMap({ label, entry, binUrl, settings, graph, height, onHover }) {
     }
     const need = chunksFor(wb, entry.nbins);
     const have = new Map();
-    let pending = 0;
     need.forEach((c) => {
-      pending += 1;
       loadChunk(binUrl, entry, c)
         .then((ch) => {
           have.set(c, ch);
         })
         .catch((e) => alive && setError(e.message))
         .finally(() => {
-          pending -= 1;
           if (!alive) return;
           if (have.size) {
             chunksRef.current = new Map([...chunksRef.current, ...have].filter(([k]) => need.includes(k)));
@@ -150,7 +147,9 @@ function HicMap({ label, entry, binUrl, settings, graph, height, onHover }) {
     matrixRef.current = m;
     const cols = columnAxis(slots, wb, mapW);
     colsRef.current = cols;
-    const max = settings.max != null ? settings.max : robustMax(m, settings.quantile);
+    const ownMax = robustMax(m, settings.quantile);
+    if (onAutoMax) onAutoMax(label, ownMax);
+    const max = settings.max != null ? settings.max : settings.shareMax && sharedMax > 0 ? sharedMax : ownMax;
     const px = renderPixels(m, cols, mapW, H, { mode: settings.mode, max, log: settings.log });
     const oc = off.current;
     oc.width = mapW;
@@ -220,7 +219,7 @@ function HicMap({ label, entry, binUrl, settings, graph, height, onHover }) {
     recordFrame(ms);
     setStats({ max, ms, nPixels: m.nPixels, n: m.n, missing: m.missingChunks });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, wb, slots, settings, norm, mapW, H, trackLeft, graph]);
+  }, [version, wb, slots, settings, norm, mapW, H, trackLeft, graph, sharedMax]);
 
   // pan (drag) and zoom (wheel) on the map move the shared windows
   const drag = useRef(null);
@@ -286,7 +285,7 @@ function HicMap({ label, entry, binUrl, settings, graph, height, onHover }) {
         {settings.normalization === "balanced" && norm === "raw" && <div style={{ color: "#b45309" }}>balanced not available at this resolution (ICE did not converge); raw shown</div>}
         {stats && (
           <div style={{ color: "#666" }}>
-            max {stats.max >= 10 ? Math.round(stats.max) : stats.max.toPrecision(2)} ({settings.max != null ? "manual" : `p${Math.round(settings.quantile * 1000) / 10}`}{settings.log ? ", log" : ""})
+            max {stats.max >= 10 ? Math.round(stats.max) : stats.max.toPrecision(2)} ({settings.max != null ? "manual" : `p${Math.round(settings.quantile * 1000) / 10}${settings.shareMax ? ", shared" : ""}`}{settings.log ? ", log" : ""})
           </div>
         )}
         <ColorBar />
@@ -338,6 +337,10 @@ export default function HicSection({ units, state, setState, dataPath, patient, 
   const shown = state.units.length ? state.units.filter((id) => units.some((u) => u.id === id)) : [];
   const indexes = useHicIndexes(shown, urlOf);
   const [hover, setHover] = useState(null);
+  // shared color max: the largest of the shown maps' own percentile maxima (off by default; spec color.shared)
+  const [autoMax, setAutoMax] = useState({});
+  const onAutoMax = React.useCallback((id, v) => setAutoMax((m) => (m[id] === v ? m : { ...m, [id]: v })), []);
+  const sharedMax = Math.max(0, ...shown.map((id) => autoMax[units.find((x) => x.id === id)?.label || id] || 0));
   const mapW = Math.max(10, geometry.contentW - 2 * geometry.gapX);
   const first = shown.map((id) => indexes.get(id)).find((v) => v?.status === "ok")?.index || null;
   const resList = first ? first.resolutions.map((r) => r.res).sort((a, b) => a - b) : [];
@@ -384,6 +387,9 @@ export default function HicSection({ units, state, setState, dataPath, patient, 
           />
           {state.max != null && <InputNumber size="small" min={0} value={state.max} onChange={(v) => set({ max: v ?? 0 })} style={{ width: 80 }} />}
         </Space>
+        <Tooltip title="One color max for all shown units (the largest of their percentile maxima), so maps compare directly; off: each map has its own max">
+          <Space size={4}><Switch size="small" checked={Boolean(state.shareMax)} disabled={state.max != null} onChange={(v) => set({ shareMax: v })} /><Text>shared max</Text></Space>
+        </Tooltip>
         <Tooltip title="Graph ALT edges (the unit's genome graph) drawn as blue circles at (bp1, bp2) when both breakends are in the windows">
           <Space size={4}><Switch size="small" checked={state.junctions} onChange={(v) => set({ junctions: v })} /><Text>junctions</Text></Space>
         </Tooltip>
@@ -407,7 +413,7 @@ export default function HicSection({ units, state, setState, dataPath, patient, 
         const binUrl = urlOf(id).replace(/index\.json$/, entry.file);
         return (
           <div key={id} style={{ borderBottom: "1px solid #eee", padding: "2px 0" }}>
-            <HicMap label={u?.label || id} entry={entry} binUrl={binUrl} settings={state} graph={graphs?.get(id) || null} height={height} onHover={setHover} />
+            <HicMap label={u?.label || id} entry={entry} binUrl={binUrl} settings={state} graph={graphs?.get(id) || null} height={height} onHover={setHover} sharedMax={sharedMax} onAutoMax={onAutoMax} />
           </div>
         );
       })}

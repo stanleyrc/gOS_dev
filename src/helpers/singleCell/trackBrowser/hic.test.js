@@ -141,7 +141,7 @@ describe("hic helpers", () => {
   });
 
   it("round-trips the spec track", () => {
-    const st = { units: ["A", "B"], mode: "square", resolution: 5000, normalization: "balanced", log: true, quantile: 0.98, max: null, junctions: false, height: 300, visible: true };
+    const st = { units: ["A", "B"], mode: "square", resolution: 5000, normalization: "balanced", log: true, quantile: 0.98, max: null, shareMax: true, junctions: false, height: 300, visible: true };
     const t = hicTrack(st);
     expect(t.type).toBe("hic");
     expect(t.color.max).toBe("p98");

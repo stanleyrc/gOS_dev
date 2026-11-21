@@ -112,6 +112,8 @@ export default function TrackBrowserPanel() {
   const patientId = patient?.caseReportId ? `${patient.caseReportId}` : null;
   const presets = DEFAULT_LOCI[patientId] || FALLBACK_PRESETS;
   // Hi-C units: cells whose record says a contact map was exported (gos-hic-tiles/1), or a spec hic track
+  // units that are themselves pseudobulks (e.g. Hi-C clusters) carry their own cell count (n_cells)
+  const unitCells = useMemo(() => new Map((cells || []).filter((c) => Number(c.n_cells) > 0).map((c) => [c.cell_id, Number(c.n_cells)])), [cells]);
   const hicUnits = useMemo(() => (cells || []).filter((c) => c.has_hic === true || c.has_hic === "TRUE").map((c) => ({ id: c.cell_id, label: c.cell_id, nCells: Number(c.n_cells) || null })), [cells]);
   const [hic, setHic] = useState(() => hicStateFromTrack({}));
   const [hicFromSpec, setHicFromSpec] = useState(false);
@@ -543,7 +545,7 @@ export default function TrackBrowserPanel() {
               <div style={{ fontWeight: 600, fontSize: 12, cursor: pinnedRow ? "default" : "pointer", marginTop: 2 }} onClick={() => !pinnedRow && setExpanded((ex) => ({ ...ex, [row.group]: !ex[row.group] }))}>
                 {pinnedRow ? "" : expanded[row.group] ? "▾ " : "▸ "}{short}
               </div>
-              <div style={{ color: COLORS.muted }}>pseudobulk · {members.length} cells</div>
+              <div style={{ color: COLORS.muted }}>{cladeCellsLabel(members, unitCells)}</div>
             </>
           ) : (
             <>
@@ -841,6 +843,15 @@ export default function TrackBrowserPanel() {
     </Card>
     </TrackLocusContext.Provider>
   );
+}
+
+/** "pseudobulk · 5 cells", or for members that are themselves pseudobulks "pseudobulk · 593 cells" (1 unit). */
+function cladeCellsLabel(members, unitCells) {
+  if (members.length && members.every((id) => unitCells.has(id))) {
+    const n = members.reduce((s, id) => s + unitCells.get(id), 0);
+    return `pseudobulk · ${n} cells${members.length > 1 ? ` (${members.length} units)` : ""}`;
+  }
+  return `pseudobulk · ${members.length} cells`;
 }
 
 function tooltipText(h, { data, slots, chromoBins, genes, pseudobulk, cellOrder, unitById }) {
