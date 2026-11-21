@@ -235,8 +235,9 @@ export default function TrackBrowserPanel() {
   const datasetPresets = pbManifest.loci;
   const presetsShown = DEFAULT_LOCI[patientId] ? presets : datasetPresets.length ? datasetPresets : presets;
   const presetApplied = useRef(false);
+  const linkedLocus = useRef(urlParam("tblocus") || urlParam("trackspec")); // as opened (tblocus is rewritten once the locus parses)
   useEffect(() => {
-    if (presetApplied.current || !datasetPresets.length || DEFAULT_LOCI[patientId] || urlParam("tblocus") || urlParam("trackspec")) return;
+    if (presetApplied.current || !datasetPresets.length || DEFAULT_LOCI[patientId] || linkedLocus.current) return;
     presetApplied.current = true;
     setLocusText(datasetPresets[0].locus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
