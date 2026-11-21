@@ -41,9 +41,7 @@ export function pseudobulkInWindows(graphs, slots, tol = 1000) {
       if (!vals.length) continue;
       vals.sort((x, y) => x - y);
       const step = { slot: k, start: a, end: b, median: quantileSorted(vals, 0.5), q1: quantileSorted(vals, 0.25), q3: quantileSorted(vals, 0.75), n: vals.length };
-      const prev = out.steps[out.steps.length - 1];
-      if (prev && prev.slot === k && prev.median === step.median && prev.q1 === step.q1 && prev.q3 === step.q3 && prev.end + 1 === a) prev.end = b;
-      else out.steps.push(step);
+      out.steps.push(step); // not merged: breakends must stay on step boundaries (pseudobulkGenome)
     }
   });
   members.forEach((m) => {
@@ -68,4 +66,36 @@ export function pseudobulkInWindows(graphs, slots, tol = 1000) {
   });
   out.junctions.sort((x, y) => x.cells - y.cells); // most supported drawn last (on top)
   return out;
+}
+
+/**
+ * The pseudobulk as gGnome.js JSON for the gOS genome-graph component: one interval per step at its median CN, one
+ * ALT connection per junction at or above `minFrac` support (weight = carrier cells; title carries the support).
+ * Breakends outside the windows get a 1-bp interval at the carriers' median CN so the component can anchor them.
+ */
+export function pseudobulkGenome(pb, slots, minFrac = 0) {
+  const intervals = [];
+  const connections = [];
+  if (!pb || !pb.n) return { settings: { y_axis: { title: "copy number", visible: true } }, intervals, connections };
+  let iid = 0;
+  pb.steps.forEach((st) => {
+    iid += 1;
+    st.iid = iid;
+    intervals.push({ iid, chromosome: slots[st.slot].window.chrom, startPoint: st.start, endPoint: st.end, y: st.median, title: `${st.n} cells`, type: "interval", strand: "*" });
+  });
+  const endOf = (e, cn) => {
+    if (e.slot >= 0) {
+      const exact = pb.steps.find((st) => st.slot === e.slot && (e.sign > 0 ? st.end === e.pos : st.start === e.pos));
+      const hit = exact || pb.steps.find((st) => st.slot === e.slot && e.pos >= st.start && e.pos <= st.end);
+      if (hit) return (e.sign > 0 ? 1 : -1) * hit.iid;
+    }
+    iid += 1;
+    intervals.push({ iid, chromosome: e.chrom, startPoint: e.sign > 0 ? e.pos - 1 : e.pos, endPoint: e.sign > 0 ? e.pos : e.pos + 1, y: cn ?? 2, title: "partner", type: "interval", strand: "*" });
+    return (e.sign > 0 ? 1 : -1) * iid;
+  };
+  pb.junctions.forEach((j, k) => {
+    if (j.frac < minFrac) return;
+    connections.push({ cid: k + 1, source: endOf(j.a, j.cnMedian), sink: endOf(j.b, j.cnMedian), type: "ALT", weight: j.cells, title: `${j.title || "junction"} · ${j.cells}/${pb.n} cells`, annotation: "" });
+  });
+  return { settings: { y_axis: { title: "copy number", visible: true } }, intervals, connections };
 }

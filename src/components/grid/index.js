@@ -31,7 +31,8 @@ class Grid extends Component {
     }
     let yAxisContainer = d3.select(this.container).select(".y-axis-container");
 
-    const tickValues = [
+    // tickValuesY (optional, e.g. 0 / 2 / max on short track-browser rows) replaces the automatic ticks
+    const tickValues = this.props.tickValuesY ? [...this.props.tickValuesY] : [
       ...new Set(
         scaleY
           .ticks()
@@ -41,7 +42,7 @@ class Grid extends Component {
     ];
     const domainMax = scaleY.domain()[1];
     const ceilMax = Math.ceil(domainMax);
-    if (ceilMax > tickValues[tickValues.length - 1]) {
+    if (!this.props.tickValuesY && ceilMax > tickValues[tickValues.length - 1]) {
       tickValues.push(ceilMax);
     }
 

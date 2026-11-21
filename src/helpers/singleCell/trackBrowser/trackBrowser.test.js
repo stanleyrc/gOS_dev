@@ -170,3 +170,13 @@ describe("row scales", () => {
     expect(visibleRows(0, 200, 50, 3, 2)).toEqual([0, 2]);
   });
 });
+
+describe("places for the genome-graph component", () => {
+  const { windowToPlaces, placesToWindow } = require("./locus");
+  test("round trip", () => {
+    const w = { chrom: "2", start: 1000, end: 5000 };
+    const d = windowToPlaces(chromoBins, w);
+    expect(d).toEqual([1001001, 1005001]);
+    expect(placesToWindow(chromoBins, d)).toEqual(w);
+  });
+});

@@ -25,6 +25,19 @@ const margins = {
   yTicksCount: 10,
 };
 
+// Optional host overrides (track browser rows): plotMargins { gapX, gapTop, gapBottom, bar }, windowTickValuesY
+// (per-window y tick values), windowLogY (per-window symlog y). Defaults keep the standard gOS layout.
+const marginsOf = (props) => {
+  const o = props.plotMargins || {};
+  return {
+    ...margins,
+    gapX: o.gapX ?? margins.gapX,
+    gapTop: o.gapTop ?? margins.gap,
+    gapBottom: o.gapBottom ?? 2 * margins.gap,
+    bar: o.bar ?? margins.bar,
+  };
+};
+
 class GenomePlot extends Component {
   constructor(props) {
     super(props);
@@ -68,10 +81,11 @@ class GenomePlot extends Component {
       windowRangesY,
     } = this.props;
     const { intervals, frameConnections } = genome;
-    let stageWidth = width - 2 * margins.gapX;
-    let stageHeight = height - 3 * margins.gap;
+    const m = marginsOf(this.props);
+    let stageWidth = width - 2 * m.gapX;
+    let stageHeight = height - m.gapTop - m.gapBottom;
     let panelWidth =
-      (stageWidth - (domains.length - 1) * margins.gapX) / domains.length;
+      (stageWidth - (domains.length - 1) * m.gapX) / domains.length;
     let panelHeight = stageHeight;
     this.connections = [];
     this.panels = domains.map((domain, index) => {
@@ -79,12 +93,12 @@ class GenomePlot extends Component {
         (d) => d.startPlace <= domain[1] && d.endPlace >= domain[0],
       );
       const xScale = d3.scaleLinear().domain(domain).range([0, panelWidth]);
-      let offset = index * (panelWidth + margins.gapX);
+      let offset = index * (panelWidth + m.gapX);
 
       let domainWidth = domain[1] - domain[0];
       let range = [
-        index * (panelWidth + margins.gapX),
-        (index + 1) * panelWidth + index * margins.gapX,
+        index * (panelWidth + m.gapX),
+        (index + 1) * panelWidth + index * m.gapX,
       ];
       let scale = d3.scaleLinear().domain(domain).range(range);
       let innerScale = d3.scaleLinear().domain(domain).range([0, panelWidth]);
@@ -108,7 +122,10 @@ class GenomePlot extends Component {
       let intervalMax = d3.max(filteredIntervals, (d) => d.y);
       let offsetPerc = 2;
       const windowRange = windowRangesY && windowRangesY[index];
-      let yScale = windowRange
+      const windowLog = this.props.windowLogY && this.props.windowLogY[index];
+      let yScale = windowRange && windowLog
+        ? d3.scaleSymlog().constant(1).domain(windowRange).range([panelHeight, 0]).clamp(true)
+        : windowRange
         ? d3.scaleLinear().domain(windowRange).range([panelHeight, 0]).clamp(true)
         : commonRangeY
         ? d3
@@ -266,7 +283,10 @@ class GenomePlot extends Component {
       nextProps.commonYScale !== this.props.commonYScale;
     const commonRangeYChanged =
       nextProps.commonRangeY !== this.props.commonRangeY ||
-      nextProps.windowRangesY !== this.props.windowRangesY;
+      nextProps.windowRangesY !== this.props.windowRangesY ||
+      nextProps.windowLogY !== this.props.windowLogY ||
+      nextProps.windowTickValuesY !== this.props.windowTickValuesY ||
+      nextProps.plotMargins !== this.props.plotMargins;
 
     return (
       genomeChanged ||
@@ -452,6 +472,7 @@ class GenomePlot extends Component {
   };
 
   handleConnectionClick(event, connection, padding = 100, padWidth = 5) {
+    if (this.props.onConnectionClick) this.props.onConnectionClick(connection, event);
     if (connection.kind === "ANCHOR") {
       let newDomain = [
         Math.floor(connection.otherEnd.place - padding),
@@ -523,6 +544,7 @@ class GenomePlot extends Component {
       this.props;
     const { stageWidth, stageHeight, tooltip } = this.state;
     this.updatePanels();
+    const m = marginsOf(this.props);
     let randID = Math.random();
 
     const result = (
@@ -600,7 +622,7 @@ class GenomePlot extends Component {
           >
             {yAxis2Title}
           </text>
-          <g transform={`translate(${[margins.gapX, margins.gap]})`}>
+          <g transform={`translate(${[m.gapX, m.gapTop]})`}>
             {this.panels.map((panel, i) => (
               <g
                 key={`panel-${panel.index}`}
@@ -611,6 +633,7 @@ class GenomePlot extends Component {
                   <Grid
                     scaleX={panel.xScale}
                     scaleY={panel.yScale}
+                    tickValuesY={this.props.windowTickValuesY ? this.props.windowTickValuesY[panel.index] : null}
                     axisWidth={panel.panelWidth}
                     axisHeight={panel.panelHeight}
                     chromoBins={chromoBins}
@@ -647,7 +670,7 @@ class GenomePlot extends Component {
                       }`}
                       transform={`translate(${[
                         d3.max([panel.xScale(d.startPlace), 0]),
-                        panel.yScale(d.y) - 0.5 * margins.bar,
+                        panel.yScale(d.y) - 0.5 * m.bar,
                       ]})`}
                       width={d3.min([
                         panel.xScale(d.endPlace) -
@@ -661,7 +684,7 @@ class GenomePlot extends Component {
                       data-width={Math.floor(
                         panel.xScale(d.endPlace) - panel.xScale(d.startPlace),
                       )}
-                      height={margins.bar}
+                      height={m.bar}
                       style={{
                         fill: d.overlapping
                           ? `url(#diagonalHatch-${randID})`
@@ -764,7 +787,7 @@ GenomePlot.defaultProps = {
 const noop = () => {};
 const mapDispatchToProps = (dispatch, own) =>
   own.localDomains
-    ? { updateDomains: noop, updateHoveredLocation: noop }
+    ? { updateDomains: own.onDomainsChange || noop, updateHoveredLocation: noop }
     : {
         updateDomains: (domains) => dispatch(updateDomains(domains)),
         updateHoveredLocation: (hoveredLocation, panelIndex) =>

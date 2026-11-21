@@ -97,3 +97,27 @@ describe("clade pseudobulk", () => {
     expect(pb.junctions[0].cnMedian).toBe(15);
   });
 });
+
+describe("pseudobulk as a gGnome.js graph", () => {
+  const { pseudobulkGenome } = require("./pseudobulk");
+  test("steps become intervals, junctions anchor on step boundaries or partner stubs", () => {
+    const g = (cn) => ({
+      intervals: [
+        { iid: 1, chromosome: "1", startPoint: 1, endPoint: 100, y: 2 },
+        { iid: 2, chromosome: "1", startPoint: 101, endPoint: 200, y: cn },
+        { iid: 3, chromosome: "2", startPoint: 1, endPoint: 50, y: 3 },
+      ],
+      connections: [{ cid: 1, source: 2, sink: -3, type: "ALT", weight: cn, title: "TRA-like" }],
+    });
+    const slots = [{ window: { chrom: "1", start: 1, end: 200 } }];
+    const pb = pseudobulkInWindows([g(10), g(20)], slots);
+    const gg = pseudobulkGenome(pb, slots);
+    expect(gg.intervals.filter((i) => i.title !== "partner").map((i) => [i.startPoint, i.endPoint, i.y])).toEqual([[1, 100, 2], [101, 200, 15]]);
+    expect(gg.connections).toHaveLength(1);
+    const c = gg.connections[0];
+    expect(gg.intervals.find((i) => i.iid === Math.abs(c.source)).endPoint).toBe(200);
+    expect(gg.intervals.find((i) => i.iid === Math.abs(c.sink))).toMatchObject({ chromosome: "2", title: "partner" });
+    expect(c.title).toContain("2/2 cells");
+    expect(pseudobulkGenome(pb, slots, 1.01).connections).toHaveLength(0);
+  });
+});

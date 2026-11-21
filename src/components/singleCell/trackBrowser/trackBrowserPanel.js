@@ -11,22 +11,25 @@ import { casePath, tryGet } from "../../../redux/singleCell/loaders";
 import { SC_MAX_TRACK_CELLS } from "../../../redux/singleCell/actions";
 import { clipLongBranches, longBranchCap, treeForCells } from "../../../helpers/singleCell/newick";
 import {
-  chromLength, formatLocus, layoutWindows, panWindow, parseLocus, pxToBp, toGlobal, zoomWindow,
+  chromLength, formatLocus, layoutWindows, panWindow, parseLocus, placesToWindow, pxToBp, toGlobal, windowToPlaces, zoomWindow,
 } from "../../../helpers/singleCell/trackBrowser/locus";
 import { graphInWindows, junctionCarriers, lowerBound } from "../../../helpers/singleCell/trackBrowser/trackData";
 import { pseudobulkInWindows } from "../../../helpers/singleCell/trackBrowser/pseudobulk";
 import {
-  DEFAULT_Y, HEIGHT_MAX, HEIGHT_MIN, PRESETS, autoFitBase, buildRows, clampHeight, loadLayoutPrefs, resolveWindowScales, rowAt, rowOffsets,
+  DEFAULT_Y, HEIGHT_MAX, HEIGHT_MIN, PRESETS, autoFitBase, buildRows, clampHeight, loadLayoutPrefs, resolveWindowScales, rowOffsets,
   saveLayoutPrefs, scalesDiffer, valueQuantile,
 } from "../../../helpers/singleCell/trackBrowser/layout";
 import { expectedDepth, foregroundFromCn, unitFit } from "../../../helpers/singleCell/trackBrowser/coverageAxes";
 import { buildSpec, interimTracks, resolveUrl, unitsFromCells, validateSpec } from "../../../helpers/singleCell/trackBrowser/trackSpec";
 import useUnitData from "./useUnitData";
-import { COLORS, drawCladeRow, drawGenes, drawJunctions, drawRuler, drawTree, drawUnitRow, hitTest, setupCanvas } from "./draw";
+import { COLORS, drawGenes, drawJunctions, drawRuler, drawTree, hitTest, setupCanvas } from "./draw";
+import { CanvasRow, GraphPlotRow, NoteRow } from "./trackRow";
+import { TrackLocusContext } from "./locusContext";
 
 const { Text } = Typography;
 const HEADER = { ruler: 34, genes: 46 };
 const ROW_GAP = 3;
+const GGRAPH_MIN = 32;
 const PIN_H = { graph: 150, coverage: 120, clade: 190 };
 const HIGHLIGHT_GENES = ["CDK4", "MDM2", "GLI1", "DDIT3", "HMGA2", "FRS2", "LRIG3", "WIF1", "EGFR", "PDGFRA", "MYCN", "CDKN2A", "TSPAN31", "YEATS4", "CPM", "OS9", "AVIL", "CTDSP2"];
 export const DEFAULT_LOCI = {
@@ -125,6 +128,8 @@ export default function TrackBrowserPanel() {
   const [showCov, setShowCov] = useState(true);
   const [mode, setMode] = useState(() => (urlParam("tbmode") === "cells" ? "cells" : "pseudobulk"));
   const [expanded, setExpanded] = useState({});
+  // graph rows: the standard gOS genome-graph component ("ggraph", default) or the compact canvas drawing (alternative)
+  const [graphStyle, setGraphStyle] = useState(() => (urlParam("tbstyle") === "canvas" ? "canvas" : "ggraph"));
   const [minSupport, setMinSupport] = useState(() => (Number.isFinite(Number(urlParam("tbsupport"))) && urlParam("tbsupport") ? Number(urlParam("tbsupport")) : 25)); // % of a clade's cells
   const [pinned, setPinned] = useState(() => (urlParam("tbpin") ? urlParam("tbpin").split(",").filter(Boolean).slice(0, 3) : []));
   const [groups, setGroups] = useState([]);
@@ -133,7 +138,6 @@ export default function TrackBrowserPanel() {
   const [reads, setReads] = useState(null);
   const [hover, setHover] = useState(null);
   const [scrollTop, setScrollTop] = useState(0);
-  const [cursor, setCursor] = useState("crosshair");
 
   // ?trackspec=<url>: a spec from gCells (or exported here) sets loci, per-window y, layout, selection and tracks
   useEffect(() => {
@@ -159,6 +163,7 @@ export default function TrackBrowserPanel() {
       if (L.mode) setMode(L.mode);
       if (L.share_y != null) setShareY(Boolean(L.share_y));
       if (Number.isFinite(L.clade_min_support)) setMinSupport(L.clade_min_support);
+      if (L.graph_style) setGraphStyle(L.graph_style === "canvas" ? "canvas" : "ggraph");
       if (Array.isArray(L.pinned)) setPinned(L.pinned.slice(0, 3));
       if (s.selection?.clades) setGroups(s.selection.clades);
       if (s.selection?.units) setCladeIds(s.selection.units);
@@ -190,6 +195,7 @@ export default function TrackBrowserPanel() {
     setLocusText(formatLocus(next));
   }, []);
   useEffect(() => setUrlParam("tbmode", mode === "cells" ? "cells" : null), [mode]);
+  useEffect(() => setUrlParam("tbstyle", graphStyle === "canvas" ? "canvas" : null), [graphStyle]);
   useEffect(() => setUrlParam("tbpin", pinned.length ? pinned.join(",") : null), [pinned]);
 
   // ----- units, tree order, rows
@@ -222,7 +228,9 @@ export default function TrackBrowserPanel() {
   const tracksOn = useMemo(() => ({ graph: showGraph, coverage: showCov }), [showGraph, showCov]);
   const viewH = narrow ? 520 : 680;
   const effBase = autoFit ? autoFitBase(rowsList, base, overrides, tracksOn, viewH, ROW_GAP) : base;
-  const { items, total } = useMemo(() => rowOffsets(rowsList, effBase, overrides, tracksOn, ROW_GAP), [rowsList, effBase, overrides, tracksOn]);
+  // the genome-graph component needs room for its bars and axis: graph rows are at least GGRAPH_MIN px in that style
+  const ov = useMemo(() => (graphStyle === "ggraph" ? { ...overrides, graph: Math.max(overrides.graph ?? effBase, GGRAPH_MIN) } : overrides), [graphStyle, overrides, effBase]);
+  const { items, total } = useMemo(() => rowOffsets(rowsList, effBase, ov, tracksOn, ROW_GAP), [rowsList, effBase, ov, tracksOn]);
   const bodyH = Math.max(60, Math.min(viewH, total));
   const visibleItems = useMemo(() => items.filter((it) => it.top + it.height >= scrollTop - 200 && it.top <= scrollTop + bodyH + 200), [items, scrollTop, bodyH]);
   const coverageIds = useMemo(() => {
@@ -250,11 +258,15 @@ export default function TrackBrowserPanel() {
   }, [patientId, junctionTrack?.url, dataPath]);
 
   // ----- geometry
+  // geometry shared by every track: the genome-graph component's layout (gapX left / between / right of the windows)
   const treeW = mode === "cells" && !narrow && treeLayout.layout ? 110 : 0;
-  const labelW = narrow ? 92 : mode === "cells" ? 128 : 170;
-  const trackLeft = treeW + labelW + 6;
-  const trackW = Math.max(120, width - trackLeft - 4);
-  const slots = useMemo(() => layoutWindows(windows, trackW, narrow ? 6 : 12), [windows, trackW, narrow]);
+  const labelW = narrow ? 84 : mode === "cells" ? 128 : 160;
+  const leftW = treeW + labelW;
+  const gapX = narrow ? 28 : 40;
+  const contentW = Math.max(160, width - leftW);
+  const trackLeft = leftW + gapX;
+  const slots = useMemo(() => layoutWindows(windows, contentW - 2 * gapX, gapX), [windows, contentW, gapX]);
+  const domains = useMemo(() => windows.map((w) => windowToPlaces(chromoBins, w)).filter(Boolean), [windows, chromoBins]);
 
   // ----- per-window y scales: auto from the shown units' segment CNs (max or 99th percentile), shared, or manual
   const windowStats = useMemo(() => {
@@ -410,8 +422,6 @@ export default function TrackBrowserPanel() {
 
   // ----- drawing
   const headerRef = useRef(null);
-  const pinRef = useRef(null);
-  const bodyRef = useRef(null);
   const hitsRef = useRef({ header: [], body: [], pin: [], tree: [], pinRows: [] });
   const headerH = HEADER.ruler + HEADER.genes + (junctionTrack ? junctionH : 0);
 
@@ -440,62 +450,6 @@ export default function TrackBrowserPanel() {
     hitsRef.current.header = hits;
   }, [width, headerH, slots, genes, chromoBins, junctions, junctionTrack, trackLeft, junctionH, narrow]);
 
-  // one row (clade or cell) at `top` with sub-row heights; returns hits
-  const paintRow = useCallback(
-    (ctx, row, top, gH, cH, { pinnedRow = false } = {}) => {
-      const hits = [];
-      const color = groupColor(row.group);
-      const h = gH + cH;
-      ctx.fillStyle = color;
-      ctx.fillRect(treeW + 2, top + 1, 6, Math.max(2, h - 2));
-      const lx = treeW + 12 + (row.depth ? 10 : 0);
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-      if (row.kind === "clade") {
-        const pb = pseudobulk.get(row.group);
-        const open = expanded[row.group];
-        ctx.fillStyle = COLORS.ink;
-        ctx.font = "600 12px system-ui, sans-serif";
-        ctx.fillText(`${pinnedRow ? "" : open ? "▾ " : "▸ "}${row.group}`, lx, top + 4);
-        ctx.font = "11px system-ui, sans-serif";
-        ctx.fillStyle = COLORS.muted;
-        ctx.fillText(`pseudobulk · ${row.members?.length ?? pb?.n ?? "?"} cells`, lx, top + 20);
-        if (h >= 56 && !narrow) ctx.fillText(pinnedRow ? "click label to unpin" : open ? "click label: collapse" : "click label: cells", lx, top + 34);
-        const members = row.members || [];
-        const resolved = members.every((id) => data.status.get(`graph:${id}`) && data.status.get(`graph:${id}`) !== "loading");
-        const missingAll = resolved && members.length && members.every((id) => data.status.get(`graph:${id}`) !== "ok") ? members.length : 0;
-        hits.push(...drawCladeRow(ctx, { left: trackLeft, slots, scales, top, pb, graphH: gH, clade: row, minFrac: minSupport / 100, missingAll }));
-      } else {
-        const unit = unitById.get(row.id) || { id: row.id, group: row.group };
-        const short = `${row.id}`.replace(`${patientId}_`, "");
-        ctx.fillStyle = COLORS.ink;
-        ctx.font = "11px system-ui, sans-serif";
-        const maxChars = Math.max(6, Math.floor((labelW - (lx - treeW)) / 6.2));
-        ctx.fillText(short.length > maxChars ? `${short.slice(0, maxChars - 1)}…` : short, lx, top + 3);
-        if (h >= 30) {
-          ctx.fillStyle = COLORS.muted;
-          ctx.fillText(`${unit.group ?? ""}${unit.ploidy ? ` · ψ ${unit.ploidy.toFixed(2)}` : ""}`, lx, top + 16);
-        }
-        if (h >= 46 && !narrow) {
-          ctx.fillStyle = COLORS.muted;
-          if (gH >= 46) ctx.fillText("graph", lx, top + gH - 14);
-          if (cH >= 20) ctx.fillText("coverage", lx, top + gH + Math.max(2, cH - 14));
-        }
-        hits.push(
-          ...drawUnitRow(ctx, {
-            unit, top, left: trackLeft, slots, scales, chromoBins,
-            graph: data.graphs.get(row.id), graphStatus: data.status.get(`graph:${row.id}`),
-            coverage: data.coverage.get(row.id), covStatus: data.status.get(`cov:${row.id}`),
-            graphH: gH, covH: cH,
-          })
-        );
-      }
-      return hits;
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [groupColor, treeW, labelW, trackLeft, slots, scales, pseudobulk, expanded, unitById, patientId, chromoBins, data.version, narrow, minSupport]
-  );
-
   // pinned rows (tall, above the stack)
   const pinnedRows = useMemo(
     () =>
@@ -516,30 +470,84 @@ export default function TrackBrowserPanel() {
       return it;
     });
   }, [pinnedRows, showGraph, showCov]);
-  const pinH = pinLayout.length ? pinLayout[pinLayout.length - 1].top + pinLayout[pinLayout.length - 1].height + 4 : 0;
-  useEffect(() => {
-    if (!pinLayout.length) return;
-    const ctx = setupCanvas(pinRef.current, width, pinH);
-    if (!ctx || !slots.length) return;
-    const hits = [];
-    pinLayout.forEach((it) => hits.push(...paintRow(ctx, it.row, it.top, it.graph, it.coverage, { pinnedRow: true })));
-    hitsRef.current.pin = hits;
-    hitsRef.current.pinRows = pinLayout;
-  }, [pinLayout, pinH, width, slots, paintRow]);
 
+  // tree (all cells mode): a sticky canvas at the left of the scrolling stack
+  const treeRef = useRef(null);
   useEffect(() => {
-    const ctx = setupCanvas(bodyRef.current, width, bodyH);
-    if (!ctx || !slots.length) return;
-    const hits = [];
-    if (treeW > 0) {
-      const centers = new Map(items.filter((it) => it.row.kind === "cell").map((it) => [it.row.id, it.top + it.height / 2]));
-      hitsRef.current.tree = drawTree(ctx, treeLayout.layout, (id) => centers.get(id) ?? -1000, treeW, scrollTop, bodyH, (id) => groupColor(unitById.get(id)?.group));
-    } else hitsRef.current.tree = [];
-    visibleItems.forEach((it) => hits.push(...paintRow(ctx, it.row, it.top - scrollTop, it.graph, it.coverage)));
-    hitsRef.current.body = hits;
-  }, [width, bodyH, slots, visibleItems, scrollTop, items, treeW, treeLayout, paintRow, groupColor, unitById]);
+    if (!treeW) return;
+    const ctx = setupCanvas(treeRef.current, treeW, bodyH);
+    if (!ctx) return;
+    const centers = new Map(items.filter((it) => it.row.kind === "cell").map((it) => [it.row.id, it.top + it.height / 2]));
+    hitsRef.current.tree = drawTree(ctx, treeLayout.layout, (id) => centers.get(id) ?? -1000, treeW, scrollTop, bodyH, (id) => groupColor(unitById.get(id)?.group));
+  }, [treeW, bodyH, items, treeLayout, scrollTop, groupColor, unitById]);
 
-  // ----- interaction
+  // one row (clade or cell): HTML label (clade strip, name, pin / expand, resize handles), then the graph sub-row
+  // (genome-graph component, or the canvas alternative) and the coverage sub-row (canvas, two axes)
+  const renderRow = (it, { pinnedRow = false } = {}) => {
+    const { row } = it;
+    const gH = it.graph;
+    const cH = it.coverage;
+    const color = groupColor(row.group);
+    const isClade = row.kind === "clade";
+    const unit = isClade ? null : unitById.get(row.id) || { id: row.id, group: row.group };
+    const pb = isClade ? pseudobulk.get(row.group) : null;
+    const members = row.members || [];
+    const resolved = isClade && members.every((id) => data.status.get(`graph:${id}`) && data.status.get(`graph:${id}`) !== "loading");
+    const missingAll = isClade && resolved && members.length && members.every((id) => data.status.get(`graph:${id}`) !== "ok") ? members.length : 0;
+    const raw = isClade ? null : data.graphs.get(row.id);
+    const gStatus = isClade ? (pb && pb.n ? "ok" : missingAll ? "missing" : "loading") : data.status.get(`graph:${row.id}`) || "loading";
+    const short = isClade ? row.group : `${row.id}`.replace(`${patientId}_`, "");
+    const pinKey = row.key;
+    const isPinned = pinned.includes(pinKey);
+    const togglePin = () => setPinned((p) => (p.includes(pinKey) ? p.filter((k) => k !== pinKey) : [...p.slice(-2), pinKey]));
+    const handle = (type, y) => (
+      <div
+        key={type}
+        title={`drag to resize ${type} rows`}
+        onMouseDown={(e) => startResize(e, type, type === "graph" ? gH : cH, isClade)}
+        style={{ position: "absolute", left: treeW, width: labelW, top: y - 3, height: 6, cursor: "ns-resize", zIndex: 3 }}
+      />
+    );
+    const graphNote = gStatus === "missing" ? (isClade ? `graph not available (no complex.json for these ${missingAll} cells${row.group === "Normal" ? "; normal cells have no JaBbA fit" : ""})` : "graph not available (no complex.json)") : "graph: loading";
+    return (
+      <div key={`${pinnedRow ? "pin" : "row"}:${row.key}`} style={{ position: pinnedRow ? "relative" : "absolute", top: pinnedRow ? undefined : it.top, left: 0, width, height: it.height, marginBottom: pinnedRow ? 6 : 0, borderBottom: "1px solid #eee" }}>
+        <div style={{ position: "absolute", left: treeW, top: 0, width: labelW - 4, height: it.height, overflow: "hidden", borderLeft: `6px solid ${color}`, paddingLeft: 6 + (row.depth ? 10 : 0), fontSize: 11, lineHeight: "14px", background: pinnedRow ? "#fffaf0" : "#fff" }}>
+          {isClade ? (
+            <>
+              <div style={{ fontWeight: 600, fontSize: 12, cursor: pinnedRow ? "default" : "pointer", marginTop: 2 }} onClick={() => !pinnedRow && setExpanded((ex) => ({ ...ex, [row.group]: !ex[row.group] }))}>
+                {pinnedRow ? "" : expanded[row.group] ? "▾ " : "▸ "}{short}
+              </div>
+              <div style={{ color: COLORS.muted }}>pseudobulk · {members.length} cells</div>
+            </>
+          ) : (
+            <>
+              <div style={{ marginTop: 2, whiteSpace: "nowrap", textOverflow: "ellipsis", overflow: "hidden" }} title={row.id}>{short}</div>
+              {it.height >= 30 && <div style={{ color: COLORS.muted }}>{unit.group ?? ""}{unit.ploidy ? ` · ψ ${unit.ploidy.toFixed(2)}` : ""}</div>}
+            </>
+          )}
+          {it.height >= 44 && (
+            <a style={{ fontSize: 11 }} onClick={togglePin}>{isPinned ? "unpin" : "pin tall"}</a>
+          )}
+          {it.height < 44 && <a style={{ fontSize: 11, position: "absolute", right: 2, top: 1 }} onClick={togglePin} title={isPinned ? "unpin" : "pin tall"}>{isPinned ? "×" : "⇕"}</a>}
+          {!isClade && it.height >= 60 && !narrow && gH > 0 && cH > 0 && <div style={{ color: COLORS.muted, position: "absolute", top: gH + 2 }}>coverage</div>}
+        </div>
+        <div style={{ position: "absolute", left: leftW, top: 0, width: contentW }}>
+          {gH > 0 && (graphStyle === "ggraph"
+            ? (gStatus === "ok" ? <GraphPlotRow raw={raw} pb={pb} height={gH} width={contentW} minFrac={minSupport / 100} onJunction={(j) => openReads(j, isClade ? null : row.id)} /> : <NoteRow text={graphNote} width={contentW} height={gH} />)
+            : <CanvasRow kind={isClade ? "clade" : "cell"} unit={unit} row={row} pb={pb} graph={raw} graphH={gH} covH={0} width={contentW} minFrac={minSupport / 100} graphStatus={gStatus} missingAll={missingAll} />)}
+          {cH > 0 && !isClade && (
+            <div onMouseMove={(e) => coverageHover(e, it, unit)} onMouseLeave={() => setHover(null)}>
+              <CanvasRow kind="cell" unit={unit} row={row} graph={raw} coverage={data.coverage.get(row.id)} graphH={0} covH={cH} width={contentW} covStatus={data.status.get(`cov:${row.id}`)} />
+            </div>
+          )}
+        </div>
+        {!pinnedRow && gH > 0 && handle("graph", gH)}
+        {!pinnedRow && cH > 0 && handle("coverage", gH + cH)}
+      </div>
+    );
+  };
+
+  // ----- interaction (header canvas: pan, zoom, junction clicks; rows: the genome-graph component's own hover)
   const scrollRef = useRef(null);
   const slotAt = (x) => slots.findIndex((s) => x >= trackLeft + s.x0 && x <= trackLeft + s.x0 + s.width);
   const drag = useRef(null);
@@ -547,42 +555,30 @@ export default function TrackBrowserPanel() {
     const r = e.currentTarget.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
   };
-  // the sub-row edge under the pointer in the label column (drag to resize that track type)
-  const edgeAt = (which, x, y) => {
-    if (which !== "body" || x > trackLeft || x < treeW) return null;
-    const yy = y + scrollTop;
-    let k = rowAt(items, yy);
-    if (k < 0) k = rowAt(items, yy - ROW_GAP);
-    const it = items[k];
-    if (!it) return null;
-    if (it.row.kind === "clade") return Math.abs(yy - (it.top + it.graph)) <= 4 ? { type: "graph", start: it.graph, clade: true } : null;
-    if (it.graph && Math.abs(yy - (it.top + it.graph)) <= 4) return { type: "graph", start: it.graph };
-    if (it.coverage && Math.abs(yy - (it.top + it.height)) <= 4) return { type: "coverage", start: it.coverage };
-    return null;
+  const startResize = (e, type, start, clade) => {
+    e.preventDefault();
+    const y0 = e.clientY;
+    const move = (ev) => {
+      setAutoFit(false);
+      setOverrides((o) => ({ ...o, [type]: clampHeight((start + ev.clientY - y0) / (clade ? 1.6 : 1)) }));
+    };
+    const up = () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
   };
-  const onDown = (e, which) => {
-    const [x, y] = localXY(e);
-    const edge = edgeAt(which, x, y);
-    if (edge) {
-      drag.current = { resize: edge, y: e.clientY, moved: false };
-      return;
-    }
+  const onDown = (e) => {
+    const [x] = localXY(e);
     const k = slotAt(x);
     if (k < 0) return;
     drag.current = { k, x: e.clientX, start: windows[k], moved: false };
   };
-  const onMove = (e, which) => {
+  const onMove = (e) => {
     const [x, y] = localXY(e);
     const d = drag.current;
     if (d) {
-      if (d.resize) {
-        const dy = e.clientY - d.y;
-        if (Math.abs(dy) > 1) d.moved = true;
-        const next = clampHeight((d.resize.start + dy) / (d.resize.clade ? 1.6 : 1));
-        setAutoFit(false);
-        setOverrides((o) => ({ ...o, [d.resize.type]: next }));
-        return;
-      }
       const dx = e.clientX - d.x;
       if (Math.abs(dx) > 2) d.moved = true;
       if (d.moved) {
@@ -592,57 +588,50 @@ export default function TrackBrowserPanel() {
       }
       return;
     }
-    setCursor(edgeAt(which, x, y) ? "ns-resize" : x < trackLeft ? "pointer" : "crosshair");
-    const hit = hitTest(hitsRef.current[which], x, y, 5);
+    const hit = hitTest(hitsRef.current.header, x, y, 5);
     const k = slotAt(x);
     const pos = k >= 0 ? Math.round(pxToBp(slots[k], x - trackLeft - slots[k].x0)) : null;
-    let rowInfo = null;
-    if (which === "body") {
-      const i = rowAt(items, y + scrollTop);
-      if (i >= 0) rowInfo = { item: items[i], sub: y + scrollTop - items[i].top < items[i].graph ? "graph" : "coverage" };
-    } else if (which === "pin") {
-      const it = hitsRef.current.pinRows.find((p) => y >= p.top && y <= p.top + p.height);
-      if (it) rowInfo = { item: it, sub: y - it.top < it.graph ? "graph" : "coverage" };
-    }
-    setHover(hit || rowInfo || (which === "header" && k >= 0) ? { x, y, which, hit, k, pos, rowInfo } : null);
+    setHover(hit || k >= 0 ? { cx: e.clientX, cy: e.clientY, which: "header", hit, k, pos } : null);
   };
-  const onUp = (e, which) => {
+  const onUp = (e) => {
     const d = drag.current;
     drag.current = null;
     if (d && d.moved) {
-      if (!d.resize) setLocusText(formatLocus(windows));
-      return null;
+      setLocusText(formatLocus(windows));
+      return;
     }
-    if (d && d.resize) return null;
     const [x, y] = localXY(e);
-    const hit = hitTest(hitsRef.current[which], x, y, 5);
-    if (hit?.kind === "junction") return openReads(hit.junction);
-    if (hit?.kind === "alt") return openReads(hit.alt, hit.unit.pseudobulk ? null : hit.unit.id);
-    if (which === "header") return null;
-    if (which === "body" && treeW > 0 && x < treeW) {
-      const node = (hitsRef.current.tree || []).reduce((b, n) => {
-        const dd = (n.x - x) ** 2 + (n.y - y) ** 2;
-        return dd < 80 && (!b || dd < b.d) ? { n, d: dd } : b;
-      }, null);
-      if (node && treeLayout.layout) {
-        const nd = treeLayout.layout.nodes[node.n.id];
-        setCladeIds(treeLayout.layout.leaves.slice(nd.firstLeaf, nd.lastLeaf + 1));
-        setScrollTop(0);
-        if (scrollRef.current) scrollRef.current.scrollTop = 0;
-      }
-      return null;
-    }
-    const it = which === "body" ? items[rowAt(items, y + scrollTop)] : hitsRef.current.pinRows.find((p) => y >= p.top && y <= p.top + p.height);
-    if (!it) return null;
-    const key = it.row.key;
-    if (which === "pin") {
-      if (x < trackLeft) setPinned((p) => p.filter((k) => k !== key));
-      return null;
-    }
-    if (it.row.kind === "clade" && x < trackLeft) setExpanded((ex) => ({ ...ex, [it.row.group]: !ex[it.row.group] }));
-    else setPinned((p) => (p.includes(key) ? p.filter((k) => k !== key) : [...p.slice(-2), key]));
-    return null;
+    const hit = hitTest(hitsRef.current.header, x, y, 5);
+    if (hit?.kind === "junction") openReads(hit.junction);
   };
+  const coverageHover = (e, it, unit) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - r.left + leftW;
+    const k = slotAt(x);
+    const pos = k >= 0 ? Math.round(pxToBp(slots[k], x - trackLeft - slots[k].x0)) : null;
+    setHover({ cx: e.clientX, cy: e.clientY, which: "body", k, pos, rowInfo: { item: it, sub: "coverage" }, unit });
+  };
+  const onTreeClick = (e) => {
+    const [x, y] = localXY(e);
+    const node = (hitsRef.current.tree || []).reduce((bst, n) => {
+      const dd = (n.x - x) ** 2 + (n.y - y) ** 2;
+      return dd < 80 && (!bst || dd < bst.d) ? { n, d: dd } : bst;
+    }, null);
+    if (node && treeLayout.layout) {
+      const nd = treeLayout.layout.nodes[node.n.id];
+      setCladeIds(treeLayout.layout.leaves.slice(nd.firstLeaf, nd.lastLeaf + 1));
+      setScrollTop(0);
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    }
+  };
+  // the genome-graph component asked for new domains (interval click, meta-zoom): the shared windows follow
+  const onPlotDomains = useCallback(
+    (newDomains) => {
+      const next = (newDomains || []).map((d) => placesToWindow(chromoBins, d)).filter(Boolean);
+      if (next.length) applyWindows(next);
+    },
+    [chromoBins, applyWindows]
+  );
   const zoomAt = (factor, x = null) => {
     if (x == null) return applyWindows(windows.map((w) => zoomWindow(w, factor, 0.5, chromLength(chromoBins, w.chrom))));
     const k = slotAt(x);
@@ -654,17 +643,15 @@ export default function TrackBrowserPanel() {
   const zoomRef = useRef(zoomAt);
   zoomRef.current = zoomAt;
   useEffect(() => {
-    const els = [headerRef.current, bodyRef.current, pinRef.current].filter(Boolean);
+    const els = [headerRef.current].filter(Boolean);
     const handler = (e) => {
-      const isHeader = e.currentTarget === headerRef.current;
-      if (!isHeader && !(e.ctrlKey || e.metaKey || e.shiftKey)) return;
       e.preventDefault();
       const r = e.currentTarget.getBoundingClientRect();
       zoomRef.current((e.deltaY || e.deltaX) > 0 ? 1.25 : 0.8, e.clientX - r.left);
     };
     els.forEach((el) => el.addEventListener("wheel", handler, { passive: false }));
     return () => els.forEach((el) => el.removeEventListener("wheel", handler));
-  }, [slots.length, pinLayout.length]);
+  }, [slots.length]);
 
   const preset = Object.entries(PRESETS).find(([, v]) => v === base)?.[0] || null;
   const exportSpec = () => {
@@ -686,7 +673,7 @@ export default function TrackBrowserPanel() {
       provenance: { source: "gOS track browser export", data: "interim gOS per-cell files" },
     });
     s.windows = windows.map((w, i) => ({ locus: s.loci[i], y: { mode: yStates[i].mode, min: scales[i].min, max: scales[i].max, log: scales[i].log, robust: yStates[i].robust } }));
-    s.layout = { row_height: base, overrides, auto_fit: autoFit, junction_height: junctionH, reads_height: readsH, mode, share_y: shareY, pinned, clade_min_support: minSupport };
+    s.layout = { row_height: base, overrides, auto_fit: autoFit, junction_height: junctionH, reads_height: readsH, mode, share_y: shareY, pinned, clade_min_support: minSupport, graph_style: graphStyle };
     const blob = new Blob([JSON.stringify(s, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -717,9 +704,10 @@ export default function TrackBrowserPanel() {
       <Text type="secondary" style={{ fontSize: 11 }}>Or drag a row&apos;s lower edge in the label column.</Text>
     </div>
   );
-  const tipTop = hover ? hover.y + 14 + (hover.which === "header" ? 26 : hover.which === "pin" ? 26 + headerH + 20 : 26 + headerH + (pinLayout.length ? pinH + 24 : 0)) : 0;
 
+  const locus = { windows, setWindows: applyWindows, slots, scales, domains, chromoBins, onPlotDomains, geometry: { leftW, gapX, contentW, trackLeft } };
   return (
+    <TrackLocusContext.Provider value={locus}>
     <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : "0.3 · interim gOS files"}</Text>}</Space>}>
       <Space wrap style={{ marginBottom: 6 }}>
         <Input.Search style={{ width: narrow ? Math.max(200, width - 10) : 470 }} size="small" value={locusText} onChange={(e) => setLocusText(e.target.value)} onSearch={(v) => setLocusText(v)} enterButton="Go" placeholder="chr12:57,000,000-70,000,000 | chr11:39.2m-39.7m" />
@@ -737,6 +725,7 @@ export default function TrackBrowserPanel() {
         {mode === "pseudobulk" && <Space size={4}><Text>clade junctions ≥</Text><InputNumber size="small" min={0} max={100} value={minSupport} onChange={(v) => setMinSupport(v ?? 0)} style={{ width: 62 }} /><Text>% of cells</Text></Space>}
         {mode === "pseudobulk" && <Button size="small" onClick={() => setExpanded(Object.values(expanded).some(Boolean) ? {} : Object.fromEntries(Object.keys(allUnits.groups).map((g) => [g, true])))}>{Object.values(expanded).some(Boolean) ? "collapse all" : "expand all"}</Button>}
         <Space size={4}><Switch size="small" checked={showGraph} onChange={setShowGraph} /><Text>graph</Text></Space>
+        <Segmented size="small" value={graphStyle} onChange={setGraphStyle} options={[{ label: "gGraph", value: "ggraph" }, { label: "compact", value: "canvas" }]} />
         <Space size={4}><Switch size="small" checked={showCov} onChange={setShowCov} /><Text>coverage</Text></Space>
         <Space size={4}>
           <Text>row height</Text>
@@ -757,7 +746,7 @@ export default function TrackBrowserPanel() {
         {mode === "pseudobulk"
           ? "Clade pseudobulk rows: black = median JaBbA CN of the clade's cells, blue band = interquartile range, arcs = junctions carried by at least the set % of the clade's cells (thicker = more cells; computed in the browser from the per-cell graphs until the gCells export lands). Click a clade label to list its cells."
           : `${cellOrder.length} cells in tree order. Graph rows: JaBbA segments at CN, arcs = junctions. Coverage rows: grey = binned coverage on the CN scale (each cell's ploidy ψ), red = segments, blue × = expected depth (f × the cell's mean depth, not raw depth).`}
-        {" "}Each window has its own y scale (ticks 0 / 2 / max inside the window). Click a row to pin it tall; click a junction arc for reads at both breakends; drag to pan; wheel on the ruler to zoom.
+        {" "}Graph rows use the standard gOS genome-graph view (hover for interval / junction details). Each window has its own y scale. Pin a row to read it tall; click a junction for reads at both breakends; drag the ruler to pan, wheel on it to zoom.
       </div>
       <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
         <div style={{ position: "relative", height: 26 }}>
@@ -788,20 +777,21 @@ export default function TrackBrowserPanel() {
             </div>
           ))}
         </div>
-        <canvas ref={headerRef} style={{ display: "block", cursor: "grab" }} onMouseDown={(e) => onDown(e, "header")} onMouseMove={(e) => onMove(e, "header")} onMouseUp={(e) => onUp(e, "header")} onMouseLeave={() => { drag.current = null; setHover(null); }} />
+        <canvas ref={headerRef} style={{ display: "block", cursor: "grab" }} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={() => { drag.current = null; setHover(null); }} />
         {pinLayout.length > 0 && (
           <div style={{ borderTop: "2px solid #f39c12", borderBottom: "2px solid #f39c12", background: "#fffaf0", margin: "2px 0" }}>
-            <div style={{ fontSize: 11, color: "#8a5a00", padding: "1px 4px", height: 16 }}>Pinned ({pinLayout.length}/3) · click a pinned label to unpin</div>
-            <canvas ref={pinRef} style={{ display: "block", cursor }} onMouseDown={(e) => onDown(e, "pin")} onMouseMove={(e) => onMove(e, "pin")} onMouseUp={(e) => onUp(e, "pin")} onMouseLeave={() => { drag.current = null; setHover(null); }} />
+            <div style={{ fontSize: 11, color: "#8a5a00", padding: "1px 4px", height: 16 }}>Pinned ({pinLayout.length}/3) · tall rows for close reading</div>
+            {pinLayout.map((it) => renderRow(it, { pinnedRow: true }))}
           </div>
         )}
         <div ref={scrollRef} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)} style={{ height: bodyH, overflowY: "auto", overflowX: "hidden", position: "relative", borderTop: "1px solid #ddd" }}>
           <div style={{ height: total, position: "relative" }}>
-            <canvas ref={bodyRef} style={{ position: "sticky", top: 0, display: "block", cursor }} onMouseDown={(e) => onDown(e, "body")} onMouseMove={(e) => onMove(e, "body")} onMouseUp={(e) => onUp(e, "body")} onMouseLeave={() => { drag.current = null; setHover(null); setCursor("crosshair"); }} />
+            {treeW > 0 && <canvas ref={treeRef} onClick={onTreeClick} style={{ position: "sticky", top: 0, display: "block", cursor: "pointer", zIndex: 2 }} title="click a node: show its clade" />}
+            <div style={{ position: "absolute", left: 0, top: 0, width, height: total }}>{visibleItems.map((it) => renderRow(it))}</div>
           </div>
         </div>
         {tip && (
-          <div style={{ position: "absolute", left: Math.max(0, Math.min(hover.x + 14, width - 320)), top: tipTop, background: "rgba(255,255,255,0.97)", border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px", fontSize: 12, pointerEvents: "none", whiteSpace: "pre", zIndex: 5, boxShadow: "0 1px 4px rgba(0,0,0,0.15)", maxWidth: 420 }}>
+          <div style={{ position: "fixed", left: Math.min(hover.cx + 14, (typeof window !== "undefined" ? window.innerWidth : 1600) - 330), top: hover.cy + 14, background: "rgba(255,255,255,0.97)", border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px", fontSize: 12, pointerEvents: "none", whiteSpace: "pre", zIndex: 1000, boxShadow: "0 1px 4px rgba(0,0,0,0.15)", maxWidth: 420 }}>
             {tip}
           </div>
         )}
@@ -818,6 +808,7 @@ export default function TrackBrowserPanel() {
         </Card>
       )}
     </Card>
+    </TrackLocusContext.Provider>
   );
 }
 

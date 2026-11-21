@@ -135,3 +135,22 @@ export function bpLabel(v, span) {
   if (span >= 2e3) return `${(v / 1e3).toFixed(span >= 2e4 ? 0 : 1)} kb`;
   return `${commas(v)}`;
 }
+
+/**
+ * gOS "places" of a window as the genome-graph component draws them (dataToGenome: place = chromosome startPlace +
+ * position): [startPlace, endPlace].
+ */
+export function windowToPlaces(chromoBins, w) {
+  const b = chromoBins && chromoBins[bare(w.chrom)];
+  if (!b) return null;
+  return [b.startPlace + w.start, b.startPlace + w.end];
+}
+
+/** Inverse of windowToPlaces for a domain from the genome-graph component (clamped to the chromosome of its start). */
+export function placesToWindow(chromoBins, domain) {
+  const [p0, p1] = domain;
+  const entry = Object.entries(chromoBins || {}).find(([, b]) => p0 >= b.startPlace && p0 <= b.startPlace + b.endPoint);
+  if (!entry) return null;
+  const [chrom, b] = entry;
+  return clampWindow({ chrom: bare(chrom), start: Math.round(p0 - b.startPlace), end: Math.round(Math.min(p1, b.startPlace + b.endPoint) - b.startPlace) }, b.endPoint);
+}
