@@ -1,11 +1,12 @@
-# gOS / gCells track spec (`gos-track-spec`), version 0.1
+# gOS / gCells track spec (`gos-track-spec`), version 0.2
 
 One JSON document describes a stacked genome view: the loci, the units (cells or pseudobulk groups) in tree
 order, and the tracks. The same file is read by the gOS track browser (tab "Track browser"), by gCells in R
 (`gc$gt()`, `gc$iplot()`, `gc$gt_reads()`, drawn with gTrack) and by the Python reader (`gcells.py`). A view
 built in a notebook opens in gOS; a gOS view can be exported as a spec and redrawn in R.
 
-Status: **v0.1 draft (2026-11-20)**, written for milestone M1 of the track browser. Fields marked
+Status: **v0.2 draft (2026-11-21)**; v0.1 (2026-11-20) was written for milestone M1 of the track browser.
+v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; every v0.1 file is a valid v0.2 file. Fields marked
 *reserved* are named now so writers can emit them, but no reader acts on them yet.
 
 ## Versioning
@@ -20,7 +21,7 @@ Status: **v0.1 draft (2026-11-20)**, written for milestone M1 of the track brows
 ```json
 {
   "spec": "gos-track-spec",
-  "version": "0.1",
+  "version": "0.2",
   "id": "MGH303_12q_m1",
   "title": "MGH303 12q amplicon",
   "genome": "hg38",
@@ -111,12 +112,56 @@ is drawn as a stub toward the window edge, labelled with the partner locus. Clic
 ```json
 { "id": "reads", "type": "reads", "per_unit": false, "format": "bam",
   "url": "{dataPath}{patient}/slices/junctions.dna.bam", "read_group": "unit",
-  "fallback_url": "{dataPath}{unit}/reads.bam", "window": 300, "max_units": 6 }
+  "fallback_url": "{dataPath}{unit}/reads.bam", "window": 300, "max_units": 6,
+  "target": "junction", "group_by": "unit" }
 ```
 
 Follows the locus model. Multi-locus: one igv.js reference frame per locus (e.g. both breakends of a
 junction). `read_group: "unit"` filters a pooled BAM to the unit by its `RG` tag. Precomputed BAM slices only;
 whole CRAMs are never needed.
+
+- `target` (v0.2): `junction` (both breakends), `snv` (see `snv_reads`) or `window` (the current loci, only
+  when each window is at most `max_window` bp, default 50,000).
+- `group_by` (v0.2): `unit` (one read pane per unit, at most `max_units`), `group` (one pane per clade / clone:
+  reads of all its units, by `RG` membership in a pooled BAM; needs a pooled slice), or `all` (one pane, every
+  unit pooled). Panes follow tree order. `groups` (optional) overrides membership: `{ "Clone 3": ["cell", ...] }`.
+- A reader without a pooled slice for the target says "grouped reads not available (no pooled slice)" and falls
+  back to per-unit panes.
+
+### `snv_reads` (v0.2: base-level reads at chosen SNVs)
+
+```json
+{ "id": "snvreads", "type": "snv_reads", "format": "bam",
+  "url": "{dataPath}{patient}/slices/drivers.dna.bam", "read_group": "unit",
+  "fallback_url": "{dataPath}{unit}/reads.bam",
+  "sites": [ { "id": "chr12_57751234_C_T", "chrom": "chr12", "pos": 57751234, "ref": "C", "alt": "T", "label": "CDK4 p.R24C" } ],
+  "window": 40, "group_by": "group", "sort": "alt_first", "max_units": 6 }
+```
+
+- One reference frame per site (`window` bp either side; default 40, i.e. base level). Several sites are a
+  split view.
+- Reads carrying `alt` at `pos` are highlighted and sorted first (`sort: "alt_first"`; igv.js BASE sort).
+- `group_by` as for `reads` (`unit`, `group`, `all`), panes in tree order. Each pane is labelled with its alt / total read count at the site when the reader can count it.
+- `sites` may instead be a URL to a TSV/JSON with the same columns (`id, chrom, pos, ref, alt, label`).
+
+### `signature` (v0.2: SBS spectrum or exposures per unit)
+
+```json
+{ "id": "sig", "type": "signature", "per_unit": true,
+  "url": "{dataPath}{patient}/signatures_cells.json", "format": "gos-signatures-json",
+  "mode": "spectrum", "channels": "SBS96", "normalize": "fraction", "height": 40,
+  "signatures": ["SBS1", "SBS5", "SBS40"], "fit": "patient" }
+```
+
+- `mode: "spectrum"`: the 96-channel trinucleotide spectrum per unit (bars in COSMIC channel order, colored
+  by the six substitution classes). `normalize`: `count` or `fraction`.
+- `mode: "exposures"`: signature exposures per unit (stacked bar of `signatures`, fractions or counts), from
+  one fit per patient on all of its mutations with each mutation assigned (`fit: "patient"`; per-clade refits
+  are not part of the spec).
+- Units without enough SNVs show "not available (n SNVs)"; `min_snvs` (default 20) sets the cut-off.
+- Not tied to the locus: it is drawn in the unit row beside the genome tracks (a fixed-width column) or as its
+  own panel. `group_by: "group"` pools units per clade.
+- Formats: `gos-signatures-json` (existing gOS exports), `tsv` (`unit, channel, value` or `unit, signature, value`).
 
 ### `genes`
 
@@ -144,10 +189,17 @@ discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_s
 | `atac` | bigwig + bed.gz | pseudobulk signal and peaks; `per_copy: true` divides by CN |
 | `segments`, `peaks` | bed.gz + tbi | |
 
+(`snv_reads` and `signature` moved from planned to defined in v0.2.)
+
 ## Selection
 
 `"selection": { "units": ["..."], "clades": ["Clone 3"] }` (optional) filters every per-unit track to those
 units. gOS writes the current tree selection here on export.
+
+## Changes
+
+- **0.2 (2026-11-21):** `snv_reads` and `signature` track types; `reads.target`, `reads.group_by`, `reads.groups`.
+- **0.1 (2026-11-20):** first version: coverage (two-axis), graph, reads, genes, junctions; reserved names.
 
 ## Conformance
 
