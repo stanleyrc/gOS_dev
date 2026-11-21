@@ -1,11 +1,12 @@
-# gOS / gCells track spec (`gos-track-spec`), version 0.2
+# gOS / gCells track spec (`gos-track-spec`), version 0.3
 
 One JSON document describes a stacked genome view: the loci, the units (cells or pseudobulk groups) in tree
 order, and the tracks. The same file is read by the gOS track browser (tab "Track browser"), by gCells in R
 (`gc$gt()`, `gc$iplot()`, `gc$gt_reads()`, drawn with gTrack) and by the Python reader (`gcells.py`). A view
 built in a notebook opens in gOS; a gOS view can be exported as a spec and redrawn in R.
 
-Status: **v0.2 draft (2026-11-21)**; v0.1 (2026-11-20) was written for milestone M1 of the track browser.
+Status: **v0.3 draft (2026-11-21)**; v0.1 (2026-11-20) was written for milestone M1 of the track browser.
+v0.3 adds per-window y scales (`windows[i].y`) and the view `layout` (row heights, pseudobulk-first, pins).
 v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; every v0.1 file is a valid v0.2 file. Fields marked
 *reserved* are named now so writers can emit them, but no reader acts on them yet.
 
@@ -21,7 +22,7 @@ v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; ev
 ```json
 {
   "spec": "gos-track-spec",
-  "version": "0.2",
+  "version": "0.3",
   "id": "MGH303_12q_m1",
   "title": "MGH303 12q amplicon",
   "genome": "hg38",
@@ -39,6 +40,35 @@ v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; ev
 | `loci` | string[] | One or more windows shown side by side (split view). `chr` prefix optional; commas allowed. The order is the display order. |
 | `units` | object | The stacked rows (below). Tracks without `per_unit` ignore it. |
 | `tracks` | object[] | Top-to-bottom order. Per-unit tracks are drawn inside each unit row, in this order. |
+
+## Windows (v0.3): per-window y scale
+
+```json
+"windows": [
+  { "locus": "chr12:55,500,000-72,500,000", "y": { "mode": "auto", "min": 0, "max": 150, "log": true, "robust": false } },
+  { "locus": "chr11:39,200,000-39,700,000", "y": { "mode": "auto", "min": 0, "max": 4, "log": false } }
+]
+```
+
+- Optional; when present it has one entry per `loci` entry, in the same order (`locus` repeats it).
+- `mode`: `auto` (from that window's max over the shown units; `robust: true` uses the 99th percentile and marks
+  clipped values with an arrow), `shared` (all `shared` windows use one scale), `manual` (`min`, `max` as given).
+- `log`: log1p CN axis. Readers default to log when the auto max is above 12.
+- Every window prints its own ticks (0 / 2 / max); readers flag "y scale differs" when windows differ.
+- Applies to graph, coverage, pseudobulk and pinned rows alike. `layout.share_y: true` forces one scale.
+
+## Layout (v0.3)
+
+```json
+"layout": { "row_height": 56, "overrides": { "graph": null, "coverage": 80 }, "auto_fit": true,
+            "junction_height": 80, "reads_height": 220, "mode": "pseudobulk", "share_y": false,
+            "pinned": ["clade:Clone 3", "cell:MGH303_MR_2_pl3_5a"] }
+```
+
+- `row_height`: px per per-unit sub-row (12-200). Presets: compact 24, readable 56, large 120. `overrides` per track type.
+- `auto_fit`: rows grow to fill the viewport, never below 40 px before scrolling.
+- `mode`: `pseudobulk` (one row per clade, cells expandable under it) or `cells` (all units in tree order with the tree).
+- `pinned`: up to 3 rows (`clade:<group>` or `cell:<unit>`) drawn tall above the stack.
 
 ## Units
 
@@ -197,6 +227,8 @@ discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_s
 units. gOS writes the current tree selection here on export.
 
 ## Changes
+
+- **0.3 (2026-11-21):** `windows[i].y` per-window y scales; `layout` (row heights, auto-fit, pseudobulk mode, pins, share_y).
 
 - **0.2 (2026-11-21):** `snv_reads` and `signature` track types; `reads.target`, `reads.group_by`, `reads.groups`.
 - **0.1 (2026-11-20):** first version: coverage (two-axis), graph, reads, genes, junctions; reserved names.

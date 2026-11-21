@@ -2,7 +2,7 @@
 import { formatLocus, parseLocus } from "./locus";
 
 export const SPEC_NAME = "gos-track-spec";
-export const SPEC_VERSION = "0.2";
+export const SPEC_VERSION = "0.3";
 export const KNOWN_TYPES = ["coverage", "graph", "reads", "genes", "junctions", "snv_reads", "signature"];
 export const RESERVED_TYPES = ["junction_support", "walks", "cn_heatmap", "cn_correlation_1d", "cn_correlation_2d", "hic", "atac", "segments", "peaks"];
 

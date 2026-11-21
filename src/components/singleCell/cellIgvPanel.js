@@ -117,7 +117,7 @@ export default function CellIgvPanel({ view: viewProp = null, embedded = false, 
       pooled: view.pooled || null,
       pathFor: (folder, file) => casePath(dataset, folder, file),
       sortAt: { chromosome: view.chromosome, position: view.position },
-      dnaHeight: rnaTracks.length ? 200 : 260,
+      dnaHeight: view.dnaHeight || (rnaTracks.length ? 200 : 260),
       labelFor: cellLabels.label,
     });
     const ids = tracks.map((tr) => tr.id);
