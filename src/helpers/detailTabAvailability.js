@@ -122,6 +122,8 @@ export const getDetailTabAvailability = (state = {}) => {
     19: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0),
     // Tab 20: events catalog of the patient (loads its own files)
     20: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true),
+    // Tab 21: track browser (stacked per-cell graph + coverage tracks on a shared locus; brief cu)
+    21: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0),
     // Tab 18: compare phylogenies; only for patients with an exported trees/index.json listing another tree
     18: Boolean(state.SingleCell?.patient != null && state.SingleCell?.missing !== true && (state.SingleCell?.cells || []).length > 0 && usableTrees(state.SingleCell?.altTrees?.data).length > 1),
   };

@@ -59,4 +59,10 @@ describe("pooled driver reads", () => {
     expect(t.filter({ tags: () => ({ RG: "c1" }) })).toBe(true);
     expect(t.filter({ tags: () => ({ RG: "c2" }) })).toBe(false);
   });
+  it("builds one pane per clade from pooled groups", () => {
+    const [t] = buildIgvTracks({ dnaCellIds: ["Clone 3"], pooled: { patientId: "P", file: POOLED_DRIVER_BAM, groups: { "Clone 3": ["c1", "c2"] } }, pathFor: (f, n) => `/d/${f}/${n}` });
+    expect(t.name).toBe("Clone 3");
+    expect(t.filter({ tags: () => ({ RG: "c2" }) })).toBe(true);
+    expect(t.filter({ tags: () => ({ RG: "c9" }) })).toBe(false);
+  });
 });

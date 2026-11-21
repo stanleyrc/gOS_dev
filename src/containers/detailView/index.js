@@ -38,6 +38,7 @@ const SingleCellEvidenceTab = React.lazy(() => import("../../tabs/singleCellEvid
 const SingleCellPpfitTab = React.lazy(() => import("../../tabs/singleCellPpfitTab"));
 const SingleCellEventsTab = React.lazy(() => import("../../tabs/singleCellEventsTab"));
 const SingleCellCompareTreesTab = React.lazy(() => import("../../tabs/singleCellCompareTreesTab"));
+const SingleCellTrackBrowserTab = React.lazy(() => import("../../tabs/singleCellTrackBrowserTab"));
 const { updateTab, updateDomains, updateCaseReport } = settingsActions;
 
 export class DetailView extends Component {
@@ -146,13 +147,14 @@ export class DetailView extends Component {
       18: <SingleCellCompareTreesTab />,
       19: <SingleCellPpfitTab />,
       20: <SingleCellEventsTab />,
+      21: <SingleCellTrackBrowserTab />,
     };
     // The single-cell tab only exists for single-cell patient entries; it
     // leads the tab bar there and is hidden for ordinary cases.
     // The RNA tab follows it when the patient has an rna/ export.
     let tabsOrder =
       tabAvailability[7] === true
-        ? [7, ...[12, 20, 18, 14, 8, 10, 9, 11, 19, 15, 13].filter((k) => tabAvailability[k] === true)] // bulk-WGS tabs 0-6 are hidden for single-cell patients (they have no bulk data; code kept)
+        ? [7, ...[12, 20, 21, 18, 14, 8, 10, 9, 11, 19, 15, 13].filter((k) => tabAvailability[k] === true)] // bulk-WGS tabs 0-6 are hidden for single-cell patients (they have no bulk data; code kept)
         : [0, 1, 2, 3, 4, 5, 6];
     return (
       <Wrapper className={this.props.compactHeader ? "gos-compact-header" : undefined} style={{ "--gos-header-h": `${this.state.headerHeight}px` }}>

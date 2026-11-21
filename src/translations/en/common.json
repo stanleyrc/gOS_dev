@@ -446,7 +446,8 @@
         "tab16": "Single-Cell Story",
         "tab18": "Compare Trees",
         "tab19": "Single-Cell Purity/Ploidy",
-        "tab20": "Events"
+        "tab20": "Events",
+        "tab21": "Track browser"
       }
     },
     "detail-error-view": {

@@ -63,7 +63,8 @@ export function buildIgvTracks({ dnaCellIds = [], rnaTracks = [], pooled = null,
     format: "bam",
     type: "alignment",
     height: dnaHeight,
-    filter: (al) => al.tags().RG === cellId,
+    // pooled.groups ({ trackId: [cellIds] }): one pane per clade / clone (or "all"), reads of any member cell
+    filter: pooled.groups && pooled.groups[cellId] ? ((members) => (al) => members.has(al.tags().RG))(new Set(pooled.groups[cellId])) : (al) => al.tags().RG === cellId,
     ...(sortAt ? { sort: altFirstSort(sortAt.chromosome, sortAt.position) } : {}),
   } : {
     id: cellId, // the pair id stays the key (folder, de-duplication); only the shown name follows labelFor
