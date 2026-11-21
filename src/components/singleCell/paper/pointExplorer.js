@@ -21,8 +21,8 @@ function Glyph({ shape, color, stroke, size = 14 }) {
 /** Histogram of the per-cell copy numbers with the mean as a dashed line. */
 function Histogram({ hist, color }) {
   const w = 300;
-  const h = 86;
-  const pad = { l: 8, r: 8, t: 6, b: 22 };
+  const h = 98;
+  const pad = { l: 8, r: 8, t: 6, b: 32 };
   const n = hist.counts.length;
   const top = Math.max(1, ...hist.counts);
   const x0 = hist.edges[0];
@@ -34,9 +34,9 @@ function Histogram({ hist, color }) {
       {hist.counts.map((c, i) => (c > 0 ? <rect key={i} x={sx(hist.edges[i]) + 0.3} y={sy(c)} width={Math.max(0.8, sx(hist.edges[i + 1]) - sx(hist.edges[i]) - 0.6)} height={h - pad.b - sy(c)} fill={color} opacity={0.9} /> : null))}
       <line x1={pad.l} x2={w - pad.r} y1={h - pad.b} y2={h - pad.b} stroke="#444" strokeWidth={0.8} />
       {hist.mean != null && <line x1={sx(hist.mean)} x2={sx(hist.mean)} y1={pad.t} y2={h - pad.b} stroke="#222" strokeDasharray="3 2" strokeWidth={1} />}
-      <text x={pad.l} y={h - 8} fontSize={10} fill="#444">{x0}</text>
-      <text x={w - pad.r} y={h - 8} fontSize={10} fill="#444" textAnchor="end">{x1}</text>
-      <text x={w / 2} y={h - 8} fontSize={10} fill="#444" textAnchor="middle">{`copy number per cell · max bar ${top} cells · dashed = mean ${hist.mean}`}</text>
+      <text x={pad.l} y={h - pad.b + 11} fontSize={10} fill="#444">{x0}</text>
+      <text x={w - pad.r} y={h - pad.b + 11} fontSize={10} fill="#444" textAnchor="end">{x1}</text>
+      <text x={w / 2} y={h - 3} fontSize={10} fill="#444" textAnchor="middle">{`copy number per cell · max bar ${top} cells · dashed = mean ${hist.mean}`}</text>
     </svg>
   );
 }
