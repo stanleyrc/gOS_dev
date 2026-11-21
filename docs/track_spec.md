@@ -1,11 +1,11 @@
-# gOS / gCells track spec (`gos-track-spec`), version 0.3
+# gOS / gCells track spec (`gos-track-spec`), version 0.4
 
 One JSON document describes a stacked genome view: the loci, the units (cells or pseudobulk groups) in tree
 order, and the tracks. The same file is read by the gOS track browser (tab "Track browser"), by gCells in R
 (`gc$gt()`, `gc$iplot()`, `gc$gt_reads()`, drawn with gTrack) and by the Python reader (`gcells.py`). A view
 built in a notebook opens in gOS; a gOS view can be exported as a spec and redrawn in R.
 
-Status: **v0.3 draft (2026-11-21)**; v0.1 (2026-11-20) was written for milestone M1 of the track browser.
+Status: **v0.4 draft (2026-11-21)**; v0.4 adds the `hic` track type (contact maps over the windows); v0.1 (2026-11-20) was written for milestone M1 of the track browser.
 v0.3 adds per-window y scales (`windows[i].y`) and the view `layout` (row heights, pseudobulk-first, pins).
 v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; every v0.1 file is a valid v0.2 file. Fields marked
 *reserved* are named now so writers can emit them, but no reader acts on them yet.
@@ -22,7 +22,7 @@ v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; ev
 ```json
 {
   "spec": "gos-track-spec",
-  "version": "0.3",
+  "version": "0.4",
   "id": "MGH303_12q_m1",
   "title": "MGH303 12q amplicon",
   "genome": "hg38",
@@ -210,6 +210,45 @@ Arcs (or stubs for inter-locus partners) with the number of supporting cells. *P
 discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_support`: format `bedpe.gz`
 (tabix) or `arrow`, columns `junction_id, unit, split, discordant, tier`.
 
+### `hic` (v0.4: Hi-C contact maps over the windows)
+
+```json
+{ "id": "hic", "type": "hic", "title": "Hi-C contacts", "per_unit": true,
+  "url": "{dataPath}{unit}/hic/index.json", "format": "gos-hic-tiles/1",
+  "units": ["GBM39_cluster0", "GBM39_cluster2"], "mode": "triangle", "resolution": "auto",
+  "normalization": "raw", "color": { "scale": "log", "max": "p99", "palette": "white-red" },
+  "junctions": { "overlay": true, "source": "graph" }, "height": 420, "visible": true }
+```
+
+- **Layout (GxG gMap on a multi-range view):** the windows (`loci`) are concatenated into one axis in display order.
+  Each window's cis block is on the diagonal; the trans blocks between windows are off it, so a junction between two
+  windows is an off-diagonal hotspot. Window borders are drawn and labelled (W1, W2, W1×W2, ...).
+- `units`: the units drawn, one map each, stacked in this order (cluster pseudobulks; a single cell's contacts where
+  an export exists). A unit without an export draws "Hi-C not available (reason)".
+- `mode`: `triangle` (default; rotated 45° with the diagonal on top, x aligned with the tracks above; a contact
+  between screen columns xa ≤ xb is drawn at ((xa + xb) / 2, (xb − xa) / 2)) or `square` (both axes follow the window
+  layout). `height` caps the triangle depth (px); pairs further apart than 2 × height are not drawn.
+- `resolution`: `"auto"` (the finest bin size whose concatenated axis has at most about one bin per 1.5 px) or a bin
+  size in bp present in the export (used when its axis stays under the reader's cap, 1,400 bins).
+- `normalization`: `raw` (counts) or `balanced` (count × w1 × w2 with the export's ICE weights; filtered bins grey).
+- `color`: `scale` `log` (log1p(v) / log1p(max), default) or `linear`; `max` a percentile `"p<q>"` of the drawn
+  off-diagonal non-zero values (robust, default `p99`) or a number.
+- `junctions.overlay`: the unit's `graph` track ALT edges drawn as circles at (bp1, bp2) when both breakends are in the
+  windows (`source: "graph"`).
+- Pan and zoom follow the shared windows; dragging or wheeling on a map moves the window under the cursor.
+
+**Format `gos-hic-tiles/1`** (skilift `sc_export_hic_tiles()` from a cooler `.mcool`): `index.json` plus one
+range-readable little-endian binary per resolution, read with HTTP Range requests:
+
+| part | content |
+|---|---|
+| `index.json` | `format`, `unit`, `genome`, `source`, `storage` (`symmetric-upper`), `data_label`, `resolutions[]`: `res`, `file`, `nbins`, `nnz`, `sum`, `bytes`, `chroms[]` (`name` without "chr", `length`, `bin_offset`, `nbins`), `sections` (byte offsets), `balance` (`method` ICE or none, parameters, `converged`) |
+| `r<res>.bin` | `[bin1 offsets u32 × (nbins + 1)] [weights f32 × nbins, NaN = filtered] [pixels (bin2 u32, count f32) × nnz]` |
+
+Pixels are the cooler upper triangle sorted by bin1 then bin2, so a window's rows are one byte range
+(`offsets[a] .. offsets[b + 1]`); contacts between two windows are in the rows of the earlier one. Readers fetch rows
+in aligned blocks of 256 bins (cached across pans).
+
 ### Reserved types (M2–M4; names fixed now)
 
 | type | format | notes |
@@ -217,7 +256,7 @@ discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_s
 | `walks` | gGnome.js walks JSON | gWalk layers (curated, peel, covariance, Method C), stacked paths with copies; `layer` field names the method |
 | `cn_heatmap` | arrow / u16 bins | cells × bins in tree order |
 | `cn_correlation_1d` | bigwig / arrow | correlation of each bin's CN with `anchor` locus across the selected units |
-| `cn_correlation_2d`, `hic` | mcool | bin × bin triangle (HiGlass style); graph junctions overlaid |
+| `cn_correlation_2d` | arrow | bin × bin triangle, drawn like `hic` |
 | `atac` | bigwig + bed.gz | pseudobulk signal and peaks; `per_copy: true` divides by CN |
 | `segments`, `peaks` | bed.gz + tbi | |
 
@@ -229,6 +268,9 @@ discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_s
 units. gOS writes the current tree selection here on export.
 
 ## Changes
+
+- **0.4 (2026-11-21):** `hic` track type (multi-window contact maps, triangle or square, raw or ICE-balanced, auto or
+  fixed resolution, log color with a percentile max, graph junction overlay) and the `gos-hic-tiles/1` format.
 
 - **0.3 (2026-11-21, later):** `layout.graph_style`; `graph` tracks are drawn with the gOS genome-graph component (intervals at CN colored by chromosome, junction arcs, CN axis); pseudobulk graphs are passed to it as gGnome.js JSON.
 - **0.3 (2026-11-21):** `windows[i].y` per-window y scales; `layout` (row heights, auto-fit, pseudobulk mode, pins, share_y).

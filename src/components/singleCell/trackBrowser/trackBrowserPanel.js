@@ -25,6 +25,8 @@ import useUnitData from "./useUnitData";
 import { COLORS, drawGenes, drawJunctions, drawRuler, drawTree, hitTest, setupCanvas } from "./draw";
 import { CanvasRow, GraphPlotRow, NoteRow } from "./trackRow";
 import { TrackLocusContext } from "./locusContext";
+import HicSection from "./hicTrack";
+import { defaultHicUnits, hicStateFromTrack, hicTrack } from "../../../helpers/singleCell/trackBrowser/hic";
 
 const { Text } = Typography;
 const HEADER = { ruler: 34, genes: 46 };
@@ -39,6 +41,17 @@ export const DEFAULT_LOCI = {
     { label: "CDK4 · MDM2", locus: "chr12:57,600,000-58,400,000 | chr12:68,600,000-69,400,000" },
   ],
 };
+// public droplet Hi-C (dataset hic-public): EGFR ecDNA amplicon, its chr7 flank, the chr7:44.9 Mb partner of the
+// amplicon's DEL-like junction, and the chr1-chr5 translocation both lines carry
+const HIC_PRESETS = [
+  { label: "EGFR amplicon + flank + chr7:44.9 Mb partner", locus: "chr7:54,400,000-56,400,000 | chr7:56,400,000-58,400,000 | chr7:44,400,000-45,400,000" },
+  { label: "EGFR amplicon", locus: "chr7:54,400,000-56,400,000" },
+  { label: "chr1-chr5 translocation", locus: "chr1:10,400,000-11,400,000 | chr5:159,500,000-160,500,000" },
+  { label: "EGFR amplicon + chr1 + chr5", locus: "chr7:54,400,000-56,400,000 | chr1:10,400,000-11,400,000 | chr5:159,500,000-160,500,000" },
+  { label: "chr7", locus: "chr7" },
+];
+DEFAULT_LOCI.GBM39 = HIC_PRESETS;
+DEFAULT_LOCI.GBM39_ER = HIC_PRESETS;
 const FALLBACK_PRESETS = [{ label: "chr12", locus: "chr12" }];
 const MIN_JUNCTION_CELLS = 10;
 
@@ -98,6 +111,10 @@ export default function TrackBrowserPanel() {
   useEnsureGeneList();
   const patientId = patient?.caseReportId ? `${patient.caseReportId}` : null;
   const presets = DEFAULT_LOCI[patientId] || FALLBACK_PRESETS;
+  // Hi-C units: cells whose record says a contact map was exported (gos-hic-tiles/1), or a spec hic track
+  const hicUnits = useMemo(() => (cells || []).filter((c) => c.has_hic === true || c.has_hic === "TRUE").map((c) => ({ id: c.cell_id, label: c.cell_id, nCells: Number(c.n_cells) || null })), [cells]);
+  const [hic, setHic] = useState(() => hicStateFromTrack({}));
+  const [hicFromSpec, setHicFromSpec] = useState(false);
   const haveBins = Object.keys(chromoBins || {}).length > 0;
   const [wrapRef, width] = useContainerWidth(1200);
   const narrow = width < 700;
@@ -154,6 +171,10 @@ export default function TrackBrowserPanel() {
       const byType = (t) => (s.tracks || []).find((x) => x.type === t);
       setShowGraph(Boolean(byType("graph")) && byType("graph").visible !== false);
       setShowCov(Boolean(byType("coverage")) && byType("coverage").visible !== false);
+      if (byType("hic")) {
+        setHic(hicStateFromTrack(byType("hic")));
+        setHicFromSpec(true);
+      }
       const L = s.layout || {};
       if (L.row_height) setBase(clampHeight(L.row_height));
       if (L.overrides) setOverrides(L.overrides);
@@ -195,6 +216,11 @@ export default function TrackBrowserPanel() {
     setLocusText(formatLocus(next));
   }, []);
   useEffect(() => setUrlParam("tbmode", mode === "cells" ? "cells" : null), [mode]);
+  // default Hi-C units: the large clusters (>= 100 cells, at most 5), else the first unit
+  useEffect(() => {
+    if (hicFromSpec || !hicUnits.length) return;
+    setHic((h) => (h.units.length && h.units.every((id) => hicUnits.some((u) => u.id === id)) ? h : { ...h, units: defaultHicUnits(hicUnits) }));
+  }, [hicUnits, hicFromSpec]);
   useEffect(() => setUrlParam("tbstyle", graphStyle === "canvas" ? "canvas" : null), [graphStyle]);
   useEffect(() => setUrlParam("tbpin", pinned.length ? pinned.join(",") : null), [pinned]);
 
@@ -668,7 +694,7 @@ export default function TrackBrowserPanel() {
         if (t.type === "junctions") return { ...t, height: junctionH };
         if (t.type === "reads") return { ...t, height: readsH };
         return t;
-      }),
+      }).filter((t) => t.type !== "hic").concat(hicUnits.length || hicFromSpec ? [hicTrack(hic)] : []),
       selection: groups.length || cladeIds ? { ...(groups.length ? { clades: groups } : {}), ...(cladeIds ? { units: cladeIds } : {}) } : null,
       provenance: { source: "gOS track browser export", data: "interim gOS per-cell files" },
     });
@@ -708,7 +734,7 @@ export default function TrackBrowserPanel() {
   const locus = { windows, setWindows: applyWindows, slots, scales, domains, chromoBins, onPlotDomains, geometry: { leftW, gapX, contentW, trackLeft } };
   return (
     <TrackLocusContext.Provider value={locus}>
-    <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : "0.3 · interim gOS files"}</Text>}</Space>}>
+    <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : "0.4 · interim gOS files"}</Text>}</Space>}>
       <Space wrap style={{ marginBottom: 6 }}>
         <Input.Search style={{ width: narrow ? Math.max(200, width - 10) : 470 }} size="small" value={locusText} onChange={(e) => setLocusText(e.target.value)} onSearch={(v) => setLocusText(v)} enterButton="Go" placeholder="chr12:57,000,000-70,000,000 | chr11:39.2m-39.7m" />
         <Select size="small" style={{ width: 180 }} placeholder="preset loci" value={null} options={presets.map((p) => ({ label: p.label, value: p.locus }))} onChange={(v) => setLocusText(v)} />
@@ -792,6 +818,9 @@ export default function TrackBrowserPanel() {
             <div style={{ position: "absolute", left: 0, top: 0, width, height: total }}>{visibleItems.map((it) => renderRow(it))}</div>
           </div>
         </div>
+        {(hicUnits.length > 0 || hicFromSpec) && hic.visible && (
+          <HicSection units={hicUnits} state={hic} setState={setHic} dataPath={dataPath} patient={patientId} genome={genome} graphs={data.graphs} dataVersion={data.version} narrow={narrow} />
+        )}
         {tip && (
           <div style={{ position: "fixed", left: Math.min(hover.cx + 14, (typeof window !== "undefined" ? window.innerWidth : 1600) - 330), top: hover.cy + 14, background: "rgba(255,255,255,0.97)", border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px", fontSize: 12, pointerEvents: "none", whiteSpace: "pre", zIndex: 1000, boxShadow: "0 1px 4px rgba(0,0,0,0.15)", maxWidth: 420 }}>
             {tip}
