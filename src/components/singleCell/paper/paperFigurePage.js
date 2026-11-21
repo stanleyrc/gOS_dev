@@ -33,11 +33,13 @@ import { geneAtPoint } from "../../../helpers/singleCell/paperGenes";
 import { selectCells, selectedIds, selectionGroups, selectionText } from "../../../helpers/singleCell/paperSelection";
 import { colIndexAt, graphInWindow, regionWindows, snvAt } from "../../../helpers/singleCell/paperZoom";
 import { livePanel, livePanels, liveStart } from "../../../helpers/singleCell/paperLiveView";
+import { clickSelect, explorerPanels, parseExplorer } from "../../../helpers/singleCell/paperExplorer";
 
 const InteractiveSlot = React.lazy(() => import("./interactiveSlot"));
 const PatientLiveView = React.lazy(() => import("./patientLiveView"));
 const SelectionDrawer = React.lazy(() => import("./selectionDrawer"));
 const PatientDrawer = React.lazy(() => import("./patientDrawer"));
+const PointExplorer = React.lazy(() => import("./pointExplorer"));
 
 const rowsets = (sidecar) => [...new Set((sidecar?.regions || []).filter((r) => r.kind === "rows").map((r) => r.rowset || r.id))];
 /** Highlight rectangles of cell ids in every rows region, and ring positions of matching point marks. */
@@ -150,6 +152,8 @@ function PaperFigureInteractive({ label, navLabel = null }) {
   // live patient view of a panel (the patient's own gOS components, inline under the controls): { panel, patient } | null
   const [liveView, setLiveView] = useState(null);
   const liveRef = useRef(null);
+  // point explorer of a scatter panel (sidecar data.explorers): { panel, selected: [point id] } | null
+  const [explore, setExplore] = useState(null);
   const anchors = useMemo(() => anchoredPanels(fig), [fig]);
   const regions = useMemo(() => (fig?.widthPt ? panelRegions(anchors, fig.widthPt, fig.heightPt) : []), [anchors, fig]);
   const [imgReady, setImgReady] = useState(false);
@@ -263,10 +267,13 @@ function PaperFigureInteractive({ label, navLabel = null }) {
     setCnZoom({});
     setLens(null);
     setPatientOpen(null);
+    setExplore(null);
     popupCtl.current.close();
     clearHoverRef.current(); // a hover card / tooltip of the previous figure must not survive the figure change
     graphs.current.clear();
   }, [label]);
+  const explorers = useMemo(() => Object.fromEntries(explorerPanels(sidecar).map((p) => [p, parseExplorer(sidecar, p)]).filter(([, e]) => e)), [sidecar]);
+  const pointOf = (ph) => (ph?.fields?.point != null ? explorers[`${ph.region.panel || ""}`.toLowerCase()]?.byId.get(`${ph.fields.point}`) || null : null);
   const extras = useMemo(() => (sidecar ? sidecarExtras(sidecar, sidecar.data?.walk_names?.patient || sidecar.data?.ecdna_snvs?.patient) : {}), [sidecar]);
   const walkPatient = sidecar?.data?.walk_names?.patient || null;
   const dataset = useSelector((s) => s.Settings?.dataset);
@@ -480,6 +487,7 @@ function PaperFigureInteractive({ label, navLabel = null }) {
       tracks.filter((t) => ids.has(t.cell)).forEach((t) => out.push(<div key={`${keyp}st${t.id}`} className="sc-paperpage-sel" style={{ left: t.rect.x * kx, top: t.rect.y * ky, width: t.rect.w * kx, height: t.rect.h * ky, background: "transparent" }} />));
     }
     if (hit) linkedMarks(sidecar, new Set([hit.id])).rects.forEach((r, i) => out.push(<div key={`${keyp}h${i}`} className="sc-paperpage-hover" style={{ left: r.x * kx, top: r.y * ky, width: r.w * kx, height: Math.max(2, r.h * ky) }} />));
+    if (explore?.selected?.length) markPositions(sidecar, "point", new Set(explore.selected)).forEach(([x, y], i) => out.push(<div key={`${keyp}xr${i}`} className="sc-paperpage-ring is-sel" style={ringBox([x, y], kx, ky)} />));
     if (plotHit?.page) out.push(<div key={`${keyp}pr`} className="sc-paperpage-ring" style={ringBox(plotHit.page, kx, ky)} />);
     if (plotHit?.rect) out.push(<div key={`${keyp}pt`} className="sc-paperpage-hover" style={{ left: plotHit.rect.x * kx, top: plotHit.rect.y * ky, width: Math.max(2, plotHit.rect.w * kx), height: Math.max(2, plotHit.rect.h * ky), background: "transparent", outline: "2px solid #1677ff" }} />);
     if (trackHit) {
@@ -712,6 +720,28 @@ function PaperFigureInteractive({ label, navLabel = null }) {
           )}
         </div>
       )}
+      {Object.keys(explorers).length > 0 && !explore && (
+        <div className="sc-paperpage-selbar" data-testid="explorer-launch">
+          {Object.entries(explorers).map(([p, ex]) => (
+            <Button key={p} size="small" type="primary" ghost onClick={() => setExplore({ panel: p, selected: [] })}>
+              {`Explore ${fig.label}${p}: every point (${ex.points.length}), legend, filters, nulls`}
+            </Button>
+          ))}
+          <Text type="secondary">{"or click a point on the printed panel"}</Text>
+        </div>
+      )}
+      {explore && explorers[explore.panel] && (
+        <React.Suspense fallback={<Text type="secondary">Loading…</Text>}>
+          <PointExplorer
+            key={`${fig.id}|${explore.panel}`}
+            explorer={explorers[explore.panel]}
+            label={`${fig.label}${explore.panel}`}
+            selected={explore.selected}
+            onSelect={(ids) => setExplore((cur) => ({ ...cur, selected: ids }))}
+            onClose={() => setExplore(null)}
+          />
+        </React.Suspense>
+      )}
       {controls.length > 0 && (
         <PanelControls
           controls={controls}
@@ -904,6 +934,12 @@ function PaperFigureInteractive({ label, navLabel = null }) {
           // click acts on the mark the tooltip names: overlapping marks (< 1 px apart) could otherwise resolve to a
           // neighbour, because click coordinates are whole pixels and pointer moves are fractional
           const ph = clickTarget(plotHit, tip, cpx, cpy) || plotHitAt(sidecar, x, y);
+          const xp = pointOf(ph);
+          if (xp) {
+            const panel = `${ph.region.panel || ""}`.toLowerCase();
+            setExplore((cur) => ({ panel, selected: e.shiftKey && cur?.panel === panel ? clickSelect(cur.selected, xp.id, true) : [xp.id] }));
+            return;
+          }
           const cell = ph?.fields?.cell || ph?.fields?.cell_id;
           if (cell) {
             select([`${cell}`], ph.fields.patient || ph.region.patient || null, null, e);
@@ -983,7 +1019,16 @@ function PaperFigureInteractive({ label, navLabel = null }) {
             <div style={{ opacity: 0.8 }}>{lens && lens.s >= 1.6 ? "its genome graph opens above the track · click to select (shift adds)" : "zoom in for its genome graph · click to select (shift adds)"}</div>
           </div>
         )}
-        {plotHit && tip && !hit && !trackHit && (
+        {plotHit && tip && !hit && !trackHit && pointOf(plotHit) && (
+          <div className="sc-tooltip" style={{ ...tooltipStyle, maxWidth: 340 }}>
+            <div style={{ fontWeight: 600 }}>{pointOf(plotHit).name}</div>
+            {pointOf(plotHit).tooltip.map(([key, v]) => (
+              <div key={key}>{`${key}: ${v}`}</div>
+            ))}
+            <div style={{ opacity: 0.8 }}>{"click: open it in the explorer (cells, histogram, links) · shift adds"}</div>
+          </div>
+        )}
+        {plotHit && tip && !hit && !trackHit && !pointOf(plotHit) && (
           <div className="sc-tooltip" style={tooltipStyle}>
             <div style={{ fontWeight: 600 }}>{plotHit.fields ? plotHit.fields.cell || plotHit.fields.patient || plotHit.fields.gene || plotHit.fields.row || plotHit.fields.label || `${fig.label}${plotHit.region.panel || ""}` : `${fig.label}${plotHit.region.panel || ""}`}</div>
             {plotHit.fields &&

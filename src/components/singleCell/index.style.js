@@ -390,6 +390,88 @@ const Wrapper = styled.div`
     gap: 8px;
     margin-bottom: 6px;
   }
+  .sc-ptexp {
+    border: 1px solid var(--sc-border, #d9d9d9);
+    border-left: 3px solid #1677ff;
+    border-radius: 4px;
+    padding: 8px 10px 8px;
+    margin: 6px 0 10px;
+    background: var(--sc-card-bg, #fff);
+    scroll-margin-top: 80px;
+  }
+  .sc-ptexp-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .sc-ptexp-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--sc-border, #d9d9d9);
+  }
+  .sc-ptexp-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .sc-ptexp-legend {
+    width: 470px;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .sc-ptexp-legrow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 18px;
+  }
+  .sc-ptexp-note {
+    font-size: 11px;
+    opacity: 0.75;
+  }
+  .sc-ptexp-side {
+    flex: 1 1 320px;
+    min-width: 300px;
+    max-height: 640px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sc-ptexp-card {
+    border: 1px solid var(--sc-border, #e4e4e4);
+    border-radius: 4px;
+    padding: 6px 8px;
+  }
+  .sc-ptexp-cardhead {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .sc-ptexp-table {
+    font-size: 12px;
+    border-collapse: collapse;
+    margin-bottom: 4px;
+  }
+  .sc-ptexp-table td {
+    padding: 0 8px 0 0;
+    vertical-align: top;
+  }
+  .sc-ptexp-table td:first-child {
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+  .sc-ptexp-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
   .sc-paperctl-bar {
     display: flex;
     flex-wrap: wrap;

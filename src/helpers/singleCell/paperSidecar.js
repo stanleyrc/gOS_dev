@@ -8,7 +8,8 @@ function scaleOf(sc) {
   if (!sc || typeof sc !== "object") return null;
   const r = arr(sc.range).map(Number);
   if (r.length < 2 || !(r[1] !== r[0])) return null;
-  return { discrete: !!sc.discrete, lo: r[0], hi: r[1], labels: sc.labels == null ? null : arr(sc.labels).map(String) };
+  const log = !!sc.log && r[0] > 0 && r[1] > 0;
+  return { discrete: !!sc.discrete, lo: r[0], hi: r[1], log, labels: sc.labels == null ? null : arr(sc.labels).map(String) };
 }
 
 function fieldsOf(f) {
@@ -144,18 +145,18 @@ export function highlightRects(sidecar, rowset, regionId, ids) {
 
 // ---- ggplot plot areas (kind "plot": scales + point / rect marks with their identifying fields)
 
+// fraction along a scale (0 at lo, 1 at hi); log scales (sidecar scale `log: true`) interpolate in log10
+const frac = (sc, v) => (sc.log ? (Math.log10(v) - Math.log10(sc.lo)) / (Math.log10(sc.hi) - Math.log10(sc.lo)) : (v - sc.lo) / (sc.hi - sc.lo));
+const unfrac = (sc, t) => (sc.log ? 10 ** (Math.log10(sc.lo) + t * (Math.log10(sc.hi) - Math.log10(sc.lo))) : sc.lo + t * (sc.hi - sc.lo));
+
 /** Data -> page coordinates in a plot region (y up in data, down on the page). */
 export function toPage(region, dx, dy) {
-  const xs = region.xscale;
-  const ys = region.yscale;
-  return [region.x + ((dx - xs.lo) / (xs.hi - xs.lo)) * region.w, region.y + (1 - (dy - ys.lo) / (ys.hi - ys.lo)) * region.h];
+  return [region.x + frac(region.xscale, dx) * region.w, region.y + (1 - frac(region.yscale, dy)) * region.h];
 }
 
 /** Page -> data coordinates in a plot region. */
 export function toData(region, px, py) {
-  const xs = region.xscale;
-  const ys = region.yscale;
-  return [xs.lo + ((px - region.x) / region.w) * (xs.hi - xs.lo), ys.lo + (1 - (py - region.y) / region.h) * (ys.hi - ys.lo)];
+  return [unfrac(region.xscale, (px - region.x) / region.w), unfrac(region.yscale, 1 - (py - region.y) / region.h)];
 }
 
 const fieldsAt = (m, i) => Object.fromEntries(Object.entries(m.fields).map(([k, v]) => [k, v.length === 1 && m.x?.length !== 1 && m.xmin?.length !== 1 ? v[0] : v[i]]).filter(([, v]) => v != null && v !== ""));
