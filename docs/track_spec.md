@@ -1,11 +1,11 @@
-# gOS / gCells track spec (`gos-track-spec`), version 0.4
+# gOS / gCells track spec (`gos-track-spec`), version 0.5
 
 One JSON document describes a stacked genome view: the loci, the units (cells or pseudobulk groups) in tree
 order, and the tracks. The same file is read by the gOS track browser (tab "Track browser"), by gCells in R
 (`gc$gt()`, `gc$iplot()`, `gc$gt_reads()`, drawn with gTrack) and by the Python reader (`gcells.py`). A view
 built in a notebook opens in gOS; a gOS view can be exported as a spec and redrawn in R.
 
-Status: **v0.4 draft (2026-11-21)**; v0.4 adds the `hic` track type (contact maps over the windows); v0.1 (2026-11-20) was written for milestone M1 of the track browser.
+Status: **v0.5 draft (2026-11-21)**; v0.5 adds hic `overlays` (raw EagleC calls next to the graph junctions), the paired "Hi-C with each graph" layout (`layout.hic_mode`, `layout.unit_order`, `layout.group_by`, `layout.interleave`), `color.shared: "per_sample"` and graph `y.shared`. v0.4 adds the `hic` track type (contact maps over the windows); v0.1 (2026-11-20) was written for milestone M1 of the track browser.
 v0.3 adds per-window y scales (`windows[i].y`) and the view `layout` (row heights, pseudobulk-first, pins).
 v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; every v0.1 file is a valid v0.2 file. Fields marked
 *reserved* are named now so writers can emit them, but no reader acts on them yet.
@@ -22,7 +22,7 @@ v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; ev
 ```json
 {
   "spec": "gos-track-spec",
-  "version": "0.4",
+  "version": "0.5",
   "id": "MGH303_12q_m1",
   "title": "MGH303 12q amplicon",
   "genome": "hg38",
@@ -71,6 +71,25 @@ v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; ev
 - `clade_min_support`: pseudobulk rows draw junctions carried by at least this % of the clade's cells (default 25).
 - `graph_style`: `ggraph` (default: the standard gOS genome-graph component, gGnome.js look) or `canvas` (compact drawing).
 - `pinned`: up to 3 rows (`clade:<group>` or `cell:<unit>`) drawn tall above the stack.
+
+### Hi-C layout (v0.5)
+
+```json
+"layout": { "hic_mode": "paired",
+            "unit_order": { "default": ["hic", "graph", "coverage", "junctions"],
+                            "per_unit": { "GBM39_cluster2": ["graph", "hic", "junctions", "coverage"] } },
+            "group_by": "sample", "interleave": false }
+```
+
+- `hic_mode`: `stacked` (default; the units' contact maps in their own section under the rows) or `paired` ("Hi-C with
+  each graph": one row group per Hi-C unit with its map, genome graph, coverage and junction / EagleC lane on the
+  shared windows; the map height setting still applies).
+- `unit_order`: track order inside each row group; `default` applies to every unit ("same order for all units"),
+  `per_unit` overrides it for single units. Unknown names are dropped and missing tracks appended. Readers also keep
+  the last layout in browser storage; a spec overrides it.
+- `group_by`: `sample` (default; reports with several samples, e.g. GBM39 + GBM39-ER, list units by sample then
+  cluster) or `none` (as listed). `interleave: true` orders by `match_group` (from the report's
+  `hic/units.json`), then sample; offered only when match groups exist.
 
 ## Units
 
@@ -217,7 +236,11 @@ discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_s
   "url": "{dataPath}{unit}/hic/index.json", "format": "gos-hic-tiles/1",
   "units": ["GBM39_cluster0", "GBM39_cluster2"], "mode": "triangle", "resolution": "auto",
   "normalization": "raw", "color": { "scale": "log", "max": "p99", "palette": "white-red", "shared": false },
-  "junctions": { "overlay": true, "source": "graph" }, "height": 420, "visible": true }
+  "junctions": { "overlay": true, "source": "graph" },
+  "overlays": [ { "id": "graph", "type": "graph-junctions", "on": true },
+                { "id": "eaglec", "type": "eaglec", "url": "{dataPath}{unit}/hic/eaglec.json", "on": true,
+                  "min_prob": 0.5, "show": "all" } ],
+  "height": 420, "visible": true }
 ```
 
 - **Layout (GxG gMap on a multi-range view):** the windows (`loci`) are concatenated into one axis in display order.
@@ -233,8 +256,16 @@ discordant pairs, rescue tier per junction × unit) is *reserved* as `junction_s
 - `normalization`: `raw` (counts) or `balanced` (count × w1 × w2 with the export's ICE weights; filtered bins grey).
 - `color`: `scale` `log` (log1p(v) / log1p(max), default) or `linear`; `max` a percentile `"p<q>"` of the drawn
   off-diagonal non-zero values (robust, default `p99`) or a number.  `shared: true` (default false) uses one max for all shown units (the largest of
-  their percentile maxima) so the maps compare directly.
-- `junctions.overlay`: the unit's `graph` track ALT edges drawn as circles at (bp1, bp2) when both breakends are in the
+  their percentile maxima) so the maps compare directly; `shared: "per_sample"` (v0.5; the default for reports with
+  several samples) shares the max within each sample only (depths differ between samples). Readers say which mode is
+  active next to each map.
+- `overlays` (v0.5): marks at (bp1, bp2) when both breakends are in the windows. `graph-junctions`: the unit's graph
+  ALT edges, filled circles. `eaglec`: raw EagleC calls (`gos-eaglec/1`, below), open circles sized and colored by
+  probability, solid when kept (matched to a graph ALT edge) and dashed when dropped; `min_prob` and `show`
+  (`all` | `kept` | `dropped`) filter them. Hover shows probability, resolution, strand and kept/dropped with the edge
+  id. A v0.4 track without `overlays` reads `junctions.overlay` for the graph layer and shows EagleC with the defaults;
+  writers keep `junctions.overlay` in sync.
+- `junctions.overlay` (v0.4; superseded by `overlays`): the unit's `graph` track ALT edges drawn as circles at (bp1, bp2) when both breakends are in the
   windows (`source: "graph"`).
 - Pan and zoom follow the shared windows; dragging or wheeling on a map moves the window under the cursor.
 
@@ -245,6 +276,14 @@ range-readable little-endian binary per resolution, read with HTTP Range request
 |---|---|
 | `index.json` | `format`, `unit`, `genome`, `source`, `storage` (`symmetric-upper`), `data_label`, `resolutions[]`: `res`, `file`, `nbins`, `nnz`, `sum`, `bytes`, `chroms[]` (`name` without "chr", `length`, `bin_offset`, `nbins`), `sections` (byte offsets), `balance` (`method` ICE or none, parameters, `converged`) |
 | `r<res>.bin` | `[bin1 offsets u32 × (nbins + 1)] [weights f32 × nbins, NaN = filtered] [pixels (bin2 u32, count f32) × nnz]` |
+
+**Format `gos-eaglec/1`** (one file per unit, `hic/eaglec.json`): `format`, `unit`, `genome`, `caller`, `data_label`,
+`resolutions`, `match_rule` (text), `graph_layer`, `calls[]`: `id`, `chr1`, `pos1`, `chr2`, `pos2` (chromosomes
+without "chr"), `strand` (the argmax orientation), `prob`, `probs` (per orientation), `res`, `file_tag`, `in_graph`,
+`edge_id`, `dist_bp`. No file means EagleC is not available for the unit (readers say so).
+
+**Graph y across samples (v0.5):** a `graph` track's `y.shared` is `"per_sample"` (each sample's units share their
+own CN scale) or `true` (one scale for all units), written for reports with several samples.
 
 Pixels are the cooler upper triangle sorted by bin1 then bin2, so a window's rows are one byte range
 (`offsets[a] .. offsets[b + 1]`); contacts between two windows are in the rows of the earlier one. Readers fetch rows
@@ -269,6 +308,10 @@ in aligned blocks of 256 bins (cached across pans).
 units. gOS writes the current tree selection here on export.
 
 ## Changes
+
+- **0.5 (2026-11-21):** hic `overlays` (graph junctions + raw EagleC calls, `gos-eaglec/1`), `color.shared:
+  "per_sample"`, graph `y.shared`, `layout.hic_mode` / `unit_order` / `group_by` / `interleave` (paired "Hi-C with
+  each graph" layout). Every v0.4 file is a valid v0.5 file.
 
 - **0.4 (2026-11-21):** `hic` track type (multi-window contact maps, triangle or square, raw or ICE-balanced, auto or
   fixed resolution, log color with a percentile max, graph junction overlay) and the `gos-hic-tiles/1` format.

@@ -3,6 +3,7 @@
 // it. Data come from gos-hic-tiles/1 exports (skilift sc_export_hic_tiles): index.json + one range-readable binary
 // per resolution, [bin1 offsets u32 x (nbins+1)] [weights f32 x nbins] [(bin2 u32, count f32) x nnz], cooler upper
 // triangle sorted by bin1. d3-free so jest can test it.
+import { overlaysFromSpec, overlaysToSpec } from "./eaglec";
 
 export const HIC_FORMAT = "gos-hic-tiles/1";
 export const CHUNK_BINS = 256; // rows fetched together (aligned), so panning reuses chunks
@@ -344,8 +345,12 @@ export function junctionMarks(alts, slots, wb, m = null) {
   return out;
 }
 
-/** gos-track-spec `hic` track for the current view (round-trips through hicStateFromTrack). */
+/** spec color.shared: false (own max per map) | true (one max for all maps) | "per_sample" (one max per sample). */
+export const normShared = (v) => (v === "per_sample" ? "per_sample" : v === true || v === "true");
+
+/** gos-track-spec `hic` track for the current view (round-trips through hicStateFromTrack). v0.5 adds `overlays`. */
 export function hicTrack(state) {
+  const overlays = overlaysToSpec(state.overlays || { graph: { on: state.junctions !== false } });
   return {
     id: "hic",
     type: "hic",
@@ -357,17 +362,19 @@ export function hicTrack(state) {
     mode: state.mode === "square" ? "square" : "triangle",
     resolution: state.resolution == null ? "auto" : Number(state.resolution),
     normalization: state.normalization === "balanced" ? "balanced" : "raw",
-    color: { scale: state.log === false ? "linear" : "log", max: state.max == null ? `p${Math.round((state.quantile ?? 0.99) * 100)}` : Number(state.max), palette: "white-red", shared: state.shareMax === true },
-    junctions: { overlay: state.junctions !== false, source: "graph" },
+    color: { scale: state.log === false ? "linear" : "log", max: state.max == null ? `p${Math.round((state.quantile ?? 0.99) * 100)}` : Number(state.max), palette: "white-red", shared: normShared(state.shareMax) },
+    junctions: { overlay: overlays[0].on, source: "graph" },
+    overlays,
     height: state.height ?? null,
     visible: state.visible !== false,
   };
 }
 
-/** Viewer state from a spec `hic` track (defaults for missing fields). */
+/** Viewer state from a spec `hic` track (defaults for missing fields; v0.4 tracks without `overlays` still load). */
 export function hicStateFromTrack(t = {}) {
   const max = t.color?.max;
   const pm = typeof max === "string" ? max.match(/^p(\d+(?:\.\d+)?)$/) : null;
+  const overlays = overlaysFromSpec(t);
   return {
     units: Array.isArray(t.units) ? t.units : [],
     mode: t.mode === "square" ? "square" : "triangle",
@@ -376,12 +383,35 @@ export function hicStateFromTrack(t = {}) {
     log: t.color?.scale !== "linear",
     quantile: pm ? Number(pm[1]) / 100 : 0.99,
     max: Number.isFinite(Number(max)) && typeof max !== "string" ? Number(max) : null,
-    shareMax: t.color?.shared === true,
-    junctions: t.junctions?.overlay !== false,
+    shareMax: normShared(t.color?.shared),
+    junctions: overlays.graph.on,
+    overlays,
     height: Number.isFinite(t.height) ? t.height : null,
     visible: t.visible !== false,
   };
 }
+
+/**
+ * Color max of each shown map: own percentile max (shared false), the largest over all maps (true), or the largest
+ * over the maps of the same sample ("per_sample"). autoMax: { unitId: ownMax }; groupOf(unitId) -> sample.
+ * Returns { unitId: max }.
+ */
+export function colorMaxes(unitIds, autoMax, shared, groupOf = () => "all") {
+  const out = {};
+  const byGroup = {};
+  unitIds.forEach((id) => {
+    const g = shared === "per_sample" ? `${groupOf(id) ?? "all"}` : "all";
+    byGroup[g] = Math.max(byGroup[g] || 0, autoMax[id] || 0);
+  });
+  unitIds.forEach((id) => {
+    const g = shared === "per_sample" ? `${groupOf(id) ?? "all"}` : "all";
+    out[id] = shared ? byGroup[g] : autoMax[id] || 0;
+  });
+  return out;
+}
+
+/** Legend words for the active color max mode. */
+export const sharedLabel = (shared) => (shared === "per_sample" ? "shared per sample" : shared ? "shared across maps" : "own max per map");
 
 /** Default Hi-C units: those with at least minCells cells (at most max), else the first. units: [{ id, nCells }]. */
 export function defaultHicUnits(units, minCells = 100, max = 5) {

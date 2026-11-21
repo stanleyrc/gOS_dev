@@ -12,6 +12,7 @@ import SpatialBeside, { SpatialToolbar } from "../../components/singleCell/spati
 import useSpatial from "../../components/singleCell/spatial/useSpatial";
 import { SpatialLayoutProvider, SpatialSection, useSpatialLayoutState } from "../../components/singleCell/spatial/spatialLayoutContext";
 import CladeComparisonCard from "../../components/singleCell/cladeComparisonCard";
+import HicScPanel from "../../components/singleCell/hic/hicScPanel";
 import PpfitLink from "../../components/singleCell/ppfit/ppfitLink";
 import ConvergencePanel from "../../components/singleCell/convergencePanel";
 import CellQuickSelect from "../../components/singleCell/cellQuickSelect";
@@ -204,6 +205,10 @@ export default function SingleCellTab() {
           ) : (
             <CellHeatmapPanel />
           )}
+        </Col>
+        {/* public droplet Hi-C reports only (cells with has_hic): contact maps of the selected cluster; renders nothing otherwise */}
+        <Col span={24}>
+          <HicScPanel />
         </Col>
         <Col span={24}>
           <CladeComparisonCard />

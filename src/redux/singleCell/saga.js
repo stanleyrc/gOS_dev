@@ -1,4 +1,5 @@
 import { writeLayout, writePref } from "../../helpers/singleCell/viewSettingsStore";
+import { registerUnitSources } from "../../helpers/singleCell/unitSource";
 import { mergeSiteQc } from "../../helpers/singleCell/siteQc";
 import { isColumnarTable, snvFromColumnar } from "../../helpers/singleCell/snvColumnar";
 import { loadColumnarMatrix } from "../../helpers/singleCell/snvColumnarLoader";
@@ -107,6 +108,7 @@ function* fetchSingleCellData(action = {}) {
 
   try {
     const records = yield call(manifestRecords, dataset);
+    registerUnitSources(records); // combined reports: per-cell files resolve through source_unit
     const own = records.find((r) => `${r.caseReportId ?? r.pair}` === `${id}`) || {};
     const isPatient =
       entryType(metadata) === "patient" || entryType(own) === "patient";

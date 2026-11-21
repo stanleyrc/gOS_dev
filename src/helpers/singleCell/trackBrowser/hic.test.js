@@ -141,8 +141,10 @@ describe("hic helpers", () => {
   });
 
   it("round-trips the spec track", () => {
-    const st = { units: ["A", "B"], mode: "square", resolution: 5000, normalization: "balanced", log: true, quantile: 0.98, max: null, shareMax: true, junctions: false, height: 300, visible: true };
+    const st = { units: ["A", "B"], mode: "square", resolution: 5000, normalization: "balanced", log: true, quantile: 0.98, max: null, shareMax: true, junctions: false, overlays: { graph: { on: false }, eaglec: { on: true, minProb: 0.7, show: "dropped" } }, height: 300, visible: true };
     const t = hicTrack(st);
+    expect(t.overlays.map((o) => o.type)).toEqual(["graph-junctions", "eaglec"]);
+    expect(t.overlays[1]).toMatchObject({ on: true, min_prob: 0.7, show: "dropped", url: "{dataPath}{unit}/hic/eaglec.json" });
     expect(t.type).toBe("hic");
     expect(t.color.max).toBe("p98");
     expect(hicStateFromTrack(t)).toEqual(st);
@@ -154,7 +156,7 @@ describe("hic helpers", () => {
     const st = hicStateFromTrack({});
     const units = { kind: "cell", list: [{ id: "U1" }, { id: "U2" }] };
     const spec = buildSpec({ patient: "GBM39", windows, units, tracks: [hicTrack({ ...st, units: ["U1"] })] });
-    expect(spec.version).toBe("0.4");
+    expect(spec.version).toBe("0.5");
     expect(validateSpec(spec)).toEqual([]);
     const back = JSON.parse(JSON.stringify(spec));
     expect(back.loci).toEqual(spec.loci);

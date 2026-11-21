@@ -12,9 +12,11 @@ import { SC_FETCHED_TRACKS } from "./actions";
 import { hetBlocksToGraph } from "../../helpers/singleCell/hetTracks";
 import { parseRnaSummary, readMatrixBuffers } from "../../helpers/singleCell/staticRna";
 import { GZ_INDEX_FILE, dataRootOf, gunzipText, gzEntry, parseGzIndex, sourceIsFresh } from "../../helpers/singleCell/gzIndex";
+import { resolveUnitFolder } from "../../helpers/singleCell/unitSource";
 
+// a combined report's cells (records with source_unit) read their source unit's files
 export const casePath = (dataset, caseReportId, filename) =>
-  `${dataset.dataPath}${caseReportId}/${filename}`;
+  `${dataset.dataPath}${resolveUnitFolder(caseReportId)}/${filename}`;
 
 /** signature_versions.json of a patient; the URL parameter sigdata=<prefix> redirects it to <prefix><patient>/ (preview of staged files). */
 export function signatureVersionsPath(dataset, caseReportId) {

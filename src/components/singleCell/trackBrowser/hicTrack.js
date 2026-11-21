@@ -5,9 +5,13 @@ import { resolveUrl } from "../../../helpers/singleCell/trackBrowser/trackSpec";
 import { graphInWindows } from "../../../helpers/singleCell/trackBrowser/trackData";
 import { chromLength, panWindow, zoomWindow } from "../../../helpers/singleCell/trackBrowser/locus";
 import {
-  axisLocus, buildMatrix, chunkRanges, chunksFor, columnAxis, decodeChunk, heatRgb, junctionMarks,
-  pairAt, pickResolution, pixelRange, renderPixels, robustMax, triangleXY, validateHicIndex, windowBins,
+  axisLocus, buildMatrix, chunkRanges, chunksFor, colorMaxes, columnAxis, decodeChunk, heatRgb, junctionMarks,
+  pairAt, pickResolution, pixelRange, renderPixels, robustMax, sharedLabel, triangleXY, validateHicIndex, windowBins,
 } from "../../../helpers/singleCell/trackBrowser/hic";
+import {
+  DEFAULT_OVERLAYS, EAGLEC_URL, eaglecCounts, eaglecHoverLines, eaglecMarks, filterCalls, junctionHoverLines, markColor,
+  markPoints, markRadius, nearestMark, parseEaglec, validateEaglec,
+} from "../../../helpers/singleCell/trackBrowser/eaglec";
 import { setupCanvas } from "./draw";
 import { useTrackLocus } from "./locusContext";
 
@@ -60,8 +64,52 @@ function loadChunk(binUrl, resEntry, chunk) {
   return p;
 }
 
+// EagleC calls per unit (gos-eaglec/1); a missing file shows "EagleC not available (reason)"
+const eaglecCache = new Map();
+function loadEaglec(url) {
+  if (!eaglecCache.has(url))
+    eaglecCache.set(
+      url,
+      tryGet(url).then((r) => {
+        if (r.status !== "ok") return { status: "missing", reason: `no EagleC export for this unit (${r.status})` };
+        const errors = validateEaglec(r.data);
+        if (errors.length) return { status: "error", reason: errors.join("; ") };
+        return { status: "ok", calls: parseEaglec(r.data), meta: { caller: r.data.caller, rule: r.data.match_rule, resolutions: r.data.resolutions, layer: r.data.graph_layer } };
+      })
+    );
+  return eaglecCache.get(url);
+}
+
+/** EagleC calls of each unit: Map unitId -> { status, calls?, meta?, reason? }. */
+export function useEaglec(unitIds, urlOf, enabled = true) {
+  const [state, setState] = useState(() => new Map());
+  const key = unitIds.join(",");
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let alive = true;
+    unitIds.forEach((id) => {
+      loadEaglec(urlOf(id)).then((v) => alive && setState((m) => new Map(m).set(id, v)));
+    });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, enabled]);
+  return state;
+}
+
+/** Color max per unit for the shared mode (false / true / "per_sample"): { maxOf(id), onAutoMax(id, v) }. */
+export function useHicColorMax(unitIds, shared, groupOf) {
+  const [autoMax, setAutoMax] = useState({});
+  const onAutoMax = React.useCallback((id, v) => setAutoMax((m) => (m[id] === v ? m : { ...m, [id]: v })), []);
+  const key = unitIds.join(",");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const maxes = useMemo(() => colorMaxes(unitIds, autoMax, shared, groupOf), [key, autoMax, shared, groupOf]);
+  return { maxOf: (id) => (shared ? maxes[id] || null : null), onAutoMax };
+}
+
 /** Index of each unit: Map unitId -> { status, index?, reason? }. */
-function useHicIndexes(unitIds, urlOf) {
+export function useHicIndexes(unitIds, urlOf) {
   const [state, setState] = useState(() => new Map());
   const key = unitIds.join(",");
   useEffect(() => {
@@ -89,7 +137,7 @@ function recordFrame(ms) {
  * above) or square. Cis blocks on the diagonal, trans blocks between windows off it, window borders and labels,
  * optional graph ALT edges as marks at (bp1, bp2).
  */
-function HicMap({ label, entry, binUrl, settings, graph, height, onHover, sharedMax = null, onAutoMax = null }) {
+function HicMap({ id, label, sublabel = null, entry, binUrl, settings, graph, eaglec = null, height, onHover, sharedMax = null, onAutoMax = null, maxNote = null }) {
   const L = useTrackLocus();
   const { slots, windows, geometry, setWindows, chromoBins } = L;
   const { trackLeft, contentW, gapX } = geometry;
@@ -102,6 +150,7 @@ function HicMap({ label, entry, binUrl, settings, graph, height, onHover, shared
   const off = useRef(typeof document !== "undefined" ? document.createElement("canvas") : null);
   const matrixRef = useRef(null);
   const colsRef = useRef(null);
+  const marksRef = useRef([]);
   const [stats, setStats] = useState(null);
 
   // fetch the row chunks of the windows (cached; panning reuses them)
@@ -148,8 +197,9 @@ function HicMap({ label, entry, binUrl, settings, graph, height, onHover, shared
     const cols = columnAxis(slots, wb, mapW);
     colsRef.current = cols;
     const ownMax = robustMax(m, settings.quantile);
-    if (onAutoMax) onAutoMax(label, ownMax);
+    if (onAutoMax) onAutoMax(id || label, ownMax);
     const max = settings.max != null ? settings.max : settings.shareMax && sharedMax > 0 ? sharedMax : ownMax;
+    // (sharedMax: the largest percentile max over the maps that share a scale; see useHicColorMax)
     const px = renderPixels(m, cols, mapW, H, { mode: settings.mode, max, log: settings.log });
     const oc = off.current;
     oc.width = mapW;
@@ -199,27 +249,51 @@ function HicMap({ label, entry, binUrl, settings, graph, height, onHover, shared
         });
       });
     }
-    // junction overlay: ALT edges with both breakends in the windows
-    if (settings.junctions && graph) {
+    // overlays: graph junctions (the unit's ALT edges, filled blue) and raw EagleC calls (open violet markers sized and
+    // colored by probability; dashed = dropped, i.e. not in the graph); both ends must lie in the windows
+    const ov = settings.overlays || DEFAULT_OVERLAYS;
+    const kY = H / mapW;
+    const hits = [];
+    if (ov.graph?.on !== false && settings.junctions !== false && graph) {
       const marks = junctionMarks(graphInWindows(graph, slots).alts, slots, wb, m);
-      ctx.strokeStyle = "#1f5fbf";
-      ctx.lineWidth = 1.6;
       marks.forEach((mk) => {
-        const pts = settings.mode === "square" ? [[mk.xa, mk.xb * (H / mapW)], [mk.xb, mk.xa * (H / mapW)]] : [triangleXY(mk.xa, mk.xb)];
-        pts.forEach(([x, y]) => {
+        markPoints(mk, settings.mode, kY).forEach(([x, y]) => {
           if (y > H) return;
           ctx.beginPath();
-          ctx.arc(x, y, 5, 0, 2 * Math.PI);
+          ctx.arc(x, y, 4.5, 0, 2 * Math.PI);
+          ctx.fillStyle = "rgba(31,95,191,0.85)";
+          ctx.fill();
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 1;
           ctx.stroke();
         });
+        hits.push({ ...mk, r: 4.5, kind: "graph" });
       });
     }
+    if (ov.eaglec?.on && eaglec?.status === "ok") {
+      const marks = eaglecMarks(filterCalls(eaglec.calls, ov.eaglec), slots, wb);
+      marks.forEach((mk) => {
+        const r = markRadius(mk.call.prob);
+        markPoints(mk, settings.mode, kY).forEach(([x, y]) => {
+          if (y > H + r) return;
+          ctx.beginPath();
+          ctx.setLineDash(mk.call.inGraph ? [] : [2.5, 2]);
+          ctx.arc(x, y, r + 1.5, 0, 2 * Math.PI);
+          ctx.strokeStyle = markColor(mk.call.prob);
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        });
+        hits.push({ ...mk, r: r + 1.5, kind: "eaglec" });
+      });
+    }
+    marksRef.current = hits;
     ctx.restore();
     const ms = performance.now() - t0;
     recordFrame(ms);
     setStats({ max, ms, nPixels: m.nPixels, n: m.n, missing: m.missingChunks });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, wb, slots, settings, norm, mapW, H, trackLeft, graph, sharedMax]);
+  }, [version, wb, slots, settings, norm, mapW, H, trackLeft, graph, eaglec, sharedMax]);
 
   // pan (drag) and zoom (wheel) on the map move the shared windows
   const drag = useRef(null);
@@ -266,6 +340,8 @@ function HicMap({ label, entry, binUrl, settings, graph, height, onHover, shared
     const cols = colsRef.current;
     const m = matrixRef.current;
     if (!cols || !m) return;
+    const mk = nearestMark(marksRef.current, x, y, settings.mode, H / mapW);
+    if (mk) return onHover({ cx: e.clientX, cy: e.clientY, unit: label, lines: mk.kind === "eaglec" ? eaglecHoverLines(mk.call) : junctionHoverLines(mk.junction) });
     const p = pairAt(cols, x, y, settings.mode, H);
     if (!p) return onHover(null);
     const la = axisLocus(wb, p.a);
@@ -281,16 +357,18 @@ function HicMap({ label, entry, binUrl, settings, graph, height, onHover, shared
     <div style={{ position: "relative" }}>
       <div style={{ position: "absolute", left: 4, top: 2, width: trackLeft - 8, fontSize: 11, lineHeight: 1.35, zIndex: 1 }}>
         <div style={{ fontWeight: 600, fontSize: 12, wordBreak: "break-all" }}>{label}</div>
+        {sublabel && <div style={{ color: "#555" }}>{sublabel}</div>}
         <div style={{ color: "#666" }}>{entry.res >= 1e6 ? `${entry.res / 1e6} Mb` : `${entry.res / 1e3} kb`} bins · {norm}</div>
         {settings.normalization === "balanced" && norm === "raw" && <div style={{ color: "#b45309" }}>balanced not available at this resolution (ICE did not converge); raw shown</div>}
         {stats && (
           <div style={{ color: "#666" }}>
-            max {stats.max >= 10 ? Math.round(stats.max) : stats.max.toPrecision(2)} ({settings.max != null ? "manual" : `p${Math.round(settings.quantile * 1000) / 10}${settings.shareMax ? ", shared" : ""}`}{settings.log ? ", log" : ""})
+            max {stats.max >= 10 ? Math.round(stats.max) : stats.max.toPrecision(2)} ({settings.max != null ? "manual" : `p${Math.round(settings.quantile * 1000) / 10}${settings.shareMax ? `, ${maxNote || sharedLabel(settings.shareMax)}` : ""}`}{settings.log ? ", log" : ""})
           </div>
         )}
         <ColorBar />
         {error && <div style={{ color: "#b45309" }}>{error}</div>}
         {stats && stats.nPixels === 0 && !stats.missing && <div style={{ color: "#b45309" }}>not available (no contacts in these windows)</div>}
+        {settings.overlays?.eaglec?.on && eaglec && eaglec.status !== "ok" && <div style={{ color: "#b45309" }}>EagleC not available ({eaglec.reason})</div>}
       </div>
       <canvas
         ref={canvasRef}
@@ -323,37 +401,72 @@ function ColorBar() {
 
 const fmtLocus = (l) => (l ? `chr${l.chrom}:${(l.start / 1e6).toFixed(3)}-${(l.end / 1e6).toFixed(3)} Mb` : "");
 
-/**
- * Hi-C section of the track browser: one contact map per selected unit (cluster pseudobulk), stacked, over the
- * shared windows. State (spec `hic` track) is owned by the panel: { units, mode, resolution, normalization, log,
- * quantile, max, junctions, height, visible }.
- */
-// dataVersion: re-render when the panel's per-unit graphs arrive (junction overlay)
-// eslint-disable-next-line no-unused-vars
-export default function HicSection({ units, state, setState, dataPath, patient, genome, graphs, dataVersion, narrow }) {
-  const L = useTrackLocus();
-  const { windows, geometry } = L;
-  const urlOf = (id) => resolveUrl(HIC_URL, { dataPath, patient, unit: id, genome });
-  const shown = state.units.length ? state.units.filter((id) => units.some((u) => u.id === id)) : [];
-  const indexes = useHicIndexes(shown, urlOf);
-  const [hover, setHover] = useState(null);
-  // shared color max: the largest of the shown maps' own percentile maxima (off by default; spec color.shared)
-  const [autoMax, setAutoMax] = useState({});
-  const onAutoMax = React.useCallback((id, v) => setAutoMax((m) => (m[id] === v ? m : { ...m, [id]: v })), []);
-  const sharedMax = Math.max(0, ...shown.map((id) => autoMax[units.find((x) => x.id === id)?.label || id] || 0));
-  const mapW = Math.max(10, geometry.contentW - 2 * geometry.gapX);
-  const first = shown.map((id) => indexes.get(id)).find((v) => v?.status === "ok")?.index || null;
-  const resList = first ? first.resolutions.map((r) => r.res).sort((a, b) => a - b) : [];
-  const resEntryFor = (index) => pickResolution(index, windows, mapW / 1.5, state.resolution);
-  const set = (patch) => setState((s) => ({ ...s, ...patch }));
-  const height = state.height ?? (narrow ? Math.ceil(mapW / 2) : Math.min(420, Math.ceil(mapW / 2)));
-  const dataLabel = first?.data_label;
-
+/** Hover box of the maps: a contact (bin pair) or an overlay mark (EagleC call / graph junction). */
+export function HicHover({ hover }) {
+  if (!hover) return null;
+  const text = hover.lines
+    ? `${hover.unit}\n${hover.lines.join("\n")}`
+    : `${hover.unit}\n${fmtLocus(hover.la)}\n× ${fmtLocus(hover.lb)}\n${hover.mode === "balanced" ? "balanced" : "contacts"}: ${Number.isFinite(hover.value) ? (hover.mode === "balanced" ? hover.value.toPrecision(3) : hover.value) : "filtered bin (NaN)"} · ${hover.res / 1e3} kb bins`;
   return (
-    <div style={{ borderTop: "2px solid #c0392b", marginTop: 4, paddingTop: 4 }}>
-      <Space wrap size={[8, 4]} style={{ marginBottom: 4 }}>
-        <Text strong>Hi-C contacts</Text>
-        {dataLabel && <Tag color="gold" style={{ whiteSpace: "normal" }}>{dataLabel}</Tag>}
+    <div data-hic-hover style={{ position: "fixed", left: Math.min(hover.cx + 14, (typeof window !== "undefined" ? window.innerWidth : 1600) - 360), top: hover.cy + 14, background: "rgba(255,255,255,0.97)", border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px", fontSize: 12, pointerEvents: "none", whiteSpace: "pre", zIndex: 1000 }}>
+      {text}
+    </div>
+  );
+}
+
+/** Overlay toggles, EagleC filter and legend (graph junctions = filled, EagleC = open markers by probability). */
+export function HicOverlayLegend({ state, setState, counts = null, rule = null }) {
+  const ov = state.overlays || DEFAULT_OVERLAYS;
+  const setOv = (k, patch) =>
+    setState((s) => {
+      const cur = s.overlays || DEFAULT_OVERLAYS;
+      const next = { ...cur, [k]: { ...cur[k], ...patch } };
+      return { ...s, overlays: next, junctions: next.graph.on !== false };
+    });
+  const dot = (fill, stroke, r, dash = false) => (
+    <svg width={2 * r + 6} height={2 * r + 6} style={{ verticalAlign: "middle" }}>
+      <circle cx={r + 3} cy={r + 3} r={r} fill={fill} stroke={stroke} strokeWidth={fill === "none" ? 2 : 1} strokeDasharray={dash ? "2.5 2" : undefined} />
+    </svg>
+  );
+  return (
+    <div data-hic-overlay-legend style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", alignItems: "center", fontSize: 12, padding: "3px 6px", background: "#fafafa", border: "1px solid #eee", borderRadius: 4, marginBottom: 4 }}>
+      <Text strong style={{ fontSize: 12 }}>Overlays</Text>
+      <Tooltip title="Graph junctions: the unit's genome-graph ALT edges, drawn at (bp1, bp2) when both breakends are in the windows">
+        <Space size={4}>
+          <Switch size="small" checked={ov.graph?.on !== false} onChange={(v) => setOv("graph", { on: v })} />
+          {dot("rgba(31,95,191,0.85)", "#fff", 4.5)}
+          <Text>graph junctions (filled)</Text>
+        </Space>
+      </Tooltip>
+      <Tooltip title={`Raw EagleC calls (all calls, before the graph): open markers, larger and darker = higher probability; solid = kept (matched to a graph ALT edge), dashed = dropped (not in the graph).${rule ? ` Match rule: ${rule}` : ""}`}>
+        <Space size={4}>
+          <Switch size="small" checked={Boolean(ov.eaglec?.on)} onChange={(v) => setOv("eaglec", { on: v })} />
+          {dot("none", markColor(0.6), 3.5)}
+          {dot("none", markColor(1), 6.5)}
+          <Text>EagleC calls (open, size/color = prob)</Text>
+        </Space>
+      </Tooltip>
+      <Space size={4}>
+        {dot("none", markColor(0.9), 5)}<Text>kept</Text>
+        {dot("none", markColor(0.9), 5, true)}<Text>dropped</Text>
+      </Space>
+      <Space size={4}>
+        <Text>min prob</Text>
+        <InputNumber size="small" min={0} max={1} step={0.05} value={ov.eaglec?.minProb ?? 0.5} onChange={(v) => setOv("eaglec", { minProb: v ?? 0 })} style={{ width: 70 }} disabled={!ov.eaglec?.on} />
+      </Space>
+      <Segmented size="small" value={ov.eaglec?.show || "all"} disabled={!ov.eaglec?.on} onChange={(v) => setOv("eaglec", { show: v })} options={[{ label: "all", value: "all" }, { label: "kept", value: "kept" }, { label: "dropped", value: "dropped" }]} />
+      {counts && <Text type="secondary">{counts}</Text>}
+    </div>
+  );
+}
+
+/** Map controls (units, triangle/square, raw/ICE, bins, log, max, shared max mode, height). */
+export function HicControls({ state, setState, units, shown, resList, mapW, height, narrow, perSample = false, showUnits = true }) {
+  const set = (patch) => setState((s) => ({ ...s, ...patch }));
+  const sharedVal = state.shareMax === "per_sample" ? "per_sample" : state.shareMax ? "all" : "own";
+  return (
+    <Space wrap size={[8, 4]} style={{ marginBottom: 4 }}>
+      {showUnits && (
         <Select
           size="small"
           mode="multiple"
@@ -361,67 +474,146 @@ export default function HicSection({ units, state, setState, dataPath, patient, 
           placeholder="units (cluster pseudobulk)"
           value={shown}
           options={units.map((u) => ({ label: `${u.label}${u.nCells ? ` (${u.nCells} cells)` : ""}`, value: u.id }))}
-          onChange={(v) => set({ units: v.slice(0, 6) })}
+          onChange={(v) => set({ units: v.slice(0, 8) })}
         />
-        <Segmented size="small" value={state.mode} onChange={(v) => set({ mode: v })} options={[{ label: "triangle", value: "triangle" }, { label: "square", value: "square" }]} />
-        <Segmented size="small" value={state.normalization} onChange={(v) => set({ normalization: v })} options={[{ label: "raw", value: "raw" }, { label: "balanced (ICE)", value: "balanced" }]} />
-        <Space size={4}>
-          <Text>bins</Text>
-          <Select
-            size="small"
-            style={{ width: 96 }}
-            value={state.resolution ?? "auto"}
-            onChange={(v) => set({ resolution: v === "auto" ? null : Number(v) })}
-            options={[{ label: "auto", value: "auto" }, ...resList.map((r) => ({ label: r >= 1e6 ? `${r / 1e6} Mb` : `${r / 1e3} kb`, value: r }))]}
-          />
-        </Space>
-        <Space size={4}><Switch size="small" checked={state.log} onChange={(v) => set({ log: v })} /><Text>log</Text></Space>
-        <Space size={4}>
-          <Text>max</Text>
-          <Select
-            size="small"
-            style={{ width: 92 }}
-            value={state.max != null ? "manual" : state.quantile}
-            onChange={(v) => set(v === "manual" ? { max: 10 } : { max: null, quantile: v })}
-            options={[0.95, 0.98, 0.99, 0.995, 0.999].map((q) => ({ label: `p${q * 100}`, value: q })).concat([{ label: "manual", value: "manual" }])}
-          />
-          {state.max != null && <InputNumber size="small" min={0} value={state.max} onChange={(v) => set({ max: v ?? 0 })} style={{ width: 80 }} />}
-        </Space>
-        <Tooltip title="One color max for all shown units (the largest of their percentile maxima), so maps compare directly; off: each map has its own max">
-          <Space size={4}><Switch size="small" checked={Boolean(state.shareMax)} disabled={state.max != null} onChange={(v) => set({ shareMax: v })} /><Text>shared max</Text></Space>
-        </Tooltip>
-        <Tooltip title="Graph ALT edges (the unit's genome graph) drawn as blue circles at (bp1, bp2) when both breakends are in the windows">
-          <Space size={4}><Switch size="small" checked={state.junctions} onChange={(v) => set({ junctions: v })} /><Text>junctions</Text></Space>
-        </Tooltip>
-        {state.mode === "triangle" && (
-          <Space size={4}>
-            <Text>height</Text>
-            <Slider style={{ width: 100, margin: "0 6px" }} min={80} max={Math.max(120, Math.ceil(mapW / 2))} value={height} onChange={(v) => set({ height: v })} />
-          </Space>
-        )}
+      )}
+      <Segmented size="small" value={state.mode} onChange={(v) => set({ mode: v })} options={[{ label: "triangle", value: "triangle" }, { label: "square", value: "square" }]} />
+      <Segmented size="small" value={state.normalization} onChange={(v) => set({ normalization: v })} options={[{ label: "raw", value: "raw" }, { label: "balanced (ICE)", value: "balanced" }]} />
+      <Space size={4}>
+        <Text>bins</Text>
+        <Select
+          size="small"
+          style={{ width: 96 }}
+          value={state.resolution ?? "auto"}
+          onChange={(v) => set({ resolution: v === "auto" ? null : Number(v) })}
+          options={[{ label: "auto", value: "auto" }, ...resList.map((r) => ({ label: r >= 1e6 ? `${r / 1e6} Mb` : `${r / 1e3} kb`, value: r }))]}
+        />
       </Space>
+      <Space size={4}><Switch size="small" checked={state.log} onChange={(v) => set({ log: v })} /><Text>log</Text></Space>
+      <Space size={4}>
+        <Text>max</Text>
+        <Select
+          size="small"
+          style={{ width: 92 }}
+          value={state.max != null ? "manual" : state.quantile}
+          onChange={(v) => set(v === "manual" ? { max: 10 } : { max: null, quantile: v })}
+          options={[0.95, 0.98, 0.99, 0.995, 0.999].map((q) => ({ label: `p${q * 100}`, value: q })).concat([{ label: "manual", value: "manual" }])}
+        />
+        {state.max != null && <InputNumber size="small" min={0} value={state.max} onChange={(v) => set({ max: v ?? 0 })} style={{ width: 80 }} />}
+      </Space>
+      <Tooltip title="Color max: own (each map its own percentile max), shared (the largest over the shown maps, so maps compare directly) or per sample (shared within each sample, e.g. GBM39 vs GBM39-ER, whose depths differ)">
+        <Space size={4}>
+          <Text>color max</Text>
+          <Segmented
+            size="small"
+            disabled={state.max != null}
+            value={sharedVal}
+            onChange={(v) => set({ shareMax: v === "per_sample" ? "per_sample" : v === "all" })}
+            options={[{ label: "own", value: "own" }, { label: "shared", value: "all" }, ...(perSample || sharedVal === "per_sample" ? [{ label: "per sample", value: "per_sample" }] : [])]}
+          />
+        </Space>
+      </Tooltip>
+      {state.mode === "triangle" && (
+        <Space size={4}>
+          <Text>height</Text>
+          <Slider style={{ width: 100, margin: "0 6px" }} min={80} max={Math.max(120, Math.ceil(mapW / 2))} value={height} onChange={(v) => set({ height: v })} />
+        </Space>
+      )}
+    </Space>
+  );
+}
+
+/**
+ * One unit's map with its loading / not-available states (used by the stacked section, the paired layout and the
+ * Single-Cell page panel). index: { status, index?, reason? } from useHicIndexes.
+ */
+export function HicUnitMap({ id, label, sublabel = null, index, urlOf, state, graph, eaglec, height, onHover, sharedMax, onAutoMax, maxNote = null }) {
+  const L = useTrackLocus();
+  const mapW = Math.max(10, L.geometry.contentW - 2 * L.geometry.gapX);
+  if (!index) return <div style={{ fontSize: 12, color: "#888", padding: 4 }}>{label}: loading contact map index…</div>;
+  if (index.status !== "ok") return <Alert type="warning" showIcon style={{ margin: "4px 0" }} message={`${label}: Hi-C not available (${index.reason})`} />;
+  const entry = pickResolution(index.index, L.windows, mapW / 1.5, state.resolution);
+  const binUrl = urlOf(id).replace(/index\.json$/, entry.file);
+  return <HicMap id={id} label={label} sublabel={sublabel} entry={entry} binUrl={binUrl} settings={state} graph={graph} eaglec={eaglec} height={height} onHover={onHover} sharedMax={sharedMax} onAutoMax={onAutoMax} maxNote={maxNote} />;
+}
+
+/** The map height for the state (triangle depth, capped). */
+export const hicHeight = (state, mapW, narrow) => state.height ?? (narrow ? Math.ceil(mapW / 2) : Math.min(420, Math.ceil(mapW / 2)));
+
+/** "12 EagleC calls shown (8 kept, 4 dropped) of 40" over the shown units. */
+export function overlayCountText(shown, eaglec, ov) {
+  let total = 0;
+  let kept = 0;
+  let dropped = 0;
+  let n = 0;
+  let missing = 0;
+  shown.forEach((id) => {
+    const e = eaglec.get(id);
+    if (!e) return;
+    if (e.status !== "ok") {
+      missing += 1;
+      return;
+    }
+    n += 1;
+    const c = eaglecCounts(e.calls, ov.eaglec);
+    total += c.total;
+    kept += c.kept;
+    dropped += c.dropped;
+  });
+  if (!n) return missing ? "EagleC: not available for the shown units" : "";
+  return `EagleC genome-wide (prob ≥ ${ov.eaglec?.minProb ?? 0}): ${kept} kept, ${dropped} dropped of ${total} calls in ${n} unit${n > 1 ? "s" : ""}${missing ? `; not available for ${missing}` : ""}`;
+}
+
+/**
+ * Hi-C section of the track browser ("stacked" mode): one contact map per selected unit (cluster pseudobulk), stacked,
+ * over the shared windows. State (spec `hic` track) is owned by the panel: { units, mode, resolution, normalization,
+ * log, quantile, max, shareMax, junctions, overlays, height, visible }. groupOf(unitId) -> sample (per-sample color
+ * max); order: unit ids in display order.
+ */
+// dataVersion: re-render when the panel's per-unit graphs arrive (junction overlay)
+// eslint-disable-next-line no-unused-vars
+export default function HicSection({ units, state, setState, dataPath, patient, genome, graphs, dataVersion, narrow, groupOf = null, order = null, dataLabel: labelOverride = null }) {
+  const L = useTrackLocus();
+  const { geometry } = L;
+  const urlOf = (id) => resolveUrl(HIC_URL, { dataPath, patient, unit: id, genome });
+  const eUrlOf = (id) => resolveUrl(EAGLEC_URL, { dataPath, patient, unit: id, genome });
+  const picked = state.units.length ? state.units.filter((id) => units.some((u) => u.id === id)) : [];
+  const shown = order ? [...picked].sort((a, b) => order.indexOf(a) - order.indexOf(b)) : picked;
+  const indexes = useHicIndexes(shown, urlOf);
+  const ov = state.overlays || DEFAULT_OVERLAYS;
+  const eaglec = useEaglec(shown, eUrlOf, Boolean(ov.eaglec?.on));
+  const [hover, setHover] = useState(null);
+  const groupFn = useMemo(() => groupOf || (() => "all"), [groupOf]);
+  const { maxOf, onAutoMax } = useHicColorMax(shown, state.shareMax, groupFn);
+  const mapW = Math.max(10, geometry.contentW - 2 * geometry.gapX);
+  const first = shown.map((id) => indexes.get(id)).find((v) => v?.status === "ok")?.index || null;
+  const resList = first ? first.resolutions.map((r) => r.res).sort((a, b) => a - b) : [];
+  const height = hicHeight(state, mapW, narrow);
+  const dataLabel = labelOverride || first?.data_label;
+  const samples = new Set(shown.map((id) => groupFn(id)));
+  const rule = shown.map((id) => eaglec.get(id)?.meta?.rule).find(Boolean) || null;
+
+  return (
+    <div style={{ borderTop: "2px solid #c0392b", marginTop: 4, paddingTop: 4 }}>
+      <Space wrap size={[8, 4]} style={{ marginBottom: 4 }}>
+        <Text strong>Hi-C contacts</Text>
+        {dataLabel && <Tag color="gold" style={{ whiteSpace: "normal" }}>{dataLabel}</Tag>}
+      </Space>
+      <HicControls state={state} setState={setState} units={units} shown={shown} resList={resList} mapW={mapW} height={height} narrow={narrow} perSample={Boolean(groupOf) && samples.size > 1} />
+      <HicOverlayLegend state={state} setState={setState} counts={ov.eaglec?.on ? overlayCountText(shown, eaglec, ov) : null} rule={rule} />
       <div style={{ fontSize: 12, color: "#555", marginBottom: 4 }}>
-        One map per unit over the same windows (concatenated axis, GxG gMap style): each window&apos;s cis block on the diagonal, trans blocks between windows (W1×W2, ...) off it, so junctions between windows show as off-diagonal hotspots. Drag to pan, wheel to zoom; resolution follows the window size unless set. Single-cell contacts: not available (this dataset has cluster pseudobulk maps only).
+        One map per unit over the same windows (concatenated axis, GxG gMap style): each window&apos;s cis block on the diagonal, trans blocks between windows (W1×W2, ...) off it, so junctions between windows show as off-diagonal hotspots. Drag to pan, wheel to zoom; resolution follows the window size unless set. Color max: {sharedLabel(state.shareMax)}. Single-cell contacts: not available (this dataset has cluster pseudobulk maps only).
       </div>
       {!shown.length && <Alert type="info" showIcon message="Pick one or more units to draw their contact maps." />}
       {shown.map((id) => {
         const u = units.find((x) => x.id === id);
-        const st = indexes.get(id);
-        if (!st) return <div key={id} style={{ fontSize: 12, color: "#888", padding: 4 }}>{u?.label || id}: loading contact map index…</div>;
-        if (st.status !== "ok") return <Alert key={id} type="warning" showIcon style={{ margin: "4px 0" }} message={`${u?.label || id}: Hi-C not available (${st.reason})`} />;
-        const entry = resEntryFor(st.index);
-        const binUrl = urlOf(id).replace(/index\.json$/, entry.file);
         return (
           <div key={id} style={{ borderBottom: "1px solid #eee", padding: "2px 0" }}>
-            <HicMap label={u?.label || id} entry={entry} binUrl={binUrl} settings={state} graph={graphs?.get(id) || null} height={height} onHover={setHover} sharedMax={sharedMax} onAutoMax={onAutoMax} />
+            <HicUnitMap id={id} label={u?.label || id} sublabel={u?.sublabel || null} index={indexes.get(id)} urlOf={urlOf} state={state} graph={graphs?.get(id) || null} eaglec={eaglec.get(id) || null} height={height} onHover={setHover} sharedMax={maxOf(id)} onAutoMax={onAutoMax} maxNote={state.shareMax === "per_sample" ? `shared within ${groupFn(id)}` : null} />
           </div>
         );
       })}
-      {hover && (
-        <div style={{ position: "fixed", left: Math.min(hover.cx + 14, (typeof window !== "undefined" ? window.innerWidth : 1600) - 340), top: hover.cy + 14, background: "rgba(255,255,255,0.97)", border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px", fontSize: 12, pointerEvents: "none", whiteSpace: "pre", zIndex: 1000 }}>
-          {`${hover.unit}\n${fmtLocus(hover.la)}\n× ${fmtLocus(hover.lb)}\n${hover.mode === "balanced" ? "balanced" : "contacts"}: ${Number.isFinite(hover.value) ? (hover.mode === "balanced" ? hover.value.toPrecision(3) : hover.value) : "filtered bin (NaN)"} · ${hover.res / 1e3} kb bins`}
-        </div>
-      )}
+      <HicHover hover={hover} />
     </div>
   );
 }

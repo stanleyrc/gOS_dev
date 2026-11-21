@@ -1,8 +1,9 @@
 // gos-track-spec (docs/track_spec.md): build, validate and resolve the JSON view spec shared with gCells / gTrack.
 import { formatLocus, parseLocus } from "./locus";
+import { resolveUnitFolder } from "../unitSource";
 
 export const SPEC_NAME = "gos-track-spec";
-export const SPEC_VERSION = "0.4";
+export const SPEC_VERSION = "0.5";
 export const KNOWN_TYPES = ["coverage", "graph", "reads", "genes", "junctions", "snv_reads", "signature", "hic"];
 export const RESERVED_TYPES = ["junction_support", "walks", "cn_heatmap", "cn_correlation_1d", "cn_correlation_2d", "atac", "segments", "peaks"];
 
@@ -20,6 +21,9 @@ export function interimTracks() {
 /** Units of a patient from the gOS cell records (state.SingleCell.cells), in row order (tree leaf order first). */
 export function unitsFromCells(cells, order = [], cloneColors = {}) {
   const byId = new Map((cells || []).map((c) => [c.cell_id, c]));
+  // reports that combine several samples (e.g. GBM39 + GBM39-ER): groups are per sample, so "cluster 0" of one sample
+  // never pools with "cluster 0" of another
+  const multiSample = new Set((cells || []).map((c) => c.sample).filter((x) => x != null && x !== "")).size > 1;
   const ids = (order && order.length ? order : (cells || []).map((c) => c.cell_id)).filter((id) => byId.has(id));
   const list = ids.map((id) => {
     const c = byId.get(id);
@@ -27,7 +31,8 @@ export function unitsFromCells(cells, order = [], cloneColors = {}) {
     return {
       id,
       label: c.label || id,
-      group: c.clone_id ?? null,
+      group: multiSample && c.sample && c.clone_id != null ? `${c.sample} · ${c.clone_id}` : c.clone_id ?? null,
+      sample: c.sample ?? null,
       purity: purity > 0 && purity <= 1 ? purity : 1,
       ploidy: Number(c.ploidy) > 0 ? Number(c.ploidy) : null,
       mean_depth: Number(c.qc_depth) > 0 ? Number(c.qc_depth) : null,
@@ -36,7 +41,7 @@ export function unitsFromCells(cells, order = [], cloneColors = {}) {
   });
   const groups = {};
   list.forEach((u) => {
-    if (u.group != null && !groups[u.group]) groups[u.group] = { color: cloneColors[u.group] || null };
+    if (u.group != null && !groups[u.group]) groups[u.group] = { color: cloneColors[u.group] || cloneColors[byId.get(u.id)?.clone_id] || null };
   });
   return { kind: "cell", tree: "tree.nwk", order: "tree", list, groups };
 }
@@ -86,7 +91,7 @@ export function resolveUrl(template, { dataPath = "", patient = "", unit = "", g
   const u = `${template || ""}`
     .replace(/\{dataPath\}/g, dataPath)
     .replace(/\{patient\}/g, patient)
-    .replace(/\{unit\}/g, unit)
+    .replace(/\{unit\}/g, resolveUnitFolder(unit) ?? "")
     .replace(/\{genome\}/g, genome);
   if (!base || /^([a-z]+:)?\/\//i.test(u) || u.startsWith("/") || `${template || ""}`.startsWith("{dataPath}")) return u;
   return `${base.replace(/[^/]*$/, "")}${u}`;
@@ -99,3 +104,20 @@ export function selectUnits(list, selection) {
   if (!ids.size && !groups.size) return list;
   return list.filter((u) => ids.has(u.id) || (u.group != null && groups.has(u.group)));
 }
+
+/** Spec files offered as view presets for a patient: .json links in a directory listing that start with `<patient>_`. */
+export function specFilesFromListing(html, patient) {
+  if (!patient || typeof html !== "string") return [];
+  const out = new Set();
+  const re = /href="([^"?/]+\.json)"/g;
+  let m = re.exec(html);
+  while (m) {
+    const f = decodeURIComponent(m[1]);
+    if (f.startsWith(`${patient}_`)) out.add(f);
+    m = re.exec(html);
+  }
+  return [...out].sort();
+}
+
+/** The specs/ folder next to a dataset's data/ folder (where view presets live). */
+export const specsDirOf = (dataPath) => `${dataPath || ""}`.replace(/data\/?$/, "specs/");

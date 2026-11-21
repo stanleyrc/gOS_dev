@@ -20,7 +20,10 @@ import {
   saveLayoutPrefs, scalesDiffer, valueQuantile,
 } from "../../../helpers/singleCell/trackBrowser/layout";
 import { expectedDepth, foregroundFromCn, unitFit } from "../../../helpers/singleCell/trackBrowser/coverageAxes";
-import { buildSpec, interimTracks, resolveUrl, unitsFromCells, validateSpec } from "../../../helpers/singleCell/trackBrowser/trackSpec";
+import { buildSpec, interimTracks, resolveUrl, specFilesFromListing, specsDirOf, unitsFromCells, validateSpec } from "../../../helpers/singleCell/trackBrowser/trackSpec";
+import { hasMatchGroups, hicUnitList, orderUnits, sampleColors, samplesOf } from "../../../helpers/singleCell/hicUnits";
+import { defaultHicLayout, hicLayoutFromSpec, hicLayoutToSpec, loadHicLayout, saveHicLayout } from "../../../helpers/singleCell/trackBrowser/pairedLayout";
+import PairedHicView from "./pairedHicView";
 import useUnitData from "./useUnitData";
 import { COLORS, drawGenes, drawJunctions, drawRuler, drawTree, hitTest, setupCanvas } from "./draw";
 import { CanvasRow, GraphPlotRow, NoteRow } from "./trackRow";
@@ -52,6 +55,7 @@ const HIC_PRESETS = [
 ];
 DEFAULT_LOCI.GBM39 = HIC_PRESETS;
 DEFAULT_LOCI.GBM39_ER = HIC_PRESETS;
+DEFAULT_LOCI.GBM39_combined = [...HIC_PRESETS, { label: "MYC / PVT1", locus: "chr8:126,500,000-129,500,000" }];
 const FALLBACK_PRESETS = [{ label: "chr12", locus: "chr12" }];
 const MIN_JUNCTION_CELLS = 10;
 
@@ -114,9 +118,37 @@ export default function TrackBrowserPanel() {
   // Hi-C units: cells whose record says a contact map was exported (gos-hic-tiles/1), or a spec hic track
   // units that are themselves pseudobulks (e.g. Hi-C clusters) carry their own cell count (n_cells)
   const unitCells = useMemo(() => new Map((cells || []).filter((c) => Number(c.n_cells) > 0).map((c) => [c.cell_id, Number(c.n_cells)])), [cells]);
-  const hicUnits = useMemo(() => (cells || []).filter((c) => c.has_hic === true || c.has_hic === "TRUE").map((c) => ({ id: c.cell_id, label: c.cell_id, nCells: Number(c.n_cells) || null })), [cells]);
+  // units.json (gos-hic-units/1): samples, clusters, match groups; else the cell records
+  const [unitsJson, setUnitsJson] = useState(null);
+  useEffect(() => {
+    if (!patientId || !dataset) return;
+    tryGet(casePath(dataset, patientId, "hic/units.json")).then((r) => setUnitsJson(r.status === "ok" ? r.data : null));
+  }, [patientId, dataset]);
+  const hicList = useMemo(() => hicUnitList(cells, unitsJson).filter((u) => u.hasHic), [cells, unitsJson]);
+  const multiSample = samplesOf(hicList).length > 1;
+  const hicUnits = useMemo(
+    () =>
+      hicList.map((u) => ({
+        ...u,
+        label: multiSample ? `${u.sample} ${u.cluster ?? u.id}` : u.id,
+        sublabel: `${u.sample ? `${u.sample} · ` : ""}${u.cluster ?? ""}${u.nCells ? ` · ${u.nCells} cells` : ""}`,
+      })),
+    [hicList, multiSample]
+  );
+  const sampleById = useMemo(() => new Map(hicList.map((u) => [u.id, u.sample]).concat((cells || []).map((c) => [c.cell_id, c.sample]))), [hicList, cells]);
+  const groupOf = useCallback((id) => sampleById.get(id) ?? "all", [sampleById]);
+  const sColors = useMemo(() => sampleColors(hicList, unitsJson), [hicList, unitsJson]);
   const [hic, setHic] = useState(() => hicStateFromTrack({}));
   const [hicFromSpec, setHicFromSpec] = useState(false);
+  // paired ("Hi-C with each graph") or stacked layout, per-unit track order, grouping (spec v0.5 layout; localStorage)
+  const [hicLayout, setHicLayout] = useState(() => loadHicLayout() || defaultHicLayout());
+  useEffect(() => {
+    saveHicLayout(hicLayout);
+  }, [hicLayout]);
+  const hicOrder = useMemo(() => orderUnits(hicList, { groupBy: hicLayout.groupBy, interleave: hicLayout.interleave }), [hicList, hicLayout.groupBy, hicLayout.interleave]);
+  // graph CN scale across samples: per sample (default for multi-sample reports) or shared (spec graph y.shared)
+  const [ySample, setYSample] = useState(true);
+  const [specPresets, setSpecPresets] = useState([]);
   const haveBins = Object.keys(chromoBins || {}).length > 0;
   const [wrapRef, width] = useContainerWidth(1200);
   const narrow = width < 700;
@@ -159,8 +191,7 @@ export default function TrackBrowserPanel() {
   const [scrollTop, setScrollTop] = useState(0);
 
   // ?trackspec=<url>: a spec from gCells (or exported here) sets loci, per-window y, layout, selection and tracks
-  useEffect(() => {
-    const url = urlParam("trackspec");
+  const loadSpec = useCallback((url) => {
     if (!url) return;
     tryGet(url).then((r) => {
       if (r.status !== "ok") return setSpec({ status: "error", error: `track spec not available (${r.status} at ${url})` });
@@ -177,6 +208,8 @@ export default function TrackBrowserPanel() {
         setHic(hicStateFromTrack(byType("hic")));
         setHicFromSpec(true);
       }
+      const gy = byType("graph")?.y?.shared;
+      if (gy != null) setYSample(gy === "per_sample");
       const L = s.layout || {};
       if (L.row_height) setBase(clampHeight(L.row_height));
       if (L.overrides) setOverrides(L.overrides);
@@ -190,9 +223,29 @@ export default function TrackBrowserPanel() {
       if (Array.isArray(L.pinned)) setPinned(L.pinned.slice(0, 3));
       if (s.selection?.clades) setGroups(s.selection.clades);
       if (s.selection?.units) setCladeIds(s.selection.units);
+      if (L.hic_mode || L.unit_order || L.group_by || L.interleave != null) setHicLayout(hicLayoutFromSpec(L));
       return null;
     });
   }, []);
+  useEffect(() => loadSpec(urlParam("trackspec")), [loadSpec]);
+  // view presets: spec files of this report in the dataset's specs/ folder (directory listing), checked by their patient
+  useEffect(() => {
+    if (!patientId || !dataset?.dataPath) return;
+    const dir = specsDirOf(dataset.dataPath);
+    let alive = true;
+    // the listing is HTML (tryGet treats HTML as missing): plain fetch; no listing -> no presets
+    fetch(dir)
+      .then((r) => (r.ok ? r.text() : ""))
+      .catch(() => "")
+      .then(async (html) => {
+      const files = specFilesFromListing(html, patientId);
+      const got = await Promise.all(files.map((f) => tryGet(`${dir}${f}`).then((x) => (x.status === "ok" && `${x.data?.patient}` === patientId ? { url: `${dir}${f}`, label: x.data.title || f } : null))));
+      if (alive) setSpecPresets(got.filter(Boolean));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [patientId, dataset]);
 
   const tracks = spec.status === "ok" ? spec.data.tracks : interimTracks();
   const trackOf = (type) => tracks.find((t) => t.type === type) || null;
@@ -221,8 +274,12 @@ export default function TrackBrowserPanel() {
   // default Hi-C units: the large clusters (>= 100 cells, at most 5), else the first unit
   useEffect(() => {
     if (hicFromSpec || !hicUnits.length) return;
-    setHic((h) => (h.units.length && h.units.every((id) => hicUnits.some((u) => u.id === id)) ? h : { ...h, units: defaultHicUnits(hicUnits) }));
-  }, [hicUnits, hicFromSpec]);
+    setHic((h) => {
+      const units = h.units.length && h.units.every((id) => hicUnits.some((u) => u.id === id)) ? h.units : defaultHicUnits(hicOrder.map((id) => hicUnits.find((u) => u.id === id)).filter(Boolean), 100, multiSample ? 8 : 5);
+      // reports with several samples: color max shared per sample by default (depths differ between samples)
+      return { ...h, units, shareMax: multiSample && h.shareMax === false ? "per_sample" : h.shareMax };
+    });
+  }, [hicUnits, hicFromSpec, hicOrder, multiSample]);
   useEffect(() => setUrlParam("tbstyle", graphStyle === "canvas" ? "canvas" : null), [graphStyle]);
   useEffect(() => setUrlParam("tbpin", pinned.length ? pinned.join(",") : null), [pinned]);
 
@@ -248,7 +305,12 @@ export default function TrackBrowserPanel() {
     if (!built.layout) return { layout: null, order: unitIds };
     return { layout: clipLongBranches(built.layout, longBranchCap(built.layout)), order: [...built.layout.leaves, ...built.unplaced] };
   }, [tree, unitIds]);
-  const cellOrder = treeLayout.order;
+  // multi-sample reports grouped by sample (layout.group_by): rows follow the Hi-C unit order (sample, then cluster)
+  const cellOrder = useMemo(() => {
+    if (!multiSample || hicLayout.groupBy !== "sample" || (mode === "cells" && treeLayout.layout)) return treeLayout.order;
+    const rank = new Map(hicOrder.map((id, i) => [id, i]));
+    return [...treeLayout.order].sort((a, b) => (rank.get(a) ?? 1e9) - (rank.get(b) ?? 1e9));
+  }, [treeLayout, multiSample, hicLayout.groupBy, hicOrder, mode]);
   const orderedUnits = useMemo(() => cellOrder.map((id) => unitById.get(id)).filter(Boolean), [cellOrder, unitById]);
   const rowsList = useMemo(() => buildRows(orderedUnits, mode, expanded), [orderedUnits, mode, expanded]);
   const groupColor = useCallback((g) => allUnits.groups[g]?.color || "#999", [allUnits]);
@@ -265,8 +327,9 @@ export default function TrackBrowserPanel() {
     if (!showCov) return [];
     const ids = visibleItems.filter((it) => it.row.kind === "cell" && it.coverage > 0).map((it) => it.row.id);
     pinned.forEach((k) => k.startsWith("cell:") && ids.push(k.slice(5)));
+    if (hicLayout.hicMode === "paired") hic.units.forEach((id) => ids.push(id));
     return ids;
-  }, [visibleItems, showCov, pinned]);
+  }, [visibleItems, showCov, pinned, hicLayout.hicMode, hic.units]);
 
   const data = useUnitData({ dataPath, patient: patientId, genome, unitIds, coverageIds, graphTrack, coverageTrack, cellFiles });
 
@@ -310,6 +373,23 @@ export default function TrackBrowserPanel() {
   const yStates = useMemo(() => slots.map((_, i) => ({ ...DEFAULT_Y, ...(windowY[i] || {}) })), [slots, windowY]);
   const scales = useMemo(() => resolveWindowScales(yStates, windowStats, shareY), [yStates, windowStats, shareY]);
   const differ = scalesDiffer(scales);
+  // per-sample graph y scales (multi-sample reports, ySample on): the same rules over each sample's units only
+  const sampleScales = useMemo(() => {
+    if (!multiSample || !ySample) return null;
+    const out = new Map();
+    samplesOf(hicList).forEach((smp) => {
+      const vals = slots.map(() => []);
+      unitIds.forEach((id) => {
+        if (groupOf(id) !== smp) return;
+        const g = data.graphs.get(id);
+        if (g) graphInWindows(g, slots).segments.forEach((sg) => Number.isFinite(sg.cn) && vals[sg.slot].push(sg.cn));
+      });
+      out.set(smp, resolveWindowScales(yStates, vals.map((v) => ({ max: valueQuantile(v, 1), p99: valueQuantile(v, 0.99) })), shareY));
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [multiSample, ySample, hicList, unitIds, slots, data.version, yStates, shareY, groupOf]);
+  const scalesFor = useCallback((id) => sampleScales?.get(groupOf(id)) || scales, [sampleScales, groupOf, scales]);
   const setY = (i, patch) => setWindowY((prev) => slots.map((_, k) => ({ ...DEFAULT_Y, ...(prev[k] || {}), ...(k === i ? patch : {}) })));
 
   // ----- clade pseudobulk (median CN, junction support) from the member cells' graphs
@@ -559,6 +639,7 @@ export default function TrackBrowserPanel() {
           {it.height < 44 && <a style={{ fontSize: 11, position: "absolute", right: 2, top: 1 }} onClick={togglePin} title={isPinned ? "unpin" : "pin tall"}>{isPinned ? "×" : "⇕"}</a>}
           {!isClade && it.height >= 60 && !narrow && gH > 0 && cH > 0 && <div style={{ color: COLORS.muted, position: "absolute", top: gH + 2 }}>coverage</div>}
         </div>
+        <TrackLocusContext.Provider value={sampleScales ? { ...locus, scales: scalesFor(isClade ? members[0] : row.id) } : locus}>
         <div style={{ position: "absolute", left: leftW, top: 0, width: contentW }}>
           {gH > 0 && (graphStyle === "ggraph"
             ? (gStatus === "ok" ? <GraphPlotRow raw={raw} pb={pb} height={gH} width={contentW} minFrac={minSupport / 100} onJunction={(j) => openReads(j, isClade ? null : row.id)} /> : <NoteRow text={graphNote} width={contentW} height={gH} />)
@@ -569,6 +650,7 @@ export default function TrackBrowserPanel() {
             </div>
           )}
         </div>
+        </TrackLocusContext.Provider>
         {!pinnedRow && gH > 0 && handle("graph", gH)}
         {!pinnedRow && cH > 0 && handle("coverage", gH + cH)}
       </div>
@@ -691,7 +773,7 @@ export default function TrackBrowserPanel() {
       windows,
       units: { ...allUnits, list: units },
       tracks: tracks.map((t) => {
-        if (t.type === "graph") return { ...t, visible: showGraph, height: overrides.graph ?? base };
+        if (t.type === "graph") return { ...t, visible: showGraph, height: overrides.graph ?? base, ...(multiSample ? { y: { ...(t.y || {}), shared: ySample ? "per_sample" : true } } : {}) };
         if (t.type === "coverage") return { ...t, visible: showCov, height: overrides.coverage ?? base };
         if (t.type === "junctions") return { ...t, height: junctionH };
         if (t.type === "reads") return { ...t, height: readsH };
@@ -701,7 +783,7 @@ export default function TrackBrowserPanel() {
       provenance: { source: "gOS track browser export", data: "interim gOS per-cell files" },
     });
     s.windows = windows.map((w, i) => ({ locus: s.loci[i], y: { mode: yStates[i].mode, min: scales[i].min, max: scales[i].max, log: scales[i].log, robust: yStates[i].robust } }));
-    s.layout = { row_height: base, overrides, auto_fit: autoFit, junction_height: junctionH, reads_height: readsH, mode, share_y: shareY, pinned, clade_min_support: minSupport, graph_style: graphStyle };
+    s.layout = { row_height: base, overrides, auto_fit: autoFit, junction_height: junctionH, reads_height: readsH, mode, share_y: shareY, pinned, clade_min_support: minSupport, graph_style: graphStyle, ...(hicUnits.length ? hicLayoutToSpec(hicLayout) : {}) };
     const blob = new Blob([JSON.stringify(s, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -736,10 +818,13 @@ export default function TrackBrowserPanel() {
   const locus = { windows, setWindows: applyWindows, slots, scales, domains, chromoBins, onPlotDomains, geometry: { leftW, gapX, contentW, trackLeft } };
   return (
     <TrackLocusContext.Provider value={locus}>
-    <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : "0.4 · interim gOS files"}</Text>}</Space>}>
+    <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : "0.5 · interim gOS files"}</Text>}</Space>}>
       <Space wrap style={{ marginBottom: 6 }}>
         <Input.Search style={{ width: narrow ? Math.max(200, width - 10) : 470 }} size="small" value={locusText} onChange={(e) => setLocusText(e.target.value)} onSearch={(v) => setLocusText(v)} enterButton="Go" placeholder="chr12:57,000,000-70,000,000 | chr11:39.2m-39.7m" />
         <Select size="small" style={{ width: 180 }} placeholder="preset loci" value={null} options={presets.map((p) => ({ label: p.label, value: p.locus }))} onChange={(v) => setLocusText(v)} />
+        {specPresets.length > 0 && (
+          <Select size="small" style={{ width: narrow ? 200 : 300 }} placeholder="view presets (saved specs)" value={null} data-spec-presets options={specPresets.map((p) => ({ label: p.label, value: p.url }))} onChange={(v) => { setUrlParam("trackspec", v); loadSpec(v); }} />
+        )}
         <Button size="small" icon={<LeftOutlined />} onClick={() => applyWindows(windows.map((w) => panWindow(w, -(w.end - w.start) * 0.25, chromLength(chromoBins, w.chrom))))} />
         <Button size="small" icon={<RightOutlined />} onClick={() => applyWindows(windows.map((w) => panWindow(w, (w.end - w.start) * 0.25, chromLength(chromoBins, w.chrom))))} />
         <Button size="small" icon={<ZoomInOutlined />} onClick={() => zoomAt(0.5)} />
@@ -768,6 +853,22 @@ export default function TrackBrowserPanel() {
         <Space size={4}><Switch size="small" checked={hideNormal} onChange={setHideNormal} /><Text>hide normal</Text></Space>
         {cladeIds && <Button size="small" onClick={() => setCladeIds(null)}>show all cells (clade of {cladeIds.length})</Button>}
       </Space>
+      {hicUnits.length > 0 && (
+        <Space wrap style={{ marginBottom: 6 }} data-hic-layout-controls>
+          <Text strong>Hi-C layout</Text>
+          <Segmented size="small" value={hicLayout.hicMode} onChange={(v) => setHicLayout((l) => ({ ...l, hicMode: v }))} options={[{ label: "stacked maps", value: "stacked" }, { label: "Hi-C with each graph", value: "paired" }]} />
+          {multiSample && (
+            <Segmented size="small" value={hicLayout.interleave && hasMatchGroups(hicList) ? "interleave" : hicLayout.groupBy} onChange={(v) => setHicLayout((l) => ({ ...l, groupBy: v === "none" ? "none" : "sample", interleave: v === "interleave" }))} options={[{ label: "group by sample", value: "sample" }, { label: "as listed", value: "none" }, ...(hasMatchGroups(hicList) ? [{ label: "interleave by match group", value: "interleave" }] : [])]} />
+          )}
+          {multiSample && (
+            <Tooltip title="Graph CN y scale: per sample (each sample's units share their own scale) or shared across all units">
+              <Space size={4}><Switch size="small" checked={ySample} onChange={setYSample} /><Text>graph y per sample</Text></Space>
+            </Tooltip>
+          )}
+          {multiSample && <Text type="secondary" style={{ fontSize: 12 }}>samples: {samplesOf(hicList).map((smp) => <Tag key={smp} color={sColors[smp]} style={{ marginRight: 4 }}>{smp}</Tag>)} · graph y {ySample ? "per sample" : "shared"} · Hi-C color max {hic.shareMax === "per_sample" ? "per sample" : hic.shareMax ? "shared" : "own per map"}</Text>}
+          {unitsJson?.match_groups && hicLayout.interleave && <Text type="secondary" style={{ fontSize: 12 }}>match groups: {Object.entries(unitsJson.match_groups).map(([k, v]) => `${k} = ${v}`).join("; ")}</Text>}
+        </Space>
+      )}
       {locusError && <Alert type="warning" showIcon message={locusError} style={{ marginBottom: 6 }} />}
       {spec.status === "error" && <Alert type="warning" showIcon message={spec.error} style={{ marginBottom: 6 }} />}
       <div style={{ fontSize: 12, color: "#555", marginBottom: 4, lineHeight: 1.45 }}>
@@ -814,14 +915,23 @@ export default function TrackBrowserPanel() {
             {pinLayout.map((it) => renderRow(it, { pinnedRow: true }))}
           </div>
         )}
-        <div ref={scrollRef} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)} style={{ height: bodyH, overflowY: "auto", overflowX: "hidden", position: "relative", borderTop: "1px solid #ddd" }}>
+        {hicUnits.length > 0 && hicLayout.hicMode === "paired" && hic.visible && (
+          <PairedHicView
+            units={hicUnits} state={hic} setState={setHic} layout={hicLayout} setLayout={setHicLayout} dataPath={dataPath} patient={patientId} genome={genome} data={data}
+            showGraph={showGraph} showCov={showCov} graphH={Math.max(70, Math.round((overrides.graph ?? effBase) * 1.6))} covH={Math.max(40, overrides.coverage ?? effBase)} scalesFor={scalesFor}
+            unitOf={(id) => unitById.get(id) || allUnits.list.find((u) => u.id === id) || { id }} narrow={narrow} sampleColor={(smp) => sColors[smp]} groupOf={groupOf} order={hicOrder}
+            minFrac={minSupport / 100} onJunction={(j, id) => openReads(j, id)} dataLabel={unitsJson?.data_label || null}
+            yNote={multiSample ? `Graph y: ${ySample ? "per sample" : "shared across units"}.` : ""}
+          />
+        )}
+        <div ref={scrollRef} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)} style={{ height: hicUnits.length > 0 && hicLayout.hicMode === "paired" ? 0 : bodyH, overflowY: "auto", overflowX: "hidden", position: "relative", borderTop: hicUnits.length > 0 && hicLayout.hicMode === "paired" ? "none" : "1px solid #ddd" }}>
           <div style={{ height: total, position: "relative" }}>
             {treeW > 0 && <canvas ref={treeRef} onClick={onTreeClick} style={{ position: "sticky", top: 0, display: "block", cursor: "pointer", zIndex: 2 }} title="click a node: show its clade" />}
             <div style={{ position: "absolute", left: 0, top: 0, width, height: total }}>{visibleItems.map((it) => renderRow(it))}</div>
           </div>
         </div>
-        {(hicUnits.length > 0 || hicFromSpec) && hic.visible && (
-          <HicSection units={hicUnits} state={hic} setState={setHic} dataPath={dataPath} patient={patientId} genome={genome} graphs={data.graphs} dataVersion={data.version} narrow={narrow} />
+        {(hicUnits.length > 0 || hicFromSpec) && hic.visible && hicLayout.hicMode !== "paired" && (
+          <HicSection units={hicUnits} state={hic} setState={setHic} dataPath={dataPath} patient={patientId} genome={genome} graphs={data.graphs} dataVersion={data.version} narrow={narrow} groupOf={multiSample ? groupOf : null} order={hicOrder} />
         )}
         {tip && (
           <div style={{ position: "fixed", left: Math.min(hover.cx + 14, (typeof window !== "undefined" ? window.innerWidth : 1600) - 330), top: hover.cy + 14, background: "rgba(255,255,255,0.97)", border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px", fontSize: 12, pointerEvents: "none", whiteSpace: "pre", zIndex: 1000, boxShadow: "0 1px 4px rgba(0,0,0,0.15)", maxWidth: 420 }}>
