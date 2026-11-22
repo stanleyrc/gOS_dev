@@ -4,6 +4,7 @@ import axios from "axios";
 import actions from "./actions";
 import settingsActions from "../settings/actions";
 import Field from "../../helpers/field";
+import { withDataTypeField } from "../../helpers/reportDataTypes";
 import {
   allDatasetsBrowseScope,
   ALL_DATASETS_ROUTE_VALUE,
@@ -14,11 +15,15 @@ import { caseReportUrl, getOpenInNewTab, isCohortMounted } from "../../helpers/s
 
 export const normalizeDataset = (dataset, settings) => {
   const reference = dataset.reference || "hg19";
+  // an explicit schema is a complete override; the settings fields gain the "Data type" facet
   const fields = dataset.schema
     ? (dataset.schema || [])
         .map((field) => new Field(field))
         .filter((field) => field.isValid)
-    : settings.fields.map((field) => new Field(field));
+    : withDataTypeField(
+        settings.fields.map((field) => new Field(field)),
+        (spec) => new Field(spec),
+      );
 
   return {
     ...dataset,

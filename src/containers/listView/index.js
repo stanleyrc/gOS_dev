@@ -24,6 +24,8 @@ import {
   Collapse,
   Tag,
   Tabs,
+  Tooltip,
+  Switch,
   message,
 } from "antd";
 import * as d3 from "d3";
@@ -63,6 +65,20 @@ import {
   isPatientRecord,
 } from "../../helpers/singleCell/cellFiles";
 
+import {
+  DATA_TYPE_FIELD,
+  dataTypeOptions,
+  isDedupeOn,
+  writeHomeFilterPrefs,
+} from "../../helpers/reportDataTypes";
+import {
+  clampSidebarWidth,
+  readSidebarWidth,
+  writeSidebarWidth,
+} from "../../helpers/filtersSidebarWidth";
+import DataTypeBadges from "../../components/dataTypeBadges";
+import ReportVersionsChip from "../../components/reportVersionsChip";
+
 const SingleCellCohortPanel = React.lazy(() => import("../../components/singleCell/singleCellCohortPanel"));
 const {
   applyFavoriteSearch,
@@ -89,6 +105,8 @@ export class ListView extends Component {
     super(props);
     this.state = {
       filtersOpen: false,
+      // left filter column width (px), resizable, remembered in this browser
+      sidebarWidth: readSidebarWidth(),
       isChatOpen: false,
       // ?scview=<view> deep-links into the Single-Cell Cohort tab (the panel reads the view itself)
       activeTab:
@@ -244,7 +262,9 @@ export class ListView extends Component {
       return cache.options;
     }
 
-    const options = (filterState.records || []).map((value) => {
+    const options = filterName === DATA_TYPE_FIELD
+      ? dataTypeOptions(filterState.frequencies || {})
+      : (filterState.records || []).map((value) => {
       const valueText = value == null ? "" : value.toString();
       const label = value
         ? filterName === "sourceDatasetTitle"
@@ -373,6 +393,7 @@ export class ListView extends Component {
     // Trigger search with reset values and pagination defaults
     this.props.onSearch({
       ...resetValues,
+      dedupe: this.props.searchFilters?.dedupe,
       page: 1,
       per_page: 50,
       orderId: 1,
@@ -387,6 +408,8 @@ export class ListView extends Component {
     }
     if (prevProps.searchFilters !== this.props.searchFilters) {
       this.formRef.current.setFieldsValue(this.props.searchFilters);
+      // data-type facet + "One per patient" persist in the URL (dtype=, dedupe=) and this browser
+      writeHomeFilterPrefs(this.props.searchFilters || {});
     }
 
     const saveFinished =
@@ -620,6 +643,59 @@ export class ListView extends Component {
     this.props.deleteFavoriteSearch(favoriteId);
   };
 
+  setSidebarWidth = (width) => {
+    const next = writeSidebarWidth(width);
+    this.setState({ sidebarWidth: next });
+  };
+
+  startSidebarResize = (event) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = this.state.sidebarWidth;
+    const onMove = (e) => this.setState({ sidebarWidth: clampSidebarWidth(startWidth + e.clientX - startX) });
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.classList.remove("home-filters-resizing");
+      this.setSidebarWidth(this.state.sidebarWidth);
+    };
+    document.body.classList.add("home-filters-resizing");
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  onDedupeChange = (checked) => {
+    const fieldValues = this.formRef.current?.getFieldsValue() || {};
+    this.props.onSearch({
+      ...this.props.searchFilters,
+      ...fieldValues,
+      dedupe: checked ? 1 : 0,
+      page: 1,
+    });
+  };
+
+  renderDedupeToggle = () => {
+    const on = isDedupeOn(this.props.searchFilters || {});
+    const hidden = (this.props.totalReports || []).reduce((n, r) => n + (r?._versions?.length || 0), 0);
+    return (
+      <Tooltip
+        title={
+          <div style={{ maxWidth: 360 }}>
+            One canonical report per patient and assay (single-cell and slide-tag). Versioned copies (e.g. _v6, _c11, _bl1, alternative builds, the
+            same report in several datasets) fold into a "+N versions" chip on the card. Canonical: the report flagged canonical in the data, else the
+            un-suffixed name, else the fewest suffixes, else the newest export.
+          </div>
+        }
+      >
+        <Space size={6} className="home-dedupe-toggle" data-testid="home-dedupe-toggle">
+          <Switch size="small" checked={on} onChange={this.onDedupeChange} aria-label="One per patient" />
+          <Text>One per patient</Text>
+          {on && hidden > 0 && <Text type="secondary">({hidden} versioned copies folded)</Text>}
+        </Space>
+      </Tooltip>
+    );
+  };
+
   renderFiltersTitle = () => (
     <div className="filters-card-title">
       <span>{this.props.t("containers.list-view.filters.title")}</span>
@@ -823,7 +899,11 @@ export class ListView extends Component {
           <Item
             key={d.filter.name}
             name={d.filter.name}
-            label={d.filter.title}
+            label={
+              <Tooltip title={d.filter.description || d.filter.title} placement="right">
+                <span className="filter-label-text">{d.filter.title}</span>
+              </Tooltip>
+            }
             rules={[
               {
                 required: false,
@@ -836,7 +916,7 @@ export class ListView extends Component {
               allowClear
               style={{ width: "100%" }}
               maxTagCount="responsive"
-              maxTagTextLength={8}
+              maxTagTextLength={Math.max(8, Math.floor((this.state.sidebarWidth - 70) / 7.5))}
               options={this.getVisibleSelectOptions(d)}
               labelInValue={false}
               optionFilterProp="label"
@@ -853,6 +933,7 @@ export class ListView extends Component {
               showSearch
               virtual
               listHeight={256}
+              popupMatchSelectWidth={Math.max(this.state.sidebarWidth - 40, 300)}
             />
           </Item>
         );
@@ -1036,9 +1117,13 @@ export class ListView extends Component {
           onValuesChange={this.onValuesChange}
         >
           <div className="ant-panel-list-container">
-            <Row gutter={[16, 16]} align="stretch">
+            <div className="home-layout" data-sidebar-span={filtersSpans.sidebar}>
               {/* kept mounted when hidden so the form keeps its default values */}
-              <Col className="gutter-row" span={filtersSpans.sidebar || 4} style={{ display: filtersVisible ? "flex" : "none" }}>
+              <div
+                className="home-filters"
+                data-testid="home-filters"
+                style={{ width: this.state.sidebarWidth, display: filtersVisible ? "flex" : "none" }}
+              >
                 <Card
                   className="filters-box"
                   title={this.renderFiltersTitle()}
@@ -1092,18 +1177,29 @@ export class ListView extends Component {
                     </Item>
                   </Space>
                 </Card>
-              </Col>
-              <Col className="gutter-row" span={filtersSpans.content}>
-                {isScDataset && (
-                  <Button
-                    size="small"
-                    data-testid="toggle-search-filters"
-                    style={{ marginBottom: 8 }}
-                    onClick={() => this.setState({ filtersOpen: !this.state.filtersOpen })}
-                  >
-                    {filtersVisible ? "Hide filters" : "Filters"}
-                  </Button>
-                )}
+                <div
+                  className="home-filters-resize"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize the filter panel"
+                  title="Drag to resize the filter panel (double-click resets)"
+                  onMouseDown={this.startSidebarResize}
+                  onDoubleClick={() => this.setSidebarWidth(null)}
+                />
+              </div>
+              <div className="home-content">
+                <Space size={16} wrap style={{ marginBottom: 8 }}>
+                  {isScDataset && (
+                    <Button
+                      size="small"
+                      data-testid="toggle-search-filters"
+                      onClick={() => this.setState({ filtersOpen: !this.state.filtersOpen })}
+                    >
+                      {filtersVisible ? "Hide filters" : "Filters"}
+                    </Button>
+                  )}
+                  {this.renderDedupeToggle()}
+                </Space>
                 <Tabs
                   activeKey={this.state.activeTab}
                   onChange={this.handleTabChange}
@@ -1115,7 +1211,7 @@ export class ListView extends Component {
                         <>
                           {records.length > 0 && (
                             <Row className="results-top-box" gutter={[16, 16]}>
-                              <Col className="gutter-row" span={12}>
+                              <Col className="gutter-row" xs={24} lg={12}>
                                 <Pagination
                                   showSizeChanger
                                   total={totalRecords}
@@ -1130,7 +1226,8 @@ export class ListView extends Component {
                               </Col>
                               <Col
                                 className="gutter-row order-selector-container"
-                                span={12}
+                                xs={24}
+                                lg={12}
                               >
                                 <Select
                                   className="order-select"
@@ -1177,14 +1274,27 @@ export class ListView extends Component {
                                 xxl={6}
                                 style={{ display: "flex", minWidth: 0 }}
                               >
-                                <PatientCaseCard record={d} dataset={this.props.dataset} onClick={(e) => handleCardClick(e, d)} />
+                                <PatientCaseCard
+                                  record={d}
+                                  dataset={this.props.dataset}
+                                  onClick={(e) => handleCardClick(e, d)}
+                                  extraTitle={
+                                    <>
+                                      <DataTypeBadges types={d[DATA_TYPE_FIELD]} />
+                                      <ReportVersionsChip record={d} onOpen={(e, v) => handleCardClick(e, v)} />
+                                    </>
+                                  }
+                                />
                               </Col>
                             ) : (
                               <Col
                                 key={sourceCaseIdentityKey(d) || d.pair}
                                 className="gutter-row"
-                                span={6}
-                                style={{ display: "flex" }}
+                                xs={24}
+                                md={12}
+                                xl={8}
+                                xxl={6}
+                                style={{ display: "flex", minWidth: 0 }}
                               >
                                 <Card
                                   className="case-report-card"
@@ -1222,6 +1332,8 @@ export class ListView extends Component {
                                           )}
                                         </Text>
                                       )}
+                                      <DataTypeBadges types={d[DATA_TYPE_FIELD]} />
+                                      <ReportVersionsChip record={d} onOpen={(e, v) => handleCardClick(e, v)} />
                                       {d.qcEvaluation && (
                                         <Tag
                                           color={
@@ -1537,8 +1649,8 @@ export class ListView extends Component {
                     },
                   ].filter((item) => !(isScDataset && SC_HIDDEN_LIST_TABS.includes(item.key)))}
                 />
-              </Col>
-            </Row>
+              </div>
+            </div>
           </div>
         </Form>
       </Wrapper>
@@ -1568,6 +1680,7 @@ const mapStateToProps = (state) => ({
   favoriteSearchesSaving: state.CaseReports.favoriteSearchesSaving,
   searchPending: state.CaseReports.searchPending,
   totalReportsCount: state.CaseReports.totalReportsCount,
+  totalReports: state.CaseReports.totalReports,
   casesWithInterpretations: state.CaseReports.casesWithInterpretations,
   interpretationsCounts: state.CaseReports.interpretationsCounts,
   plots: state.PopulationStatistics.cohort,

@@ -981,7 +981,7 @@ export default function CellHeatmapPanel() {
           if (c < 0) return null;
           return [
             [t("components.single-cell.tooltip.segment"), binLabel(rows[p].binIndex, c)],
-            [label, valuesOf(rows[p])[c]],
+            [label, Number.isFinite(valuesOf(rows[p])[c]) ? valuesOf(rows[p])[c] : "not available (no copy number for this bin, or masked)"],
           ];
         },
       };

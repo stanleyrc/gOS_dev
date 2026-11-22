@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { Layout, ConfigProvider, theme as antdTheme } from "antd";
-import { applyAppTheme, getAppTheme, isDarkLike, onAppThemeChange } from "./helpers/appTheme";
-import { cyberAntdTokens } from "./helpers/singleCell/plotTheme";
+import { adoptUrlTheme, applyAppTheme, getAppTheme, isDarkLike, onAppThemeChange } from "./helpers/appTheme";
+import { skinAntdTokens } from "./helpers/singleCell/plotTheme";
 import UpdateNotice from "./components/updateNotice";
 import singleCellActions from "./redux/singleCell/actions";
 import { CN_PALETTE_PRESETS } from "./helpers/singleCell/matrix";
@@ -30,7 +30,10 @@ const APP_FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 
 
 // apply the stored theme before the first render, so plots drawn in their
 // mount effects (which run before App's) already see the right colours
-if (typeof document !== "undefined") applyAppTheme(getAppTheme());
+if (typeof document !== "undefined") {
+  adoptUrlTheme(); // ?theme=sea etc.
+  applyAppTheme(getAppTheme());
+}
 
 function App() {
   // light / dark: stored in the browser, applied to antd and to <html data-theme>
@@ -52,7 +55,7 @@ function App() {
     return onAppThemeChange(setMode);
   }, [mode]);
   return (
-    <ConfigProvider locale={en_US} theme={{ algorithm: isDarkLike(mode) ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm, token: { fontFamily: APP_FONT_FAMILY, ...cyberAntdTokens(mode) } }}>
+    <ConfigProvider locale={en_US} theme={{ algorithm: isDarkLike(mode) ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm, token: { fontFamily: APP_FONT_FAMILY, ...skinAntdTokens(mode) } }}>
       <Provider store={store}>
         <I18nextProvider i18n={i18n}>
           <Router history={history}>

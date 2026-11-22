@@ -2,6 +2,7 @@ import axios from "axios";
 import { tableFromIPC } from "apache-arrow";
 import { datafilesArrowTableToJson } from "./utility";
 import { qcEvaluator } from "./metadata";
+import { DATA_TYPE_FIELD, recordDataTypes } from "./reportDataTypes";
 
 const ARROW_PATH_PATTERN = /\.arrow(?:$|[?#])/i;
 const manifestCache = new Map();
@@ -61,6 +62,10 @@ export const normalizeManifestRecord = (record = {}, dataset = {}) => {
     visibleTags,
     qcMetrics,
     qcEvaluation: record.qcEvaluation || qcEvaluator(qcMetrics),
+    // reports (not cells) carry their data type: own field, else the dataset's
+    ...((record.entry_type ?? record.entryType) === "cell"
+      ? {}
+      : { [DATA_TYPE_FIELD]: recordDataTypes(record, dataset) }),
   };
 };
 

@@ -296,7 +296,7 @@ span.filter-option-count {
   flex-shrink: 0;
 }
 .filter-option-text {
-  max-width: 190px !important;
+  max-width: 340px !important;
   flex: 1;
   min-width: 0;
   display: inline-block;
@@ -719,6 +719,66 @@ html[data-skin="cyberpunk"] *:focus-visible {
   outline-offset: 1px;
 }
 
+/* ---- sea skins (html[data-skin="sea" | "deepsea"] on the dark code paths,
+   "lagoon" on the light ones). Chrome only: surfaces, borders, accents, grid;
+   data colours (CN heatmap, SNV, clades, signatures) are untouched. ---- */
+html[data-skin="sea"] body,
+html[data-skin="sea"] .ant-full-layout,
+html[data-skin="deepsea"] body,
+html[data-skin="deepsea"] .ant-full-layout,
+html[data-skin="lagoon"] body,
+html[data-skin="lagoon"] .ant-full-layout {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--sc-accent) 7%, transparent) 0, transparent 420px), var(--sc-page) !important;
+  background-attachment: fixed !important;
+}
+html[data-skin="sea"] .ant-card,
+html[data-skin="deepsea"] .ant-card,
+html[data-skin="lagoon"] .ant-card {
+  border-color: var(--sc-border) !important;
+}
+html[data-skin="sea"] .ant-card .ant-card-head,
+html[data-skin="deepsea"] .ant-card .ant-card-head,
+html[data-skin="lagoon"] .ant-card .ant-card-head {
+  border-bottom-color: var(--sc-border-soft) !important;
+}
+html[data-skin="lagoon"] .ant-card {
+  background: var(--sc-panel);
+}
+html[data-skin="sea"] .ant-tabs-ink-bar,
+html[data-skin="deepsea"] .ant-tabs-ink-bar,
+html[data-skin="lagoon"] .ant-tabs-ink-bar {
+  background: var(--sc-accent) !important;
+}
+html[data-skin="sea"] .ant-btn-primary,
+html[data-skin="deepsea"] .ant-btn-primary {
+  color: #062026 !important;
+  font-weight: 600;
+}
+html[data-skin="sea"] .ant-layout-header,
+html[data-skin="sea"] .ant-pro-top-menu,
+html[data-skin="deepsea"] .ant-layout-header,
+html[data-skin="deepsea"] .ant-pro-top-menu,
+html[data-skin="lagoon"] .ant-layout-header,
+html[data-skin="lagoon"] .ant-pro-top-menu {
+  background: var(--sc-panel) !important;
+  border-bottom: 1px solid var(--sc-border) !important;
+}
+html[data-skin="sea"] .ant-table-tbody > tr:hover > td,
+html[data-skin="deepsea"] .ant-table-tbody > tr:hover > td,
+html[data-skin="lagoon"] .ant-table-tbody > tr:hover > td {
+  background: var(--sc-select-fill) !important;
+}
+html[data-skin="sea"] a,
+html[data-skin="deepsea"] a,
+html[data-skin="lagoon"] a {
+  color: var(--sc-accent);
+}
+html[data-skin="sea"] ::selection,
+html[data-skin="deepsea"] ::selection,
+html[data-skin="lagoon"] ::selection {
+  background: var(--sc-select-fill);
+}
+
 /* ---- single-cell navigation rail (components/singleCell/guide/navRail.js) ---- */
 :root {
   --sc-rail-bg: #ffffff;
@@ -735,6 +795,16 @@ html[data-theme="dark"] {
   --sc-rail-border: #3a3a3a;
   --sc-rail-active: #4c9aff;
   --sc-rail-hover: #1f2a3d;
+}
+html[data-skin="sea"],
+html[data-skin="deepsea"],
+html[data-skin="lagoon"] {
+  --sc-rail-bg: var(--sc-panel);
+  --sc-rail-fg: var(--sc-text);
+  --sc-rail-muted: var(--sc-muted);
+  --sc-rail-border: var(--sc-border);
+  --sc-rail-active: var(--sc-accent);
+  --sc-rail-hover: var(--sc-accent-soft);
 }
 body.sc-rail-on .ant-full-content { margin-left: var(--sc-rail-width, 48px); }
 .sc-rail { position: fixed; left: 0; top: var(--sc-topbar-h, 49px); bottom: 0; z-index: 900; display: flex; }

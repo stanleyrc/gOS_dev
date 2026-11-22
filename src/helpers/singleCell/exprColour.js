@@ -2,6 +2,7 @@
 // Zero cells get a neutral grey and are drawn first; expressing cells use a
 // sequential ramp, are capped at the 99th percentile of the non-zero values
 // and are drawn in ascending order so high cells stay on top. d3-free.
+import { isDarkLike } from "./plotTheme";
 
 /** Neutral fill / alpha / radius factor for cells with no detected expression. */
 export const ZERO_STYLE = {
@@ -16,8 +17,8 @@ const RAMPS = {
   dark: [[150, 20, 90], [215, 50, 60], [250, 120, 40], [253, 190, 60], [255, 245, 150]],
 };
 
-/** Any non-light app theme (dark, cyberpunk) uses the dark-panel variants. */
-export const themeKey = (mode) => (mode === "light" || mode == null ? "light" : "dark");
+/** Dark-like app themes (dark, cyberpunk, sea, deep sea) use the dark-panel variants; lagoon is light. */
+export const themeKey = (mode) => (mode == null || !isDarkLike(mode) ? "light" : "dark");
 
 export function rampColor(t, mode = "light") {
   const stops = RAMPS[themeKey(mode)];

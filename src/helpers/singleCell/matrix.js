@@ -6,6 +6,14 @@
 /* Colours                                                                  */
 /* ----------------------------------------------------------------------- */
 
+import { contrastRatio } from "./plotTheme";
+
+// Copy number "not available" (no genome graph / allelic CN for the bin, or a
+// masked region such as chrY in a female patient): a neutral grey that never
+// matches CN 2 (white in pgv, dark grey in pgvDark, light grey in scwgs).
+export const CN_NA_COLORS = { light: "#A3A3A3", dark: "#707070", scwgs: "#7A7A7A" };
+const NA_MIN_CONTRAST = 1.5;
+
 // Integer copy-number palette used across scWGS tools (HMMcopy / signals /
 // schnapps convention): blue for losses, grey for diploid, warm for gains.
 export const CN_STATE_COLORS = [
@@ -637,17 +645,17 @@ const DECK_TOTAL = interpolateAnchors(DECK_ANCHORS, 101);
 export const LONG_PALETTE_TICKS = [0, 1, 2, 3, 5, 10, 20, 50, 100];
 
 export const CN_PALETTE_PRESETS = {
-  pgv: { total: PGV_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: "#EEEEEE" },
-  pgvDark: { total: PGV_DARK, allelic: shiftForAllelic(PGV_DARK), missing: "#1a1a1a" },
-  diverging: { total: DIVERGING_TOTAL, allelic: shiftForAllelic(DIVERGING_TOTAL), missing: "#EEEEEE" },
-  zissou: { total: ZISSOU_TOTAL, allelic: shiftForAllelic(ZISSOU_TOTAL), missing: "#EEEEEE" },
-  viridis: { total: VIRIDIS_TOTAL, allelic: shiftForAllelic(VIRIDIS_TOTAL), missing: "#EEEEEE" },
-  magma: { total: MAGMA_TOTAL, allelic: shiftForAllelic(MAGMA_TOTAL), missing: "#EEEEEE" },
-  deck: { total: DECK_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: "#EEEEEE" },
+  pgv: { total: PGV_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: CN_NA_COLORS.light },
+  pgvDark: { total: PGV_DARK, allelic: shiftForAllelic(PGV_DARK), missing: CN_NA_COLORS.dark },
+  diverging: { total: DIVERGING_TOTAL, allelic: shiftForAllelic(DIVERGING_TOTAL), missing: CN_NA_COLORS.light },
+  zissou: { total: ZISSOU_TOTAL, allelic: shiftForAllelic(ZISSOU_TOTAL), missing: CN_NA_COLORS.light },
+  viridis: { total: VIRIDIS_TOTAL, allelic: shiftForAllelic(VIRIDIS_TOTAL), missing: CN_NA_COLORS.light },
+  magma: { total: MAGMA_TOTAL, allelic: shiftForAllelic(MAGMA_TOTAL), missing: CN_NA_COLORS.light },
+  deck: { total: DECK_TOTAL, allelic: shiftForAllelic(PGV_TOTAL), missing: CN_NA_COLORS.light },
   scwgs: {
     total: CN_STATE_COLORS,
     allelic: shiftForAllelic(CN_STATE_COLORS).map((c, k) => (k === 1 ? "#CCCCCC" : c)),
-    missing: MISSING_COLOR,
+    missing: CN_NA_COLORS.scwgs,
   },
 };
 export const DEFAULT_CN_PALETTE = "pgv";
@@ -660,11 +668,26 @@ export function normalizePalette(palette, preset = DEFAULT_CN_PALETTE) {
   const base = CN_PALETTE_PRESETS[preset] || CN_PALETTE_PRESETS[DEFAULT_CN_PALETTE];
   const pick = (list, fallback) =>
     fallback.map((c, k) => (Array.isArray(list) && validHex(list[k]) ? list[k] : c));
+  const total = pick(palette?.total, base.total);
+  const allelic = pick(palette?.allelic, base.allelic);
   return {
-    total: pick(palette?.total, base.total),
-    allelic: pick(palette?.allelic, base.allelic),
-    missing: validHex(palette?.missing) ? palette.missing : base.missing,
+    total,
+    allelic,
+    missing: distinctNa(validHex(palette?.missing) ? palette.missing : base.missing, [total[2], allelic[1]], base.missing),
   };
+}
+
+/**
+ * The "not available" colour, guaranteed distinct from the neutral CN (2 in
+ * total, 1 in allelic): a stored or preset colour too close to it (the old
+ * #EEEEEE next to a white CN 2) falls back to the preset's NA grey, then to
+ * a mid grey.
+ */
+export function distinctNa(candidate, neutrals = [], fallback = CN_NA_COLORS.light) {
+  const ok = (c) => validHex(c) && neutrals.filter(validHex).every((n) => contrastRatio(c, n) >= NA_MIN_CONTRAST);
+  if (ok(candidate)) return candidate;
+  if (ok(fallback)) return fallback;
+  return [CN_NA_COLORS.light, CN_NA_COLORS.dark, "#808080"].find(ok) || "#808080";
 }
 
 /** Packed-RGBA lookup for one CN mode: state -> colour (11+ share the last colour). */

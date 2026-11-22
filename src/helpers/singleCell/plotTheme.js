@@ -121,8 +121,103 @@ const CYBER = {
   yellow: "#ffe600",
 };
 
-/** True for the modes that reuse dark-mode code paths ("dark", "cyberpunk"). */
-export const isDarkLike = (mode) => mode === "dark" || mode === "cyberpunk";
+/**
+ * Sea (recommended default of the sea family): calm deep teal chrome on the
+ * dark code paths. Only surfaces, borders, accents and grid lines change;
+ * data colours (clades, CN scales, signatures) are the dark ones.
+ */
+const SEA = {
+  ...DARK,
+  mode: "sea",
+  page: "#0d2830",
+  panel: "#11333d",
+  panelAlt: "#153b46",
+  raised: "#18424e",
+  text: "#e9f5f7",
+  textSecondary: "#cde3e8",
+  muted: "#a3c6ce",
+  faint: "#6f98a2",
+  axis: "#86adb6",
+  grid: "#1f4c58",
+  border: "#2c5f6c",
+  borderSoft: "#1c4651",
+  empty: "#1a404b",
+  band: "rgba(255,255,255,0.05)",
+  hover: "#ffa07a",
+  hoverFill: "rgba(255,160,122,0.16)",
+  select: "#5cd6e8",
+  selectFill: "rgba(92,214,232,0.22)",
+  accent: "#4fd1c5",
+  accentSoft: "#17505a",
+  danger: "#ff7070",
+  warn: "#ffc46b",
+  ok: "#7ee0a1",
+  labelBg: "rgba(17,51,61,0.85)",
+  branch: "#b3d3da",
+  pinned: "#c3a6ff",
+  magenta: "#f78fb3",
+  yellow: "#ffd666",
+};
+
+/** Deep sea (alternative): darker navy-teal chrome, sky-blue accent. */
+const DEEPSEA = {
+  ...SEA,
+  mode: "deepsea",
+  page: "#061620",
+  panel: "#0a202b",
+  panelAlt: "#0e2733",
+  raised: "#122e3c",
+  text: "#e4eff4",
+  textSecondary: "#c4d8e1",
+  muted: "#97b4c1",
+  faint: "#62818f",
+  axis: "#7a98a6",
+  grid: "#173443",
+  border: "#244758",
+  borderSoft: "#152f3d",
+  empty: "#132b38",
+  select: "#4cc2ff",
+  selectFill: "rgba(76,194,255,0.22)",
+  accent: "#4cc2ff",
+  accentSoft: "#0f3a52",
+  labelBg: "rgba(10,32,43,0.85)",
+  branch: "#a9c3cf",
+};
+
+/** Lagoon (alternative): light, sea-tinted chrome on the light code paths. */
+const LAGOON = {
+  ...LIGHT,
+  mode: "lagoon",
+  page: "#e6f3f4",
+  panel: "#fbfefe",
+  panelAlt: "#f0f8f9",
+  raised: "#ffffff",
+  text: "#0f2d35",
+  textSecondary: "#25464e",
+  muted: "#486870",
+  faint: "#86a2a9",
+  axis: "#86a2a9",
+  grid: "#dbeaed",
+  border: "#bad6db",
+  borderSoft: "#d9eaed",
+  empty: "#e0eef0",
+  hover: "#e8590c",
+  hoverFill: "rgba(232,89,12,0.08)",
+  select: "#0b7480",
+  selectFill: "rgba(11,116,128,0.14)",
+  accent: "#0b7480",
+  accentSoft: "#d3eef0",
+  labelBg: "rgba(251,254,254,0.85)",
+  branch: "#4d666c",
+};
+
+/** Every app theme ("skin"); the sea family is sea (default) + lagoon / deepsea alternatives. */
+export const SKINS = ["light", "dark", "cyberpunk", "sea", "lagoon", "deepsea"];
+const SKIN_TOKENS = { light: LIGHT, dark: DARK, cyberpunk: CYBER, sea: SEA, lagoon: LAGOON, deepsea: DEEPSEA };
+export const isSkin = (mode) => SKINS.includes(mode);
+
+/** True for the modes that reuse dark-mode code paths ("dark", "cyberpunk", "sea", "deepsea"). */
+export const isDarkLike = (mode) => mode === "dark" || mode === "cyberpunk" || mode === "sea" || mode === "deepsea";
 
 /**
  * Alteration class colours (amp / homdel / fusion / truncating / splice /
@@ -141,37 +236,47 @@ export function alterationClassColors(theme) {
  */
 export const INK = LIGHT;
 
-/** antd token overrides for a mode (cyberpunk: neon primary on the dark algorithm). */
-export function cyberAntdTokens(mode) {
-  if (mode !== "cyberpunk") return {};
+/**
+ * antd token overrides for a skin (cyberpunk: neon primary; sea family: sea
+ * surfaces and accent) on top of the dark / light algorithm; none for light / dark.
+ */
+export function skinAntdTokens(mode) {
+  if (mode === "light" || mode === "dark" || !isSkin(mode)) return {};
+  const t = SKIN_TOKENS[mode];
   return {
-    colorPrimary: CYBER.accent,
-    colorInfo: CYBER.accent,
-    colorSuccess: CYBER.ok,
-    colorWarning: CYBER.warn,
-    colorError: CYBER.danger,
-    colorBgBase: CYBER.page,
-    colorBgContainer: CYBER.panel,
-    colorBgElevated: CYBER.raised,
-    colorBorder: CYBER.border,
-    colorBorderSecondary: CYBER.borderSoft,
-    colorText: CYBER.text,
-    colorTextSecondary: CYBER.muted,
-    colorLink: CYBER.accent,
+    colorPrimary: t.accent,
+    colorInfo: t.accent,
+    colorSuccess: t.ok,
+    colorWarning: t.warn,
+    colorError: t.danger,
+    colorBgBase: t.page,
+    colorBgContainer: t.panel,
+    colorBgElevated: t.raised,
+    colorBgLayout: t.page,
+    colorBorder: t.border,
+    colorBorderSecondary: t.borderSoft,
+    colorText: t.text,
+    colorTextSecondary: t.muted,
+    colorLink: t.accent,
   };
 }
 
-/** Resolved colour tokens for "light" / "dark". */
+/** Kept for callers of the cyberpunk-only name. */
+export const cyberAntdTokens = (mode) => (mode === "cyberpunk" ? skinAntdTokens(mode) : {});
+
+/** Resolved colour tokens for a skin ("light", "dark", "cyberpunk", "sea", "lagoon", "deepsea"). */
 export function plotTheme(mode) {
-  return mode === "cyberpunk" ? CYBER : mode === "dark" ? DARK : LIGHT;
+  return SKIN_TOKENS[mode] || LIGHT;
 }
 
-/** Theme of the page right now (html[data-theme]); light outside a browser. */
+/** Theme of the page right now (html[data-skin] when it agrees with data-theme); light outside a browser. */
 export function currentMode() {
   if (typeof document === "undefined") return "light";
   const root = document.documentElement;
-  if (root?.getAttribute("data-skin") === "cyberpunk" && root.getAttribute("data-theme") === "dark") return "cyberpunk";
-  return root?.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  const skin = root?.getAttribute("data-skin");
+  const dark = root?.getAttribute("data-theme") === "dark";
+  if (isSkin(skin) && isDarkLike(skin) === dark) return skin;
+  return dark ? "dark" : "light";
 }
 
 export const currentPlotTheme = () => plotTheme(currentMode());
@@ -225,9 +330,15 @@ export const SVG_REMAP = {
   },
 };
 
-/** The stylesheet text re-tinting SVG_REMAP literals under html[data-theme="dark"]. */
+/**
+ * The stylesheet text re-tinting SVG_REMAP literals under html[data-theme="dark"]
+ * (every dark-like skin). Colours are the live theme variables
+ * (var(--sc-text) ...) with the dark value as fallback, so every dark-like
+ * skin gets its own ink.
+ */
 export function svgRemapCss() {
-  const dark = plotTheme("dark");
+  const darkTokens = plotTheme("dark");
+  const dark = Object.fromEntries(Object.keys(darkTokens).map((k) => [k, `var(--sc-${kebab(k)}, ${darkTokens[k]})`]));
   const root = 'html[data-theme="dark"]';
   const rules = [];
   // svg inside a .sc-light-island (igv.js, which has no dark theme) keeps its light colours

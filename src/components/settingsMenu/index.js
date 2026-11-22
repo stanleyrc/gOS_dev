@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { Button, Divider, Popconfirm, Popover, Segmented, Select, Space, Tooltip, Typography } from "antd";
 import { BulbFilled, BulbOutlined, ClearOutlined, ThunderboltFilled, SettingOutlined } from "@ant-design/icons";
+import { plotTheme } from "../../helpers/singleCell/plotTheme";
 import { getAppTheme, onAppThemeChange, setAppTheme } from "../../helpers/appTheme";
 import { THEMES } from "../../helpers/singleCell/themes";
 import { CN_PALETTE_PRESETS } from "../../helpers/singleCell/matrix";
@@ -13,8 +14,21 @@ import { clearSiteSettings } from "../../helpers/clearSiteSettings";
 
 const { Text } = Typography;
 
+/** Sea family: Sea is the default shade; Lagoon (lighter) and Deep sea (darker) are the alternatives. */
+const SEA_FAMILY = ["sea", "lagoon", "deepsea"];
+const SEA_VARIANTS = [
+  { value: "sea", label: "Sea" },
+  { value: "lagoon", label: "Lagoon" },
+  { value: "deepsea", label: "Deep sea" },
+];
+const SeaIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ verticalAlign: -1 }}>
+    <path d="M0 5 Q1.5 3 3 5 T6 5 T9 5 T12 5 M0 9 Q1.5 7 3 9 T6 9 T9 9 T12 9" fill="none" stroke="currentColor" strokeWidth="1.4" />
+  </svg>
+);
+
 /**
- * Appearance settings in the top bar: light / dark, categorical colour
+ * Appearance settings in the top bar: light / dark / cyberpunk / sea (with lagoon / deep sea shades), categorical colour
  * theme (clones, groups, UMAP fields, violins, signatures) and the
  * copy-number heatmap palette. Display choices persist only if "Remember my view settings" is on.
  */
@@ -40,15 +54,35 @@ export default function SettingsMenu() {
         <Text strong>{t("settings.appearance")}</Text>
         <div style={{ marginTop: 4 }}>
           <Segmented
-            value={mode}
             onChange={(v) => setAppTheme(v)}
             options={[
               { value: "light", label: <Space size={4}><BulbOutlined />{t("settings.light")}</Space> },
               { value: "dark", label: <Space size={4}><BulbFilled />{t("settings.dark")}</Space> },
               { value: "cyberpunk", label: <Space size={4}><ThunderboltFilled />{t("settings.cyberpunk")}</Space> },
+              { value: "sea", label: <Space size={4}><SeaIcon />Sea</Space> },
             ]}
+            value={SEA_FAMILY.includes(mode) ? "sea" : mode}
           />
         </div>
+        {SEA_FAMILY.includes(mode) && (
+          <div style={{ marginTop: 6 }} data-testid="sea-variant">
+            <Text type="secondary" style={{ fontSize: 12, marginRight: 6 }}>Shade</Text>
+            <Segmented
+              size="small"
+              value={mode}
+              onChange={(v) => setAppTheme(v)}
+              options={SEA_VARIANTS.map(({ value, label }) => ({
+                value,
+                label: (
+                  <Space size={4}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, display: "inline-block", background: plotTheme(value).page, border: `2px solid ${plotTheme(value).accent}` }} />
+                    {label}
+                  </Space>
+                ),
+              }))}
+            />
+          </div>
+        )}
       </div>
       <Divider style={{ margin: "4px 0" }} />
       <div>

@@ -1,6 +1,7 @@
 import { DEFAULT_CASE_PAGE_SIZE } from "../../helpers/singleCell/viewDefaults";
 import actions from "./actions";
 import { cascaderOperators } from "../../helpers/filters";
+import { readHomeFilterPrefs } from "../../helpers/reportDataTypes";
 
 const defaultFilters = () => ({
   page: 1,
@@ -8,6 +9,8 @@ const defaultFilters = () => ({
   texts: "",
   orderId: 1,
   operator: cascaderOperators[0],
+  // data-type facet and "One per patient" from the URL (dtype=, dedupe=) or this browser
+  ...readHomeFilterPrefs(),
 });
 
 const initState = {

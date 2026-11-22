@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import useContainerWidth from "../useContainerWidth";
 import usePlotTheme from "../usePlotTheme";
 import { ChartTooltip, useChartText } from "../chartAxes";
+import { isDarkLike } from "../../../helpers/singleCell/plotTheme";
 
 const ROW = 20;
 const LABEL_W = 84;
@@ -32,7 +33,7 @@ export default function CovariateDeDotPlot({ genes, columns, cells, labelA, labe
   const top = split ? 46 : 30;
   const height = top + genes.length * ROW + 70;
   const r = Math.min(8, colW / 2 - 2, ROW / 2 - 1);
-  const dark = theme.mode === "dark";
+  const dark = isDarkLike(theme.mode);
   // patient spans for the header in split mode
   const spans = [];
   columns.forEach((c, i) => {

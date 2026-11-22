@@ -49,9 +49,9 @@ describe("plotTheme tokens", () => {
     const css = svgRemapCss();
     expect(css).toContain(`text[fill="#262626" i]`);
     expect(css).toContain("svg:not(.sc-light-island svg)");
-    expect(css).toContain(`fill: ${dark.text}`);
+    expect(css).toContain(`fill: var(--sc-text, ${dark.text})`);
     expect(css).toContain(`line[stroke="#f0f0f0" i]`);
-    expect(css).toContain(`stroke: ${dark.grid}`);
+    expect(css).toContain(`stroke: var(--sc-grid, ${dark.grid})`);
     Object.values(SVG_REMAP).forEach((roles) =>
       Object.entries(roles).forEach(([token, values]) => {
         expect(dark[token]).toBeDefined();
@@ -79,7 +79,7 @@ describe("cyberpunk mode", () => {
   const cyber = plotTheme("cyberpunk");
   const dark = plotTheme("dark");
 
-  it("isDarkLike covers dark and cyberpunk only", () => {
+  it("isDarkLike covers dark, cyberpunk and the dark sea skins", () => {
     expect(isDarkLike("dark")).toBe(true);
     expect(isDarkLike("cyberpunk")).toBe(true);
     expect(isDarkLike("light")).toBe(false);
@@ -106,5 +106,56 @@ describe("cyberpunk mode", () => {
     expect(cssVars("cyberpunk")["--sc-page"]).toBe(cyber.page);
     expect(cyberAntdTokens("cyberpunk").colorPrimary).toBe(cyber.accent);
     expect(cyberAntdTokens("dark")).toEqual({});
+  });
+});
+
+describe("sea themes (sea default, lagoon / deep sea alternatives)", () => {
+  const { isDarkLike, skinAntdTokens, SKINS } = require("./plotTheme");
+  const light = plotTheme("light");
+  const dark = plotTheme("dark");
+  const names = ["sea", "deepsea", "lagoon"];
+
+  it("are registered skins; sea and deep sea use the dark code paths, lagoon the light ones", () => {
+    names.forEach((n) => expect(SKINS).toContain(n));
+    expect(isDarkLike("sea")).toBe(true);
+    expect(isDarkLike("deepsea")).toBe(true);
+    expect(isDarkLike("lagoon")).toBe(false);
+    names.forEach((n) => expect(plotTheme(n).mode).toBe(n));
+  });
+
+  it("have the same token names as light / dark", () => {
+    names.forEach((n) => expect(Object.keys(plotTheme(n)).sort()).toEqual(Object.keys(light).sort()));
+  });
+
+  it("keep body text and controls at WCAG AA on every surface", () => {
+    names.forEach((n) => {
+      const t = plotTheme(n);
+      ["page", "panel", "panelAlt", "raised"].forEach((bg) => {
+        expect(contrastRatio(t.text, t[bg])).toBeGreaterThanOrEqual(7);
+        expect(contrastRatio(t.textSecondary, t[bg])).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(t.muted, t[bg])).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(t.accent, t[bg])).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(t.select, t[bg])).toBeGreaterThanOrEqual(3);
+      });
+      expect(contrastRatio(t.axis, t.panel)).toBeGreaterThanOrEqual(2.5);
+      expect(contrastRatio(t.grid, t.panel)).toBeGreaterThan(1.15);
+      expect(contrastRatio(t.border, t.panel)).toBeGreaterThan(1.4);
+    });
+  });
+
+  it("change only chrome: data-meaning tokens stay those of dark / light", () => {
+    const base = { sea: dark, deepsea: dark, lagoon: light };
+    names.forEach((n) => {
+      const t = plotTheme(n);
+      ["separator", "outline"].forEach((k) => expect(t[k]).toBe(base[n][k]));
+    });
+  });
+
+  it("give antd tokens with the sea accent; none for plain light / dark", () => {
+    expect(skinAntdTokens("sea").colorPrimary).toBe(plotTheme("sea").accent);
+    expect(skinAntdTokens("lagoon").colorBgLayout).toBe(plotTheme("lagoon").page);
+    expect(skinAntdTokens("light")).toEqual({});
+    expect(skinAntdTokens("dark")).toEqual({});
+    expect(skinAntdTokens("bogus")).toEqual({});
   });
 });

@@ -1,3 +1,4 @@
+import { mergeDataTypes } from "./reportDataTypes";
 import Field from "./field";
 
 export const ALL_DATASETS_SCOPE_VALUE = "__all_accessible_datasets__";
@@ -302,6 +303,9 @@ export const distinctCaseRecords = (records = []) => {
         existing.sourceDatasetTitle,
         recordWithFallback.sourceDatasetTitle,
       ),
+      ...(existing.data_type || recordWithFallback.data_type
+        ? { data_type: mergeDataTypes(existing.data_type, recordWithFallback.data_type) }
+        : {}),
     });
   });
 

@@ -38,7 +38,7 @@ function Stat({ label, children, tip }) {
  * Compact home-page card for a single-cell patient: cells, clones, tree source, TMB, RNA cells, key drivers and a
  * one-line headline. Replaces the bulk-WGS card (SV count, TMB, coverage, purity/ploidy are all N/A here).
  */
-export default function PatientCaseCard({ record, dataset, onClick }) {
+export default function PatientCaseCard({ record, dataset, onClick, extraTitle = null }) {
   const pair = record.caseReportId || record.pair;
   const vig = useCohortExport(dataset, "vignettes.json");
   const tmbDoc = useCohortExport(dataset, "tmb.json");
@@ -75,9 +75,10 @@ export default function PatientCaseCard({ record, dataset, onClick }) {
       style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}
       styles={{ body: { flex: 1, display: "flex", flexDirection: "column", gap: 10, minWidth: 0 } }}
       title={
-        <Space size={8}>
+        <Space size={8} wrap style={{ rowGap: 2 }}>
           <Text strong style={{ fontSize: 16 }}>{pair}</Text>
           <Text type="secondary">{[record.tumor_type, record.disease, record.primary_site].filter(Boolean).filter((x, i, a) => a.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i).join(" · ")}</Text>
+          {extraTitle}
         </Space>
       }
     >
