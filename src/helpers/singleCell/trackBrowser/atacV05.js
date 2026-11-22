@@ -156,15 +156,21 @@ export function atacCnInWindow(pool, w) {
   return out;
 }
 
-/** y range [0, max] over usable values (atac and genome), at least 2, rounded up to 0.5. */
-export function atacCnMax(pools, windows) {
-  let m = 0;
+/**
+ * y range [0, max] over usable values (atac and genome): robust by default (the q-quantile, 99th percentile; values
+ * above are drawn clipped with a mark), q >= 1 = the maximum. At least 2, rounded up to 0.5.
+ */
+export function atacCnMax(pools, windows, q = 0.99) {
+  const v = [];
   (pools || []).forEach((p) => (windows || []).forEach((w) => atacCnInWindow(p, w).forEach((b) => {
     if (!b.usable) return;
-    if (b.atac != null) m = Math.max(m, b.atac);
-    if (b.genome != null) m = Math.max(m, b.genome);
+    if (b.atac != null && Number.isFinite(b.atac)) v.push(b.atac);
+    if (b.genome != null && Number.isFinite(b.genome)) v.push(b.genome);
   })));
-  return Math.max(2, Math.ceil(Math.min(m, 6) * 2) / 2);
+  if (!v.length) return 2;
+  v.sort((a, b) => a - b);
+  const m = q >= 1 ? v[v.length - 1] : v[Math.min(v.length - 1, Math.floor(q * (v.length - 1)))];
+  return Math.max(2, Math.ceil(m * 2) / 2);
 }
 
 /**

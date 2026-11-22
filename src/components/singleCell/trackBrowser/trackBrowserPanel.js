@@ -197,7 +197,14 @@ export default function TrackBrowserPanel() {
   }, [base, overrides, autoFit, junctionH, readsH]);
 
   const [spec, setSpec] = useState({ status: "loading" });
-  const [locusText, setLocusText] = useState(() => urlParam("tblocus") || presets[1]?.locus || presets[0].locus);
+  const [locusText, setLocusTextRaw] = useState(() => urlParam("tblocus") || presets[1]?.locus || presets[0].locus);
+  // v0.5: a spec whose loci are only ["genome"] opens genome-wide (genome-wide tracks only, no windows) until a locus
+  // is chosen (preset, Go, gene, a chromosome click); setLocusText leaves the genome view, the spec loader does not
+  const [genomeOnly, setGenomeOnly] = useState(false);
+  const setLocusText = useCallback((v) => {
+    setGenomeOnly(false);
+    setLocusTextRaw(v);
+  }, []);
   const [windows, setWindows] = useState([]);
   const [windowY, setWindowY] = useState([]);
   const [shareY, setShareY] = useState(false);
@@ -262,7 +269,8 @@ export default function TrackBrowserPanel() {
       // other tracks open at the first preset (or chr1)
       const realLoci = s.loci.filter((l) => `${l}`.trim().toLowerCase() !== "genome");
       const genomeView = realLoci.length < s.loci.length || s.default_view === "genome_wide";
-      if (!(keepLink && urlParam("tblocus"))) setLocusText(realLoci.length ? realLoci.join(" | ") : specPresets(s)[0]?.locus || "chr1");
+      if (!(keepLink && urlParam("tblocus"))) setLocusTextRaw(realLoci.length ? realLoci.join(" | ") : specPresets(s)[0]?.locus || "chr1");
+      if (!realLoci.length && !(keepLink && urlParam("tblocus"))) setGenomeOnly(true);
       if (genomeView && !urlParam("tbheat")) setHeatGenome(true);
       if (genomeView && !linkAcn.current) setAcnGenome(true);
       if (Array.isArray(s.windows)) setWindowY(s.windows.map((w) => ({ ...DEFAULT_Y, ...(w?.y || {}) })));
@@ -450,7 +458,7 @@ export default function TrackBrowserPanel() {
   useEffect(() => {
     if (presetApplied.current || !datasetPresets.length || DEFAULT_LOCI[patientId] || linkedLocus.current) return;
     presetApplied.current = true;
-    setLocusText(datasetPresets[0].locus);
+    setLocusTextRaw(datasetPresets[0].locus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetPresets]);
 
@@ -459,14 +467,15 @@ export default function TrackBrowserPanel() {
     const { windows: w, errors } = parseLocus(locusText, chromoBins);
     if (w.length) {
       setWindows(w);
-      setUrlParam("tblocus", formatLocus(w));
+      if (!genomeOnly) setUrlParam("tblocus", formatLocus(w));
     }
     setLocusError(errors.length ? `could not read: ${errors.join(", ")}` : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locusText, haveBins, chromoBins]);
   const applyWindows = useCallback((next) => {
     setWindows(next);
     setLocusText(formatLocus(next));
-  }, []);
+  }, [setLocusText]);
   useEffect(() => setUrlParam("tbmode", mode === "cells" ? "cells" : null), [mode]);
   useEffect(() => setUrlParam("tbstyle", graphStyle === "canvas" ? "canvas" : null), [graphStyle]);
   useEffect(() => setUrlParam("tbpin", pinned.length ? pinned.join(",") : null), [pinned]);
@@ -1260,7 +1269,7 @@ export default function TrackBrowserPanel() {
     <TrackLocusContext.Provider value={locus}>
     <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : `${SPEC_VERSION} · interim gOS files`}</Text>}</Space>}>
       <Space wrap style={{ marginBottom: 6 }}>
-        <Input.Search style={{ width: narrow ? Math.max(200, width - 10) : 470 }} size="small" value={locusText} onChange={(e) => setLocusText(e.target.value)} onSearch={(v) => setLocusText(v)} enterButton="Go" placeholder="chr12:57,000,000-70,000,000 | chr11:39.2m-39.7m" />
+        <Input.Search style={{ width: narrow ? Math.max(200, width - 10) : 470 }} size="small" value={genomeOnly ? "genome" : locusText} onChange={(e) => setLocusText(e.target.value)} onSearch={(v) => setLocusText(v)} enterButton="Go" placeholder="chr12:57,000,000-70,000,000 | chr11:39.2m-39.7m" />
         <Select size="small" style={{ width: 180 }} placeholder="preset loci" value={null} options={presetsShown.map((p) => ({ label: p.label, value: p.locus }))} onChange={(v) => setLocusText(v)} />
         <Button size="small" icon={<LeftOutlined />} onClick={() => applyWindows(windows.map((w) => panWindow(w, -(w.end - w.start) * 0.25, chromLength(chromoBins, w.chrom))))} />
         <Button size="small" icon={<RightOutlined />} onClick={() => applyWindows(windows.map((w) => panWindow(w, (w.end - w.start) * 0.25, chromLength(chromoBins, w.chrom))))} />
@@ -1352,7 +1361,7 @@ export default function TrackBrowserPanel() {
       </div>
       <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
         <div style={{ position: "relative", height: 26 }}>
-          {slots.map((s, i) => (
+          {!genomeOnly && slots.map((s, i) => (
             <div key={i} style={{ position: "absolute", left: trackLeft + s.x0, width: s.width, top: 0, display: "flex", gap: 4, alignItems: "center", overflow: "hidden", whiteSpace: "nowrap" }}>
               <Popover
                 trigger="click"
@@ -1379,7 +1388,8 @@ export default function TrackBrowserPanel() {
             </div>
           ))}
         </div>
-        <canvas ref={headerRef} style={{ display: "block", cursor: "grab" }} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={() => { drag.current = null; setHover(null); }} />
+        {genomeOnly && <div style={{ fontSize: 12, color: COLORS.muted, padding: "2px 0 4px", paddingLeft: trackLeft }}>Genome-wide view (spec loci: genome). Click a chromosome in the ATAC-only CN lane, pick a preset or type a locus to open the window tracks.</div>}
+        <canvas ref={headerRef} style={{ display: genomeOnly ? "none" : "block", cursor: "grab" }} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={() => { drag.current = null; setHover(null); }} />
         {cinLane && (
           <div style={{ fontSize: 11, color: COLORS.muted, paddingLeft: trackLeft, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <span>JW-07 process caller:</span>
@@ -1417,9 +1427,9 @@ export default function TrackBrowserPanel() {
             title={filterText ? `CN heat map (${filterText})` : "CN heat map"}
           />
         )}
-        {diffState && hmIndex && !heatGenome && <CnDiffBlock index={hmIndex} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} profiles={diffProfiles} label={`${diffState.by === "time_point" ? "time point" : "clade"} ${diffState.label}`} nA={diffState.a.length} nB={diffState.b.length} />}
+        {!genomeOnly && diffState && hmIndex && !heatGenome && <CnDiffBlock index={hmIndex} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} profiles={diffProfiles} label={`${diffState.by === "time_point" ? "time point" : "clade"} ${diffState.label}`} nA={diffState.a.length} nB={diffState.b.length} />}
         {v05.rates && <CladeRatesBlock rates={v05.rates} clades={cladeNames} groupColor={groupColor} leftW={trackLeft} width={width} />}
-        {showRes && v05.res && (v05.res.ok ? <AtacResidualBlock res={v05.res} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} by={resBy} onBy={setResBy} groupColor={groupColor} /> : <UnavailableRow title="ATAC residual" reason={v05.res.error} leftW={trackLeft} width={width} />)}
+        {!genomeOnly && showRes && v05.res && (v05.res.ok ? <AtacResidualBlock res={v05.res} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} by={resBy} onBy={setResBy} groupColor={groupColor} /> : <UnavailableRow title="ATAC residual" reason={v05.res.error} leftW={trackLeft} width={width} />)}
         {!acnFirst && showAcn && v05.acn && (v05.acn.ok ? <AtacCnBlock res={v05.acn} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} genomeWide={acnGenome} onGenomeWide={setAcnGenome} chromoBins={chromoBins} onJumpChrom={(c) => { setAcnGenome(false); setLocusText(`chr${c}`); }} /> : <UnavailableRow title="ATAC-only CN" reason={v05.acn.error} leftW={trackLeft} width={width} />)}
         {diff.on && !hmIndex && <UnavailableRow title="CN difference" reason={heatTrack ? "needs the CN heat map matrices" : "no cn_heatmap track"} leftW={trackLeft} width={width} />}
         {pinLayout.length > 0 && (
@@ -1428,7 +1438,7 @@ export default function TrackBrowserPanel() {
             {pinLayout.map((it) => renderRow(it, { pinnedRow: true }))}
           </div>
         )}
-        <div ref={scrollRef} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)} style={{ height: bodyH, overflowY: "auto", overflowX: "hidden", position: "relative", borderTop: "1px solid #ddd" }}>
+        <div ref={scrollRef} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)} style={{ display: genomeOnly ? "none" : "block", height: bodyH, overflowY: "auto", overflowX: "hidden", position: "relative", borderTop: "1px solid #ddd" }}>
           <div style={{ height: total, position: "relative" }}>
             {treeW > 0 && <canvas ref={treeRef} onClick={onTreeClick} style={{ position: "sticky", top: 0, display: "block", cursor: "pointer", zIndex: 2 }} title="click a node: show its clade" />}
             <div style={{ position: "absolute", left: 0, top: 0, width, height: total }}>{visibleItems.map((it) => renderRow(it))}</div>

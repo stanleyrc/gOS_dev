@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Popover, Segmented, Switch } from "antd";
 import { bpToPx } from "../../../helpers/singleCell/trackBrowser/locus";
-import { formatRate, ratesOfClade } from "../../../helpers/singleCell/trackBrowser/cinEvents";
+import { contrastSide, formatRate, ratesOfClade } from "../../../helpers/singleCell/trackBrowser/cinEvents";
 import { armOf, atacCnInWindow, atacCnMax, genomeLayout, regionsInWindows, residualLanes, residualLines, residualRange } from "../../../helpers/singleCell/trackBrowser/atacV05";
 import { COLORS, setupCanvas } from "./draw";
 
@@ -69,7 +69,7 @@ export function CladeRatesBlock({ rates, clades, groupColor, leftW, width }) {
               <div style={{ color: COLORS.muted, marginTop: 2 }}>
                 {rates.contrast.map((k, i) => {
                   const f = (v) => (Number.isFinite(Number(v)) && v !== null && v !== "" ? Number(v).toFixed(2) : "n/a");
-                  return <div key={i}>time-point contrast {`${k.late ?? "late"}`.replace(/\+/g, " + ")} minus {`${k.early ?? "early"}`.replace(/\+/g, " + ")}: bias-adjusted {f(k.diff_bias_adjusted)} [{f(k.adj_lo)}, {f(k.adj_hi)}], p {f(k.p_adjusted)}</div>;
+                  return <div key={i}>time-point contrast {contrastSide(k.late ?? "late")} minus {contrastSide(k.early ?? "early")}: bias-adjusted {f(k.diff_bias_adjusted)} [{f(k.adj_lo)}, {f(k.adj_hi)}], p {f(k.p_adjusted)}</div>;
                 })}
               </div>
             )}
@@ -197,7 +197,8 @@ export function AtacResidualBlock({ res, slots, geometry, width, by, onBy, group
  * (black) where present, on the shared windows or genome-wide (all chromosomes across the track width). Hover: the
  * bin and its arm (arm table row when the file has one); the arm table is also one click away.
  */
-export function AtacCnBlock({ res, slots, geometry, width, genomeWide, onGenomeWide, chromoBins, onJumpChrom, laneH = 72 }) {
+export function AtacCnBlock({ res, slots, geometry, width, genomeWide, onGenomeWide, chromoBins, onJumpChrom, laneH = 84 }) {
+  const [robust, setRobust] = useState(true);
   const ref = useRef(null);
   const [tip, setTip] = useState(null);
   const { trackLeft, gapX } = geometry;
@@ -206,7 +207,7 @@ export function AtacCnBlock({ res, slots, geometry, width, genomeWide, onGenomeW
   const views = useMemo(() => (genomeWide
     ? layout.map((g) => ({ x0: trackLeft + g.x0, width: g.x1 - g.x0, window: { chrom: g.chrom, start: g.start, end: g.end } }))
     : slots.map((s) => ({ x0: trackLeft + s.x0, width: s.width, window: s.window }))), [genomeWide, layout, slots, trackLeft]);
-  const ymax = useMemo(() => atacCnMax(res.pools, views.map((v) => v.window)), [res, views]);
+  const ymax = useMemo(() => atacCnMax(res.pools, views.map((v) => v.window), robust ? 0.99 : 1), [res, views, robust]);
   const height = res.pools.length * laneH;
   useEffect(() => {
     const ctx = setupCanvas(ref.current, width, height);
@@ -245,6 +246,16 @@ export function AtacCnBlock({ res, slots, geometry, width, genomeWide, onGenomeW
           if (b.atac != null) {
             ctx.fillStyle = "#1a9a8a";
             ctx.fillRect(xa, yOf(b.atac) - 1, xb - xa, 2.5);
+            if (b.atac > ymax) {
+              // clipped above the robust max: the clip mark of the graph rows
+              const xc = (xa + xb) / 2;
+              ctx.fillStyle = "#c0392b";
+              ctx.beginPath();
+              ctx.moveTo(xc - 3, top + 6);
+              ctx.lineTo(xc, top + 1);
+              ctx.lineTo(xc + 3, top + 6);
+              ctx.fill();
+            }
           }
         });
         ctx.strokeStyle = "#111";
@@ -280,6 +291,7 @@ export function AtacCnBlock({ res, slots, geometry, width, genomeWide, onGenomeW
       [0, 1, ymax].forEach((t) => ctx.fillText(`${t}`, xl, yOf(t)));
     });
   }, [res, views, ymax, width, height, laneH, trackLeft, genomeWide]);
+  const clippedNote = robust ? "robust y (99th percentile; ▲ = clipped)" : "y = maximum";
   const at = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - r.left;
@@ -331,6 +343,7 @@ export function AtacCnBlock({ res, slots, geometry, width, genomeWide, onGenomeW
         controls={
           <>
             <span><Switch size="small" checked={genomeWide} onChange={onGenomeWide} /> genome-wide</span>
+            <span><Switch size="small" checked={robust} onChange={setRobust} /> {clippedNote}</span>
             {armTable && <Popover trigger="click" title="Arm-level ATAC-only CN (pooled)" content={armTable}><a href="#arm-table" onClick={(e) => e.preventDefault()}>arm table ({res.arms.size})</a></Popover>}
           </>
         }

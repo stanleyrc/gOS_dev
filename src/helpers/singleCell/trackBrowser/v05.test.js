@@ -65,6 +65,19 @@ test("by_group nested form and per-plate clade_map; loci genome validates", () =
   expect(validateSpec({ spec: "gos-track-spec", version: "0.5", loci: ["genome"], tracks: [] })).toEqual([]);
 });
 
+test("atac_cn robust y: 99th percentile of usable bins, maximum on request; contrast sides deduplicated", () => {
+  const bins = Array.from({ length: 200 }, (_, i) => ["1", i * 1e6 + 1, (i + 1) * 1e6, i < 198 ? 1 + (i % 10) / 10 : 9, null, true]);
+  bins.push(["1", 300e6 + 1, 301e6, 50, null, false]); // unusable: ignored
+  const r = normalizeAtacCn({ pools: [{ id: "all", n_cells: 3, bins }] });
+  const w = [{ chrom: "1", start: 1, end: 400e6 }];
+  expect(atacCnMax(r.pools, w)).toBe(2); // 99th percentile 1.9 -> 2 (the two outliers at 9 are clipped)
+  expect(atacCnMax(r.pools, w, 1)).toBe(9);
+  expect(atacCnMax([], w)).toBe(2);
+  const { contrastSide } = require("./cinEvents");
+  expect(contrastSide("SW620_T11+SW620_T12+T11+T12")).toBe("T11 + T12");
+  expect(contrastSide("SW620_T0+T0")).toBe("T0");
+});
+
 describe("clade rates", () => {
   const json = {
     unit: "whole-chromosome changes per cell (bias-corrected, calibrated)",

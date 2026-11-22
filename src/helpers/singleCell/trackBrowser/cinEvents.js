@@ -125,6 +125,12 @@ export function formatRate(r) {
   return `${f(r.rate)} [${f(r.lo)}, ${f(r.hi)}]${r.n_cells != null ? ` (n ${r.n_cells})` : ""}`;
 }
 
+/** A contrast side "SW620_T11+SW620_T12+T11+T12" -> "T11 + T12" (line prefixes dropped, duplicates removed). */
+export function contrastSide(text) {
+  const parts = `${text ?? ""}`.split("+").map((x) => x.trim().replace(/^[A-Za-z0-9]+_(?=T\d)/, "")).filter(Boolean);
+  return [...new Set(parts)].join(" + ");
+}
+
 /** The plate of a per-plate dataset id (datac_sw620_t0_a -> T0_A); null for H1299 / joint / MCF7. */
 export function plateOfDataset(id) {
   const m = `${id || ""}`.match(/_t(\d+)_([ab])$/i);
