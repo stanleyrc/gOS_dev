@@ -410,6 +410,14 @@ filters here on export.
   per-plate JaBbA fits - show") when there are more than 3; expanded, they are grouped by `plate` with a plate header
   row. `layout.pb_expanded: ["j1"]` lists the expanded clades (gOS URL `tbpbx=j1`). Collapsed graphs are not fetched.
 
+## Genome-wide default view (v0.5)
+
+`"loci": ["genome"]` (or `"default_view": "genome_wide"` next to ordinary loci) opens the view genome-wide: the
+`cn_heatmap` (5 Mb LOD) and `atac_cn` tracks draw every chromosome; window-based tracks open at the first `presets`
+entry (or chr1) until a locus is chosen. `genome` is the only non-coordinate locus; readers that cannot draw a
+genome-wide view use the first preset. Per-plate `atac_residuals.json` may carry `clade_map` (plate clade -> joint
+clade) when its `clade_means` are over joint clades; lanes then name the plate clades each joint clade holds.
+
 ## Lazy loading (v0.5)
 
 A reader must not fetch every unit's per-unit files when it opens a view. gOS: clade rows (median CN, IQR band) and

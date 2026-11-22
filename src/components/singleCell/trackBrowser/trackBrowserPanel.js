@@ -249,7 +249,13 @@ export default function TrackBrowserPanel() {
       const s = r.data;
       setSpec({ status: "ok", data: s, url, auto: !linked });
       const keepLink = !linked;
-      if (!(keepLink && urlParam("tblocus"))) setLocusText(s.loci.join(" | "));
+      // v0.5: loci ["genome"] / default_view "genome_wide": genome-wide heat map and ATAC-only CN; the windows of the
+      // other tracks open at the first preset (or chr1)
+      const realLoci = s.loci.filter((l) => `${l}`.trim().toLowerCase() !== "genome");
+      const genomeView = realLoci.length < s.loci.length || s.default_view === "genome_wide";
+      if (!(keepLink && urlParam("tblocus"))) setLocusText(realLoci.length ? realLoci.join(" | ") : specPresets(s)[0]?.locus || "chr1");
+      if (genomeView && !urlParam("tbheat")) setHeatGenome(true);
+      if (genomeView && !urlParam("tbacn")) setAcnGenome(true);
       if (Array.isArray(s.windows)) setWindowY(s.windows.map((w) => ({ ...DEFAULT_Y, ...(w?.y || {}) })));
       const byType = (t) => (s.tracks || []).find((x) => x.type === t);
       setShowGraph(Boolean(byType("graph")) && byType("graph").visible !== false);
@@ -275,7 +281,7 @@ export default function TrackBrowserPanel() {
       if (Array.isArray(L.pinned) && !(keepLink && urlParam("tbpin"))) setPinned(L.pinned.slice(0, 3));
       if (Array.isArray(L.pb_expanded) && !urlParam("tbpbx")) setPbExpanded(Object.fromEntries(L.pb_expanded.map((g) => [`${g}`, true])));
       const acnT = byType("atac_cn");
-      if (acnT && !urlParam("tbacn")) setAcnGenome(acnT.genome_wide !== false && (acnT.genome_wide === true || (s.tracks || [])[0]?.type === "atac_cn"));
+      if (acnT && !urlParam("tbacn") && !genomeView) setAcnGenome(acnT.genome_wide !== false && (acnT.genome_wide === true || (s.tracks || [])[0]?.type === "atac_cn"));
       const resT = byType("atac_residual");
       if (resT?.by && !urlParam("tbres")) setResBy(resT.by === "time" || resT.by === "time_point" ? "time" : "clade");
       const F = s.filters || {};
@@ -572,10 +578,10 @@ export default function TrackBrowserPanel() {
   // (other datasets, or the index failed) every shown cell's graph is fetched as before
   const lazyGraphs = spec.status !== "loading" && Boolean(heatTrack) && !unavailableTypes.has("cn_heatmap") && (v04.hm.status === "ok" || v04.hm.status === "loading");
   const graphIds = useMemo(() => {
-    if (spec.status === "loading" || (heatTrack && v04.hm.status === "none")) return [];
+    if (spec.status === "loading" || unavailableTypes.has("graph") || (heatTrack && !unavailableTypes.has("cn_heatmap") && v04.hm.status === "none")) return [];
     if (!lazyGraphs) return unitIds;
     return graphIdsToLoad({ visibleItems, pinned, rows: rowsList, expanded, mode });
-  }, [spec.status, heatTrack, v04.hm.status, lazyGraphs, unitIds, visibleItems, pinned, rowsList, expanded, mode]);
+  }, [spec.status, heatTrack, unavailableTypes, v04.hm.status, lazyGraphs, unitIds, visibleItems, pinned, rowsList, expanded, mode]);
   const data = useUnitData({ dataPath, patient: patientId, genome, unitIds: graphIds, coverageIds, graphTrack, coverageTrack, cellFiles });
   const pbWantKey = useMemo(() => [...new Set([...rowsList.filter((r) => r.kind === "pbgraph").map((r) => r.id), ...pinned.filter((k) => k.startsWith("pbgraph:")).map((k) => k.slice(8))])].join("|"), [rowsList, pinned]);
   useEffect(() => setPbWanted(pbWantKey ? pbWantKey.split("|") : []), [pbWantKey]);

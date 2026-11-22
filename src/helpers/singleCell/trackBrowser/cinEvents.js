@@ -5,6 +5,17 @@ import { normalizeEvents } from "./events";
 const num = (v) => (v === null || v === "" || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v));
 const isNa = (v) => v == null || v === "" || v === "NA";
 
+/** by_group as text: { c1: 3 } -> "c1:3"; { by, measure, values: { T0_A: 3 } } -> "carriers by plate: T0_A:3" ("" when empty). */
+export function byGroupText(v) {
+  if (isNa(v)) return "";
+  if (typeof v !== "object") return `${v}`;
+  if (v.values && typeof v.values === "object") {
+    const vals = Object.entries(v.values).map(([k, x]) => `${k}:${x}`).join(", ");
+    return vals ? `${v.measure || "values"} by ${v.by || "group"}: ${vals}` : "";
+  }
+  return Object.entries(v).filter(([, x]) => typeof x !== "object").map(([k, x]) => `${k}:${x}`).join(", ");
+}
+
 /** Status key of a JW-07 call: "fixed" | "fixed subclonal" | "unresolved" | "other". */
 export function cinStatusKey(status) {
   const s = `${status || ""}`.toLowerCase();
@@ -38,7 +49,7 @@ export function normalizeCinEvents(json) {
       statusKey: cinStatusKey(e.status),
       statusRule: r.status_rule || "",
       carrierFrac: num(r.carrier_frac),
-      byGroup: isNa(r.by_group) ? "" : typeof r.by_group === "object" ? Object.entries(r.by_group).map(([k, v]) => `${k}:${v}`).join(", ") : `${r.by_group}`,
+      byGroup: byGroupText(r.by_group),
       evidence: isNa(r.evidence) ? "" : `${r.evidence}`,
       arm: isNa(r.arm) ? "" : `${r.arm}`,
       direction: isNa(r.direction) ? "" : `${r.direction}`,

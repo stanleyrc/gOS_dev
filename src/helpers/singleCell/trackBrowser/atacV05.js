@@ -56,14 +56,18 @@ export function normalizeAtacResiduals(json) {
   const times = [...acc.keys()].sort((a, b) => TIME_ORDER(a) - TIME_ORDER(b) || `${a}`.localeCompare(`${b}`));
   const timeMeans = new Map(times.map((t) => [t, new Map([...acc.get(t)].map(([rid, a]) => [rid, { resid: a.swr / a.sw, se: null, n: a.n, samples: a.samples }]))]));
   clades.sort((a, b) => `${a}`.localeCompare(`${b}`, undefined, { numeric: true }));
-  return { ok: true, unit: json.unit || "log2 residual accessibility", source: json.source ?? null, regions, clades, means, tests, times, timeMeans };
+  // per-plate datasets: clade means are over the joint clades; clade_map gives each plate clade's majority joint clade
+  const cladeMap = json.clade_map && typeof json.clade_map === "object" ? json.clade_map : null;
+  const mappedFrom = new Map();
+  if (cladeMap) Object.entries(cladeMap).forEach(([pc, jc]) => mappedFrom.set(`${jc}`, [...(mappedFrom.get(`${jc}`) || []), pc]));
+  return { ok: true, unit: json.unit || "log2 residual accessibility", source: json.source ?? null, regions, clades, means, tests, times, timeMeans, cladeMap, mappedFrom, notes: json.notes || "" };
 }
 
 /** Lanes of the residual track: one per clade (`by` "clade") or per time label (`by` "time"): [{ key, label, values }]. */
 export function residualLanes(res, by = "clade") {
   if (!res?.ok) return [];
   if (by === "time" && res.times.length) return res.times.map((t) => ({ key: `time:${t}`, label: t, values: res.timeMeans.get(t) }));
-  return res.clades.map((c) => ({ key: `clade:${c}`, label: c, values: res.means.get(c) }));
+  return res.clades.map((c) => ({ key: `clade:${c}`, label: c, values: res.means.get(c), note: res.mappedFrom?.size ? (res.mappedFrom.has(c) ? `this plate: ${res.mappedFrom.get(c).join(", ")}` : "no clade of this plate") : "" }));
 }
 
 /** Regions overlapping each window, clipped: [{ slot, start, end, region }]. */
@@ -99,7 +103,7 @@ export function residualLines(res, lane, region) {
   const f = (x, d = 3) => (x == null ? "not available" : Math.abs(x) < 1e-3 && x !== 0 ? x.toExponential(1) : x.toFixed(d));
   const lines = [`${region.id} (${region.kind || "region"}) · chr${region.chrom}:${region.start.toLocaleString()}-${region.end.toLocaleString()}`];
   if (!v || v.resid == null) lines.push(`${lane.label}: not available (no residual for this region)`);
-  else lines.push(`${lane.label}: residual ${f(v.resid)}${v.se != null ? ` ± ${f(v.se)} (SE)` : ""}${v.n != null ? ` · n ${v.n}` : ""}`);
+  else lines.push(`${lane.label}${lane.note ? ` (${lane.note})` : ""}: residual ${f(v.resid)}${v.se != null ? ` ± ${f(v.se)} (SE)` : ""}${v.n != null ? ` · n ${v.n}` : ""}`);
   if (v?.samples?.length) lines.push(`plates: ${v.samples.map((s) => `${s.sample} ${f(s.resid, 2)}`).join(", ")}`);
   if (t) lines.push(`clade q ${f(t.clade_q)} · clade η² ${f(t.clade_eta2)} · lineage z ${f(t.lineage_z, 2)} · lineage q ${f(t.lineage_q)}`);
   else lines.push("tests: not available");

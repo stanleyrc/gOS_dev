@@ -55,6 +55,16 @@ describe("JW-07 events lane", () => {
   });
 });
 
+test("by_group nested form and per-plate clade_map; loci genome validates", () => {
+  const { byGroupText } = require("./cinEvents");
+  expect(byGroupText({ by: "plate", measure: "carriers", values: { T0_A: 3, T1_A: 1 } })).toBe("carriers by plate: T0_A:3, T1_A:1");
+  expect(byGroupText({ by: "plate", measure: "carriers", values: {} })).toBe("");
+  const r = normalizeAtacResiduals({ regions: [{ id: "a", chrom: "1", start: 1, end: 10 }], clade_means: [{ clade: "j1", region: "a", resid: 0.1, se: 0.01, n: 5 }, { clade: "j2", region: "a", resid: 0.2 }], clade_map: { c1: "j1", c2: "j1" } });
+  expect(residualLanes(r).map((l) => l.note)).toEqual(["this plate: c1, c2", "no clade of this plate"]);
+  const { validateSpec } = require("./trackSpec");
+  expect(validateSpec({ spec: "gos-track-spec", version: "0.5", loci: ["genome"], tracks: [] })).toEqual([]);
+});
+
 describe("clade rates", () => {
   const json = {
     unit: "whole-chromosome changes per cell (bias-corrected, calibrated)",

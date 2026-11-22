@@ -97,7 +97,8 @@ export function validateSpec(spec) {
   if (major !== SPEC_VERSION.split(".")[0]) errors.push(`version ${spec.version} is not readable by ${SPEC_VERSION}`);
   if (!Array.isArray(spec.loci) || !spec.loci.length) errors.push("loci must be a non-empty array");
   else {
-    const { errors: bad } = parseLocus(spec.loci.join("|"));
+    // v0.5: "genome" is the genome-wide view (drawn by the genome-wide tracks; windows fall back to the first preset)
+    const { errors: bad } = parseLocus(spec.loci.filter((l) => `${l}`.trim().toLowerCase() !== "genome").join("|") || "chr1:1-1000");
     if (bad.length) errors.push(`unparseable loci: ${bad.join(", ")}`);
   }
   if (!Array.isArray(spec.tracks)) errors.push("tracks must be an array");
