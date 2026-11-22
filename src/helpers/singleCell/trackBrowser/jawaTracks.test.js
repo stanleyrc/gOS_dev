@@ -61,6 +61,13 @@ describe("cnTracks", () => {
     expect(c1[3]).toBeCloseTo(1, 5);
     expect(Number.isNaN(c1[0])).toBe(true);
     expect(cnCorrelation1d(m, 4, ax.n, [])[3]).toBeNaN();
+    // a near-constant bin (one cell off by one copy among many) is masked, not drawn as r ~ 1
+    const rows9 = 40;
+    const flat = new Float32Array(rows9 * 2).fill(2);
+    flat[0] = 3;
+    flat[1] = 3;
+    expect(cnCorrelation2d(flat, rows9, 2).values[1]).toBeNaN();
+    expect(cnCorrelation2d(flat, rows9, 2, { minSd: 0 }).values[1]).toBeCloseTo(1, 5);
   });
 
   it("draws heat map and triangle pixels aligned to the columns", () => {

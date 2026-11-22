@@ -96,7 +96,7 @@ export function cnMatrix(values, meta, ax, rows) {
 const tx = (v, log) => (log ? Math.log2(v + 1) : v);
 
 /** Column means / centered columns over the rows that have a value; columns with < minRows values or no variance are null. */
-function centered(mat, nRows, n, log, minRows) {
+function centered(mat, nRows, n, log, minRows, minSd = 0) {
   const cols = new Array(n).fill(null);
   for (let j = 0; j < n; j += 1) {
     let s = 0;
@@ -119,7 +119,8 @@ function centered(mat, nRows, n, log, minRows) {
         ss += c[r] * c[r];
       }
     }
-    if (ss > 1e-12) cols[j] = { c, ss };
+    // near-constant bins (a handful of deviating cells) give spurious |r| ~ 1: masked below minSd
+    if (ss > 1e-12 && Math.sqrt(ss / m) >= minSd) cols[j] = { c, ss };
   }
   return cols;
 }
@@ -144,11 +145,11 @@ function pearson(a, b, nRows, minRows) {
 
 /**
  * Bin x bin Pearson correlation of CN across the rows: { n, values: Float32Array n*n (NaN where a bin has no
- * variance or fewer than minRows values), nRows }. log: correlate log2(CN + 1) (default), so a few very high copies
+ * variance, a CN standard deviation below minSd (log2 units when log) or fewer than minRows values), nRows }. log: correlate log2(CN + 1) (default), so a few very high copies
  * do not dominate.
  */
-export function cnCorrelation2d(mat, nRows, n, { log = true, minRows = 5 } = {}) {
-  const cols = centered(mat, nRows, n, log, minRows);
+export function cnCorrelation2d(mat, nRows, n, { log = true, minRows = 5, minSd = 0.15 } = {}) {
+  const cols = centered(mat, nRows, n, log, minRows, minSd);
   const values = new Float32Array(n * n).fill(NaN);
   for (let a = 0; a < n; a += 1) {
     if (!cols[a]) continue;
@@ -167,7 +168,7 @@ export function cnCorrelation2d(mat, nRows, n, { log = true, minRows = 5 } = {})
  * Correlation of every bin's CN with the anchor (mean CN over the anchor's axis bins) across the rows:
  * Float32Array n (NaN where undefined). anchorIdx: axis indices.
  */
-export function cnCorrelation1d(mat, nRows, n, anchorIdx, { log = true, minRows = 5 } = {}) {
+export function cnCorrelation1d(mat, nRows, n, anchorIdx, { log = true, minRows = 5, minSd = 0.15 } = {}) {
   const out = new Float32Array(n).fill(NaN);
   const idx = (anchorIdx || []).filter((i) => i >= 0 && i < n);
   if (!idx.length) return out;
@@ -186,7 +187,7 @@ export function cnCorrelation1d(mat, nRows, n, anchorIdx, { log = true, minRows 
   }
   const a = centered(anchor, nRows, 1, log, minRows)[0];
   if (!a) return out;
-  const cols = centered(mat, nRows, n, log, minRows);
+  const cols = centered(mat, nRows, n, log, minRows, minSd);
   for (let j = 0; j < n; j += 1) if (cols[j]) out[j] = pearson(a, cols[j], nRows, minRows);
   return out;
 }

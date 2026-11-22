@@ -160,7 +160,7 @@ export default function JawaSections({ state, setState, orderedUnits, groupColor
       </Space>
       {anyCn && (
         <div style={{ fontSize: 12, color: "#555", marginBottom: 4 }}>
-          Per-cell JaBbA copy number in 100 kb bins{ax && ax.factor > 1 ? ` (merged to ${(ax.factor * 100) / 1000} Mb columns for this window size)` : ""}, {nWith} of {rowIds.length} shown cells in the CN export, rows in the browser&apos;s order. Correlations are Pearson across these cells: segments that rise and fall together across cells are likely on the same molecule (ecDNA, a BFB ladder or a missegregated chromosome), the cross-cell covariance signal JaWA uses to link distant pieces of a walk. Two bins of one JaBbA segment always correlate, so read the blocks between segments.
+          Per-cell JaBbA copy number in 100 kb bins{ax && ax.factor > 1 ? ` (merged to ${(ax.factor * 100) / 1000} Mb columns for this window size)` : ""}, {nWith} of {rowIds.length} shown cells in the CN export, rows in the browser&apos;s order. Correlations are Pearson across these cells: segments that rise and fall together across cells are likely on the same molecule (ecDNA, a BFB ladder or a missegregated chromosome), the cross-cell covariance signal JaWA uses to link distant pieces of a walk. Two bins of one JaBbA segment always correlate, so read the blocks between segments; grey = bins with too little CN variation across cells (SD of log2 CN below 0.15) to correlate.
           {cnNote && <div><Text type="warning">{cnNote}</Text></div>}
         </div>
       )}

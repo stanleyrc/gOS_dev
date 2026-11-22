@@ -316,7 +316,9 @@ in aligned blocks of 256 bins (cached across pans).
   drawn as bars from −1 to +1 (blue–white–red). `log: true` (default) correlates log2(CN + 1).
 - `anchor`: `chr:pos` or `chr:start-end`; null = the bin with the largest CN variance across the units (often the
   amplicon). Readers let a click on any CN track set it.
-- Bins without CN variance, or with fewer than 5 units with a value, are "not available" (grey).
+- Bins without CN variance (standard deviation of log2(CN + 1) across the units below `min_sd`, default 0.15, so a
+  handful of deviating cells cannot make a flat region look perfectly correlated), or with fewer than 5 units with a
+  value, are "not available" (grey). The same rule applies to `cn_correlation_2d`.
 
 ### `cn_correlation_2d` (v0.6: bin × bin CN correlation map)
 
