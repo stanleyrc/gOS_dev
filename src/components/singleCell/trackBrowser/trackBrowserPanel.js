@@ -616,6 +616,15 @@ export default function TrackBrowserPanel() {
     if (!b.length) b = dB.length && dB.some((x) => !a.includes(x)) ? dB : dA.filter((x) => !a.includes(x));
     return { ...diff, aNames: a, bNames: b, ...diffSides(units, { by: diff.by, a, b }) };
   }, [diff, units, timePoints, cladeNames]);
+  // a time course (SW620 joint): the time-point difference (late minus T0) is on by default unless a link or spec says
+  const diffAuto = useRef(false);
+  useEffect(() => {
+    if (diffAuto.current || spec.status === "loading" || !hmIndex || timePoints.length < 2) return;
+    diffAuto.current = true;
+    if (urlParam("tbdiff") || (specOk && (spec.data.tracks || []).some((t) => t.type === "cn_diff"))) return;
+    setDiff({ on: true, by: "time_point", a: [], b: [] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spec.status, hmIndex, timePoints.length]);
   const diffProfiles = useMemo(() => {
     if (!diffState || !hmIndex) return [];
     const ra = rowsOf(hmIndex, diffState.a);
