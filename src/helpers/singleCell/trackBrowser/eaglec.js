@@ -173,3 +173,13 @@ export function laneArcs(alts, calls, slots) {
   (calls || []).forEach((c) => add("eaglec", c, c.chr1, c.pos1, c.chr2, c.pos2));
   return out;
 }
+
+/** All marks within their radius + tol of (x, y), nearest first (an EagleC call and its graph edge often coincide). */
+export function marksAt(marks, x, y, mode = "triangle", k = 1, tol = 3) {
+  const out = [];
+  (marks || []).forEach((mk) => {
+    const d = Math.min(...markPoints(mk, mode, k).map(([px, py]) => Math.hypot(px - x, py - y)));
+    if (d <= (mk.r ?? 5) + tol) out.push({ d, mk });
+  });
+  return out.sort((a, b) => a.d - b.d).map((o) => o.mk);
+}

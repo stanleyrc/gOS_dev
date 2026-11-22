@@ -10,7 +10,7 @@ import {
 } from "../../../helpers/singleCell/trackBrowser/hic";
 import {
   DEFAULT_OVERLAYS, EAGLEC_URL, eaglecCounts, eaglecHoverLines, eaglecMarks, filterCalls, junctionHoverLines, markColor,
-  markPoints, markRadius, nearestMark, parseEaglec, validateEaglec,
+  markPoints, markRadius, marksAt, parseEaglec, validateEaglec,
 } from "../../../helpers/singleCell/trackBrowser/eaglec";
 import { setupCanvas } from "./draw";
 import { useTrackLocus } from "./locusContext";
@@ -345,8 +345,8 @@ function HicMap({ id, label, sublabel = null, entry, binUrl, settings, graph, ea
     const cols = colsRef.current;
     const m = matrixRef.current;
     if (!cols || !m) return;
-    const mk = nearestMark(marksRef.current, x, y, settings.mode, H / mapW);
-    if (mk) return onHover({ cx: e.clientX, cy: e.clientY, unit: label, lines: mk.kind === "eaglec" ? eaglecHoverLines(mk.call) : junctionHoverLines(mk.junction) });
+    const near = marksAt(marksRef.current, x, y, settings.mode, H / mapW).slice(0, 3);
+    if (near.length) return onHover({ cx: e.clientX, cy: e.clientY, unit: label, lines: near.flatMap((mk, i) => [...(i ? ["—"] : []), ...(mk.kind === "eaglec" ? eaglecHoverLines(mk.call) : junctionHoverLines(mk.junction))]) });
     const p = pairAt(cols, x, y, settings.mode, H);
     if (!p) return onHover(null);
     const la = axisLocus(wb, p.a);

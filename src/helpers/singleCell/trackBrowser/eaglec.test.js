@@ -1,5 +1,5 @@
 import {
-  eaglecCounts, eaglecHoverLines, eaglecMarks, filterCalls, laneArcs, markColor, markPoints, markRadius, nearestMark, overlaysFromSpec,
+  eaglecCounts, eaglecHoverLines, eaglecMarks, filterCalls, laneArcs, markColor, markPoints, markRadius, marksAt, nearestMark, overlaysFromSpec,
   overlaysToSpec, parseEaglec, validateEaglec,
 } from "./eaglec";
 import { hicStateFromTrack, hicTrack, colorMaxes, sharedLabel } from "./hic";
@@ -55,6 +55,8 @@ describe("EagleC overlay helpers", () => {
     const hit = nearestMark(marks.map((m) => ({ ...m, r: 5 })), x + 2, y, "triangle");
     expect(hit.call.id).toBe(marks[0].call.id);
     expect(nearestMark(marks, x + 50, y + 50)).toBeNull();
+    const both = marksAt([{ ...marks[0], r: 5, kind: "graph" }, { ...marks[0], r: 6, kind: "eaglec" }], x + 1, y);
+    expect(both.map((m) => m.kind).sort()).toEqual(["eaglec", "graph"]);
     expect(RES.res).toBe(1000);
   });
 
