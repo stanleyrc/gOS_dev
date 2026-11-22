@@ -201,6 +201,7 @@ export default function TrackBrowserPanel() {
   // v0.5: a spec whose loci are only ["genome"] opens genome-wide (genome-wide tracks only, no windows) until a locus
   // is chosen (preset, Go, gene, a chromosome click); setLocusText leaves the genome view, the spec loader does not
   const [genomeOnly, setGenomeOnly] = useState(false);
+  const linkTblocus = useRef(urlParam("tblocus")); // as opened (the URL is rewritten from the state)
   const setLocusText = useCallback((v) => {
     setGenomeOnly(false);
     setLocusTextRaw(v);
@@ -269,8 +270,11 @@ export default function TrackBrowserPanel() {
       // other tracks open at the first preset (or chr1)
       const realLoci = s.loci.filter((l) => `${l}`.trim().toLowerCase() !== "genome");
       const genomeView = realLoci.length < s.loci.length || s.default_view === "genome_wide";
-      if (!(keepLink && urlParam("tblocus"))) setLocusTextRaw(realLoci.length ? realLoci.join(" | ") : specPresets(s)[0]?.locus || "chr1");
-      if (!realLoci.length && !(keepLink && urlParam("tblocus"))) setGenomeOnly(true);
+      if (!(keepLink && linkTblocus.current)) setLocusTextRaw(realLoci.length ? realLoci.join(" | ") : specPresets(s)[0]?.locus || "chr1");
+      if (!realLoci.length && !(keepLink && linkTblocus.current)) {
+        setGenomeOnly(true);
+        setUrlParam("tblocus", null);
+      }
       if (genomeView && !urlParam("tbheat")) setHeatGenome(true);
       if (genomeView && !linkAcn.current) setAcnGenome(true);
       if (Array.isArray(s.windows)) setWindowY(s.windows.map((w) => ({ ...DEFAULT_Y, ...(w?.y || {}) })));
