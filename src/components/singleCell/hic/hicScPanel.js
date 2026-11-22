@@ -26,14 +26,14 @@ function urlParam(name) {
   }
 }
 
-// copy-number colors of the per-cell heat map (relative CN: 2 = white)
-function cnRgb(v) {
+// copy-number colors of the per-cell heat map: white at the sample's ploidy (neutral), blue below, red above (log2)
+function cnRgb(v, neutral = 2) {
   if (!Number.isFinite(v)) return [235, 235, 235];
-  if (v < 2) {
-    const t = Math.max(0, Math.min(1, (2 - v) / 2));
+  if (v < neutral) {
+    const t = Math.max(0, Math.min(1, (neutral - v) / neutral));
     return [Math.round(255 - 180 * t), Math.round(255 - 130 * t), 255];
   }
-  const t = Math.max(0, Math.min(1, Math.log2(v / 2) / 3));
+  const t = Math.max(0, Math.min(1, Math.log2(v / neutral) / 3));
   return [255, Math.round(255 - 200 * t), Math.round(255 - 220 * t)];
 }
 
@@ -44,8 +44,13 @@ function cnRgb(v) {
 function CellCnHeatmap({ cn, units, unitOrder, sampleColor, slots, left, width, onPickUnit, onBrush }) {
   const ref = useRef(null);
   const order = useMemo(() => cellRowOrder(cn, unitOrder), [cn, unitOrder]);
-  const rowH = Math.max(1, Math.min(4, Math.floor(360 / Math.max(1, order.length))));
-  const H = Math.max(40, order.length * rowH);
+  // at most ~360 px: rows thinner than a pixel overlap (thousands of cells)
+  const rowH = Math.min(4, 360 / Math.max(1, order.length));
+  const H = Math.max(40, Math.ceil(order.length * rowH));
+  const neutralOf = useMemo(() => {
+    const m = new Map((cn.ploidy || []).map((x) => [x.sample, Number(x.ploidy)]));
+    return (smp) => (m.get(smp) > 0 ? m.get(smp) : 2);
+  }, [cn]);
   const unitOf = useMemo(() => {
     const m = new Map();
     units.forEach((u) => {
@@ -70,10 +75,12 @@ function CellCnHeatmap({ cn, units, unitOrder, sampleColor, slots, left, width, 
       const cell = cn.cells[ci];
       const u = unitOf.get(cell.unit);
       const y = r * rowH;
+      const hh = Math.max(1, rowH);
+      const neutral = neutralOf(cell.sample || u?.sample);
       ctx.fillStyle = sampleColor(cell.sample || u?.sample) || "#bbb";
-      ctx.fillRect(left - 26, y, 10, rowH);
+      ctx.fillRect(left - 26, y, 10, hh);
       ctx.fillStyle = clusterColors[u?.id] || "#999";
-      ctx.fillRect(left - 14, y, 10, rowH);
+      ctx.fillRect(left - 14, y, 10, hh);
       slots.forEach((s) => {
         const bins = cnBinsOf(cn, s.window);
         if (!bins) return;
@@ -81,13 +88,13 @@ function CellCnHeatmap({ cn, units, unitOrder, sampleColor, slots, left, width, 
         const n = b1 - b0 + 1;
         for (let b = b0; b <= b1; b += 1) {
           const x0 = left + s.x0 + ((b - b0) / n) * s.width;
-          const [R, G, B] = cnRgb(cn.values[ci * cn.nBins + b]);
+          const [R, G, B] = cnRgb(cn.values[ci * cn.nBins + b], neutral);
           ctx.fillStyle = `rgb(${R},${G},${B})`;
-          ctx.fillRect(x0, y, Math.max(1, s.width / n + 0.5), rowH);
+          ctx.fillRect(x0, y, Math.max(1, s.width / n + 0.5), hh);
         }
       });
     });
-  }, [cn, order, rowH, H, width, left, slots, unitOf, sampleColor, clusterColors]);
+  }, [cn, order, rowH, H, width, left, slots, unitOf, sampleColor, clusterColors, neutralOf]);
   const drag = useRef(null);
   const at = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -122,7 +129,7 @@ function CellCnHeatmap({ cn, units, unitOrder, sampleColor, slots, left, width, 
         }}
       />
       <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
-        {order.length} cells · bars: sample (left), cluster (right) · click a row to open its cluster map · drag across a window to zoom the region · {cn.note || "relative copy number"}
+        {order.length} cells · bars: sample (left), cluster (right) · white = the sample&apos;s ploidy, red above, blue below · click a row to open its cluster map · drag across a window to zoom the region · {cn.note || "relative copy number"}
         {cn.source ? ` · source: ${cn.source}` : ""}
       </div>
     </div>
@@ -160,7 +167,7 @@ export default function HicScPanel() {
       const errors = validateCellsCn(r.data);
       if (errors.length) return setCellsCn({ status: "error", reason: errors.join("; ") });
       try {
-        return setCellsCn({ status: "ok", data: { ...decodeCellsCn(r.data), note: r.data.note, source: r.data.source } });
+        return setCellsCn({ status: "ok", data: { ...decodeCellsCn(r.data), note: r.data.note, source: r.data.source, ploidy: r.data.ploidy || [] } });
       } catch (e) {
         return setCellsCn({ status: "error", reason: e.message });
       }
@@ -294,7 +301,7 @@ export default function HicScPanel() {
           </TrackLocusContext.Provider>
         ) : (
           <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>
-            Rows: the cluster units in the heat map above (per-cell copy number: not available; {cellsCn.reason || "loading"}). Select a cluster row there (or a button here), or brush a region in the genome view, to draw its contact map.
+            {cellsCn.status === "loading" ? "Per-cell copy number (hic/cells_cn.json, tens of MB): loading… Meanwhile the" : "Rows: the"} cluster units in the heat map above{cellsCn.status === "loading" ? " are the rows" : ` (per-cell copy number: not available; ${cellsCn.reason})`}. Select a cluster row there (or a button here), or brush a region in the genome view, to draw its contact map.
           </div>
         )}
         {!shownUnits.length ? (

@@ -288,6 +288,11 @@ function HicMap({ id, label, sublabel = null, entry, binUrl, settings, graph, ea
       });
     }
     marksRef.current = hits;
+    // overlay mark positions (canvas px) for the headless checks: canvas[data-hic-map] + window.__gosHicMarks
+    if (typeof window !== "undefined") {
+      window.__gosHicMarks = window.__gosHicMarks || {};
+      window.__gosHicMarks[id || label] = hits.flatMap((h) => markPoints(h, settings.mode, kY).filter(([, y]) => y <= H).map(([x, y]) => ({ kind: h.kind, x: trackLeft + x, y, prob: h.call?.prob ?? null, inGraph: h.call ? h.call.inGraph : true })));
+    }
     ctx.restore();
     const ms = performance.now() - t0;
     recordFrame(ms);
@@ -372,6 +377,7 @@ function HicMap({ id, label, sublabel = null, entry, binUrl, settings, graph, ea
       </div>
       <canvas
         ref={canvasRef}
+        data-hic-map={id || label}
         style={{ display: "block", cursor: "grab", touchAction: "none" }}
         onMouseDown={onDown}
         onMouseMove={onMove}
