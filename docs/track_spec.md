@@ -276,6 +276,8 @@ Index format `gos-cn-heatmap-u16` (version 1):
 - Interaction (gOS): click a band selects the clade (`selection.clades`); click a cell row pins that cell's rows
   (`layout.pinned`); genome-wide, click a chromosome opens it.
 - `row_px`: pixel height per cell row (1-12).
+- Writers may name strips by their attribute (`clone_id` = `clade`, `depth_class` = `depth`) and give `colors` as
+  `{ "neutral": "ploidy" | 2, "max": 8 }`; readers treat these as the forms above.
 
 ### `atac` (v0.4: accessibility pools and per-cell ATAC)
 
@@ -298,7 +300,7 @@ Index format `gos-atac-index` (version 1):
   readers range-read it and use the coarsest zoom level whose reduction is <= bp per pixel. Peaks: MACS3 narrowPeak,
   bgzip (+ tabix); drawn as ticks under the pool signal.
 - Clade rows draw their pool; cell rows draw `cell_url` (per-cell 500 kb `atac.arrow`: `x` = genome-wide bin start,
-  `y` = CPM).
+  `y` = CPM). `per_cell: { "url", "format", "bin_size", "unit" }` is accepted as an equivalent form.
 - `per_copy: true` divides the signal by the clade's median CN in the 500 kb heat-map bin (cell rows: the cell's CN),
   i.e. fragments per copy; bins with CN <= 0.05 or no CN are gaps.
 - With cell `filters` on, a clade's pool is recomputed in the browser as the mean of its shown cells' 500 kb ATAC

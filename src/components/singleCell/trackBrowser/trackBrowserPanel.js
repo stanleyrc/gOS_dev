@@ -248,6 +248,9 @@ export default function TrackBrowserPanel() {
       const dt = byType("cn_diff");
       if (dt && !urlParam("tbdiff")) setDiff({ on: dt.visible !== false && (dt.a || []).length > 0 && (dt.b || []).length > 0, by: dt.by === "time_point" ? "time_point" : "clade", a: [].concat(dt.a || []).map(String), b: [].concat(dt.b || []).map(String) });
       const hmT = byType("cn_heatmap");
+      const hc = hmT?.colors;
+      if (hc && !urlParam("tbhcol") && (hc === "absolute" || hc?.neutral === 2 || hc?.neutral === "absolute")) setHeatColors("absolute");
+      if (hmT?.genome_wide && !urlParam("tbheat")) setHeatGenome(true);
       if (hmT?.row_px && !urlParam("tbhpx")) setHeatRowPx(Math.min(12, Math.max(1, Number(hmT.row_px) || 3)));
       const L = s.layout || {};
       if (L.row_height && !(keepLink && urlParam("tbh"))) setBase(clampHeight(L.row_height));

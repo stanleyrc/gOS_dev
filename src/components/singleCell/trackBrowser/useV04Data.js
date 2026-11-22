@@ -171,7 +171,7 @@ export default function useV04Data({ dataPath, patient, genome, specBase, heatTr
   }, [s.atac.status, wantKey]);
 
   // per-cell ATAC (500 kb atac.arrow) for the cell rows in view
-  const cellUrl = atacTrack && !atacTrack.unavailable ? atacTrack.cell_url || "{dataPath}{unit}/atac.arrow" : null;
+  const cellUrl = atacTrack && !atacTrack.unavailable ? atacTrack.cell_url || atacTrack.per_cell?.url || "{dataPath}{unit}/atac.arrow" : null;
   useEffect(() => {
     if (!cellUrl) return;
     (cellAtacIds || []).forEach((id) => {
