@@ -29,6 +29,7 @@ import { COLORS, drawGenes, drawJunctions, drawRuler, drawTree, hitTest, setupCa
 import { CanvasRow, GraphPlotRow, NoteRow } from "./trackRow";
 import { TrackLocusContext } from "./locusContext";
 import HicSection from "./hicTrack";
+import JawaSections, { defaultJawaState, jawaStateFromTracks, jawaTracks, JAWA_TYPES } from "./jawaSections";
 import { defaultHicUnits, hicStateFromTrack, hicTrack } from "../../../helpers/singleCell/trackBrowser/hic";
 
 const { Text } = Typography;
@@ -139,6 +140,13 @@ export default function TrackBrowserPanel() {
   const groupOf = useCallback((id) => sampleById.get(id) ?? "all", [sampleById]);
   const sColors = useMemo(() => sampleColors(hicList, unitsJson), [hicList, unitsJson]);
   const [hic, setHic] = useState(() => hicStateFromTrack({}));
+  // JaWA track types (spec v0.6): ?tbjawa=cn_heatmap,cn_correlation_2d,... switches them on from a link
+  const [jawa, setJawa] = useState(() => {
+    const s = defaultJawaState();
+    `${urlParam("tbjawa") || ""}`.split(",").filter((t) => JAWA_TYPES.includes(t)).forEach((t) => { s.on[t] = true; });
+    if (urlParam("tbanchor")) s.anchor = urlParam("tbanchor");
+    return s;
+  });
   const [hicFromSpec, setHicFromSpec] = useState(false);
   // paired ("Hi-C with each graph") or stacked layout, per-unit track order, grouping (spec v0.5 layout; localStorage)
   const [hicLayout, setHicLayout] = useState(() => loadHicLayout() || defaultHicLayout());
@@ -204,6 +212,7 @@ export default function TrackBrowserPanel() {
       const byType = (t) => (s.tracks || []).find((x) => x.type === t);
       setShowGraph(Boolean(byType("graph")) && byType("graph").visible !== false);
       setShowCov(Boolean(byType("coverage")) && byType("coverage").visible !== false);
+      if ((s.tracks || []).some((t) => JAWA_TYPES.includes(t?.type))) setJawa((j) => jawaStateFromTracks(s.tracks, j));
       if (byType("hic")) {
         setHic(hicStateFromTrack(byType("hic")));
         setHicFromSpec(true);
@@ -778,7 +787,7 @@ export default function TrackBrowserPanel() {
         if (t.type === "junctions") return { ...t, height: junctionH };
         if (t.type === "reads") return { ...t, height: readsH };
         return t;
-      }).filter((t) => t.type !== "hic").concat(hicUnits.length || hicFromSpec ? [hicTrack(hic)] : []),
+      }).filter((t) => t.type !== "hic" && !JAWA_TYPES.includes(t.type)).concat(hicUnits.length || hicFromSpec ? [hicTrack(hic)] : []).concat(jawaTracks(jawa)),
       selection: groups.length || cladeIds ? { ...(groups.length ? { clades: groups } : {}), ...(cladeIds ? { units: cladeIds } : {}) } : null,
       provenance: { source: "gOS track browser export", data: "interim gOS per-cell files" },
     });
@@ -818,7 +827,7 @@ export default function TrackBrowserPanel() {
   const locus = { windows, setWindows: applyWindows, slots, scales, domains, chromoBins, onPlotDomains, geometry: { leftW, gapX, contentW, trackLeft } };
   return (
     <TrackLocusContext.Provider value={locus}>
-    <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : "0.5 · interim gOS files"}</Text>}</Space>}>
+    <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : "0.6 · interim gOS files"}</Text>}</Space>}>
       <Space wrap style={{ marginBottom: 6 }}>
         <Input.Search style={{ width: narrow ? Math.max(200, width - 10) : 470 }} size="small" value={locusText} onChange={(e) => setLocusText(e.target.value)} onSearch={(v) => setLocusText(v)} enterButton="Go" placeholder="chr12:57,000,000-70,000,000 | chr11:39.2m-39.7m" />
         <Select size="small" style={{ width: 180 }} placeholder="preset loci" value={null} options={presets.map((p) => ({ label: p.label, value: p.locus }))} onChange={(v) => setLocusText(v)} />
@@ -933,6 +942,7 @@ export default function TrackBrowserPanel() {
         {(hicUnits.length > 0 || hicFromSpec) && hic.visible && hicLayout.hicMode !== "paired" && (
           <HicSection units={hicUnits} state={hic} setState={setHic} dataPath={dataPath} patient={patientId} genome={genome} graphs={data.graphs} dataVersion={data.version} narrow={narrow} groupOf={multiSample ? groupOf : null} order={hicOrder} versionNote={hicUnits.length ? hicDataVersion(unitsJson, hicList) : null} />
         )}
+        <JawaSections state={jawa} setState={setJawa} orderedUnits={orderedUnits} groupColor={(u) => groupColor(u.group)} patient={patientId} narrow={narrow} />
         {tip && (
           <div style={{ position: "fixed", left: Math.min(hover.cx + 14, (typeof window !== "undefined" ? window.innerWidth : 1600) - 330), top: hover.cy + 14, background: "rgba(255,255,255,0.97)", border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px", fontSize: 12, pointerEvents: "none", whiteSpace: "pre", zIndex: 1000, boxShadow: "0 1px 4px rgba(0,0,0,0.15)", maxWidth: 420 }}>
             {tip}

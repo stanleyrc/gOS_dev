@@ -1,11 +1,11 @@
-# gOS / gCells track spec (`gos-track-spec`), version 0.5
+# gOS / gCells track spec (`gos-track-spec`), version 0.6
 
 One JSON document describes a stacked genome view: the loci, the units (cells or pseudobulk groups) in tree
 order, and the tracks. The same file is read by the gOS track browser (tab "Track browser"), by gCells in R
 (`gc$gt()`, `gc$iplot()`, `gc$gt_reads()`, drawn with gTrack) and by the Python reader (`gcells.py`). A view
 built in a notebook opens in gOS; a gOS view can be exported as a spec and redrawn in R.
 
-Status: **v0.5 draft (2026-11-21)**; v0.5 adds hic `overlays` (raw EagleC calls next to the graph junctions), the paired "Hi-C with each graph" layout (`layout.hic_mode`, `layout.unit_order`, `layout.group_by`, `layout.interleave`), `color.shared: "per_sample"` and graph `y.shared`. v0.4 adds the `hic` track type (contact maps over the windows); v0.1 (2026-11-20) was written for milestone M1 of the track browser.
+Status: **v0.6 draft (2026-11-21)**; v0.6 defines the JaWA track types reserved since v0.1: `cn_heatmap`, `cn_correlation_1d`, `cn_correlation_2d`, `walks` and `atac` (below). v0.5 adds hic `overlays` (raw EagleC calls next to the graph junctions), the paired "Hi-C with each graph" layout (`layout.hic_mode`, `layout.unit_order`, `layout.group_by`, `layout.interleave`), `color.shared: "per_sample"` and graph `y.shared`. v0.4 adds the `hic` track type (contact maps over the windows); v0.1 (2026-11-20) was written for milestone M1 of the track browser.
 v0.3 adds per-window y scales (`windows[i].y`) and the view `layout` (row heights, pseudobulk-first, pins).
 v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; every v0.1 file is a valid v0.2 file. Fields marked
 *reserved* are named now so writers can emit them, but no reader acts on them yet.
@@ -22,7 +22,7 @@ v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; ev
 ```json
 {
   "spec": "gos-track-spec",
-  "version": "0.5",
+  "version": "0.6",
   "id": "MGH303_12q_m1",
   "title": "MGH303 12q amplicon",
   "genome": "hg38",
@@ -289,18 +289,91 @@ Pixels are the cooler upper triangle sorted by bin1 then bin2, so a window's row
 (`offsets[a] .. offsets[b + 1]`); contacts between two windows are in the rows of the earlier one. Readers fetch rows
 in aligned blocks of 256 bins (cached across pans).
 
-### Reserved types (M2–M4; names fixed now)
+### `cn_heatmap` (v0.6: cells × bins in row order)
+
+```json
+{ "id": "cnheat", "type": "cn_heatmap", "title": "CN heat map", "url": "{dataPath}{patient}/cn_binned.json",
+  "format": "gos-sc-cn-binned/1", "level": "100kb", "units": "tumor", "height": 240, "annotations": ["group", "ecdna"] }
+```
+
+- One pixel row per unit in the browser's row order (tree order in `cells` mode), x aligned with the windows.
+- Source: `gos-sc-cn-binned/1` (`cn_binned.json` + `cn_binned_<level>.cn.u16`, cell-major uint16, 65535 = missing): the
+  JaBbA segment CN at each bin centre. When a window has more bins than the reader's column cap, neighboring bins are
+  averaged (the reader says so).
+- Colors: the gOS CN palette (as the Single-Cell heat map).
+- `units`: `tumor` (default; normal cells left out) or `all`.
+- `annotations` (left strips): `group` (clade / clone color) and `ecdna` (the ecDNA classifier call, `ecdna_status.json`,
+  of the smallest tree clade holding the cell, for each amplicon overlapping the windows; up to 3; blank = no call).
+
+### `cn_correlation_1d` (v0.6: correlation with an anchor)
+
+```json
+{ "id": "cncor1", "type": "cn_correlation_1d", "url": "{dataPath}{patient}/cn_binned.json", "format": "gos-sc-cn-binned/1",
+  "level": "100kb", "anchor": "chr12:69200000", "log": true, "units": "tumor", "height": 70 }
+```
+
+- Pearson correlation, across the shown units, of each bin's CN with the anchor's CN (mean over the anchor's bins),
+  drawn as bars from −1 to +1 (blue–white–red). `log: true` (default) correlates log2(CN + 1).
+- `anchor`: `chr:pos` or `chr:start-end`; null = the bin with the largest CN variance across the units (often the
+  amplicon). Readers let a click on any CN track set it.
+- Bins without CN variance, or with fewer than 5 units with a value, are "not available" (grey).
+
+### `cn_correlation_2d` (v0.6: bin × bin CN correlation map)
+
+```json
+{ "id": "cncor2", "type": "cn_correlation_2d", "url": "{dataPath}{patient}/cn_binned.json", "format": "gos-sc-cn-binned/1",
+  "level": "100kb", "mode": "triangle", "log": true, "units": "tumor", "height": 320 }
+```
+
+- Bin × bin Pearson correlation of CN across the shown units, on the concatenated multi-window axis and drawn like
+  `hic` (triangle, diagonal on top, x aligned with the tracks; cis blocks on the diagonal, trans blocks between windows
+  off it), so it sits next to a Hi-C map of the same cells' cluster. Color −1 blue, 0 white, +1 red; grey = no
+  variance.
+- Reading: segments on one molecule rise and fall together across cells (ecDNA segregation, BFB, missegregation), so
+  a block of high correlation links distant pieces of a walk. Bins of one JaBbA segment always correlate.
+- gCells writes the same matrix as a GxG gMatrix (`gcm_cn_correlation`); a precomputed matrix may be given as
+  `url` to an arrow file with columns `i, j, r` and `axis` metadata (*reserved*; gOS computes it in the browser now).
+
+### `walks` (v0.6: walk layers)
+
+```json
+{ "id": "walks", "type": "walks", "url": "{dataPath}{patient}/walks.json", "format": "gos-sc-walks/1",
+  "layer": "curated", "min_cells": 0, "max_walks": 40 }
+```
+
+- One lane per walk touching the windows (most carrier cells first): nodes as bars with a strand chevron, links from
+  the end of each node to the start of the next in walk orientation, the closing link of a circular walk dashed.
+  Hover: label, circular/linear, nodes, method, carrier cells and median copies over the shown units.
+- `layer`: `curated` (`walks.json`, the curated walks) or `peel` (`walks_peel_v4.json`, proposed peel / covariance
+  walks, labelled "proposed, not curated"); later layers (low-carrier, Method C, single-cell-guided fastKar) use the
+  same format with their own `layer` name.
+- Format `gos-sc-walks/1`: `walks[]` with `id`, `label`, `circular`, `curated`, `ncells`, `median_cn`, `nodes[]`
+  (`chromosome`, `start`, `end`, `strand`, `cn`), `junctions[]` (`from`, `to`, `type`) and `cells` (unit → copies).
+
+### `atac` (v0.6: accessibility per group)
+
+```json
+{ "id": "atac", "type": "atac", "per_unit": true, "url": "{dataPath}{unit}/atac/signal.json", "format": "gos-atac-bins/1",
+  "per_copy": false, "group_by": "group" }
+```
+
+- Pseudobulk accessibility per unit (cluster or clade) as bars, peaks as ticks under them. `per_copy: true` divides
+  each bin by the unit's CN in that bin (bins with CN 0 or missing are skipped).
+- Format `gos-atac-bins/1`: `format`, `unit`, `genome`, `bin_size`, `chroms[]` (`name`, `n_bins`, in order),
+  `signal[]` (one value per bin, chromosomes concatenated), optional `cn[]` (same length) and `peaks[]`
+  (`[chrom, start, end]`). bigwig + bed.gz is the planned range-read variant (*reserved*).
+- A unit without an export reads "ATAC not available (reason)". No ATAC data are on the main cluster yet.
+
+### Reserved types (names fixed now)
 
 | type | format | notes |
 |---|---|---|
-| `walks` | gGnome.js walks JSON | gWalk layers (curated, peel, covariance, Method C), stacked paths with copies; `layer` field names the method |
-| `cn_heatmap` | arrow / u16 bins | cells × bins in tree order |
-| `cn_correlation_1d` | bigwig / arrow | correlation of each bin's CN with `anchor` locus across the selected units |
-| `cn_correlation_2d` | arrow | bin × bin triangle, drawn like `hic` |
-| `atac` | bigwig + bed.gz | pseudobulk signal and peaks; `per_copy: true` divides by CN |
+| `junction_support` | bedpe.gz / arrow | per junction × unit split / discordant reads (see `junctions`) |
+| `consensus_graph` | gggnome-json | a group's consensus graph (gCells `gcm_consensus_graph`: union of member graphs, median CN, junctions in ≥ `min_frac` of members) |
 | `segments`, `peaks` | bed.gz + tbi | |
 
-(`snv_reads` and `signature` moved from planned to defined in v0.2.)
+(`snv_reads` and `signature` moved from planned to defined in v0.2; `hic` in v0.4; `walks`, `cn_heatmap`,
+`cn_correlation_1d/2d` and `atac` in v0.6.)
 
 ## Selection
 
@@ -308,6 +381,10 @@ in aligned blocks of 256 bins (cached across pans).
 units. gOS writes the current tree selection here on export.
 
 ## Changes
+
+- **0.6 (2026-11-21):** `cn_heatmap` (with group and ecDNA-call strips), `cn_correlation_1d` (anchor), `cn_correlation_2d`
+  (triangle like `hic`), `walks` (curated / peel layers, `gos-sc-walks/1`) and `atac` (`gos-atac-bins/1`); reserved
+  `consensus_graph`. Every v0.5 file is a valid v0.6 file.
 
 - **0.5 (2026-11-21):** hic `overlays` (graph junctions + raw EagleC calls, `gos-eaglec/1`), `color.shared:
   "per_sample"`, graph `y.shared`, `layout.hic_mode` / `unit_order` / `group_by` / `interleave` (paired "Hi-C with

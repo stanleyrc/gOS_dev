@@ -156,7 +156,7 @@ describe("hic helpers", () => {
     const st = hicStateFromTrack({});
     const units = { kind: "cell", list: [{ id: "U1" }, { id: "U2" }] };
     const spec = buildSpec({ patient: "GBM39", windows, units, tracks: [hicTrack({ ...st, units: ["U1"] })] });
-    expect(spec.version).toBe("0.5");
+    expect(spec.version).toBe("0.6");
     expect(validateSpec(spec)).toEqual([]);
     const back = JSON.parse(JSON.stringify(spec));
     expect(back.loci).toEqual(spec.loci);

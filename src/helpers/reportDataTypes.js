@@ -18,6 +18,15 @@ export const DATA_TYPES = [
 ];
 
 export const DATA_TYPE_FIELD = "data_type";
+
+/**
+ * Assays whose datasets are not on this server yet: the facet keeps them (disabled while no report has the type)
+ * and says why, instead of showing nothing. Cluster pages (clusters as units) open once a dataset is added.
+ */
+export const PENDING_DATA_TYPES = {
+  datac: "pending: the dATAC lines are processed on the other cluster",
+  dlp_plus: "pending download",
+};
 const BY_VALUE = Object.fromEntries(DATA_TYPES.map((d) => [d.value, d]));
 
 const ALIASES = {
@@ -76,7 +85,11 @@ export const dataTypeShort = (value) => BY_VALUE[value]?.short || `${value}`;
  * count; types with no report are listed but disabled; unknown codes last.
  */
 export function dataTypeOptions(frequencies = {}) {
-  const known = DATA_TYPES.map((d) => ({ value: d.value, label: d.label, count: frequencies[d.value] || 0, disabled: !frequencies[d.value], searchText: `${d.label} ${d.short} ${d.value}` }));
+  const known = DATA_TYPES.map((d) => {
+    const n = frequencies[d.value] || 0;
+    const pending = !n && PENDING_DATA_TYPES[d.value];
+    return { value: d.value, label: pending ? `${d.label} (${pending})` : d.label, count: n, disabled: !n, searchText: `${d.label} ${d.short} ${d.value}`, ...(pending ? { pending } : {}) };
+  });
   const extra = Object.keys(frequencies)
     .filter((v) => !BY_VALUE[v] && v !== "null" && v !== "undefined")
     .map((v) => ({ value: v, label: v, count: frequencies[v], searchText: v }));

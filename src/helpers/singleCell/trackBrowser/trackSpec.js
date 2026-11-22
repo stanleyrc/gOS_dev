@@ -3,9 +3,9 @@ import { formatLocus, parseLocus } from "./locus";
 import { resolveUnitFolder } from "../unitSource";
 
 export const SPEC_NAME = "gos-track-spec";
-export const SPEC_VERSION = "0.5";
-export const KNOWN_TYPES = ["coverage", "graph", "reads", "genes", "junctions", "snv_reads", "signature", "hic"];
-export const RESERVED_TYPES = ["junction_support", "walks", "cn_heatmap", "cn_correlation_1d", "cn_correlation_2d", "atac", "segments", "peaks"];
+export const SPEC_VERSION = "0.6";
+export const KNOWN_TYPES = ["coverage", "graph", "reads", "genes", "junctions", "snv_reads", "signature", "hic", "walks", "cn_heatmap", "cn_correlation_1d", "cn_correlation_2d", "atac"];
+export const RESERVED_TYPES = ["junction_support", "consensus_graph", "segments", "peaks"];
 
 /** The default M1 tracks over the interim gOS per-cell files (coverage.arrow, complex.json, pooled junction slices). */
 export function interimTracks() {

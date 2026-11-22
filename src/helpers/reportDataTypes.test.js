@@ -49,7 +49,9 @@ describe("data type parsing", () => {
     const opts = dataTypeOptions({ bulk_wgs: 3, sc_dna_pta: 5, weird: 1 });
     expect(opts.slice(0, DATA_TYPES.length).map((o) => o.value)).toEqual(DATA_TYPES.map((d) => d.value));
     expect(opts.find((o) => o.value === "bulk_wgs")).toMatchObject({ count: 3, disabled: false, label: "bulk WGS" });
-    expect(opts.find((o) => o.value === "datac")).toMatchObject({ count: 0, disabled: true });
+    expect(opts.find((o) => o.value === "datac")).toMatchObject({ count: 0, disabled: true, pending: expect.stringContaining("other cluster") });
+    expect(opts.find((o) => o.value === "dlp_plus").label).toContain("pending download");
+    expect(dataTypeOptions({ datac: 2 }).find((o) => o.value === "datac")).toMatchObject({ count: 2, disabled: false, label: "dATAC" });
     expect(opts[opts.length - 1]).toMatchObject({ value: "weird", count: 1 });
   });
 
