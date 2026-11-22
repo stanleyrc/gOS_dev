@@ -85,6 +85,8 @@ describe("Hi-C units of a report", () => {
     expect(relCnRgb(2.6, 2.6)).toEqual([255, 255, 255]);
     expect(relCnRgb(10.4, 2.6)[1]).toBe(40);
     expect(relCnRgb(1.3, 2.6)[2]).toBe(255);
+    expect(relCnRgb(2.9, 2.6)).toEqual([255, 255, 255]);
+    expect(relCnRgb(0.65, 2.6)[0]).toBe(65);
     expect(binAtX(cn, 0, 400)).toBe(0);
     expect(binAtX(cn, 399, 400)).toBe(3);
     expect(xOfBin(cn, 2, 400)).toBe(200);

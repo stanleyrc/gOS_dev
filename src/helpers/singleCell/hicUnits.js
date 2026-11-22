@@ -264,15 +264,20 @@ export function cnNeutralBySample(cn) {
   return out;
 }
 
-/** Heat map color of a relative CN: white at neutral, blue down to neutral/2, red up to neutral * 4 (log2 scale). */
+/**
+ * Heat map color of a relative CN (log2 ratio to neutral): white within ±0.26 (about ±20%), blue saturating at a
+ * quarter, red saturating at 4×.
+ */
 export function relCnRgb(v, neutral = 2) {
   if (!Number.isFinite(v)) return [235, 235, 235];
-  const l = Math.log2(Math.max(v, 1e-3) / (neutral > 0 ? neutral : 2));
+  const raw = Math.log2(Math.max(v, 1e-3) / (neutral > 0 ? neutral : 2));
+  const dz = 0.26;
+  const l = Math.abs(raw) <= dz ? 0 : raw - Math.sign(raw) * dz;
   if (l < 0) {
-    const t = Math.min(1, -l);
+    const t = Math.min(1, -l / (2 - dz));
     return [Math.round(255 - 190 * t), Math.round(255 - 140 * t), 255];
   }
-  const t = Math.min(1, l / 2);
+  const t = Math.min(1, l / (2 - dz));
   return [255, Math.round(255 - 215 * t), Math.round(255 - 225 * t)];
 }
 

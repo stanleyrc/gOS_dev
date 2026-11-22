@@ -65,11 +65,23 @@ function CellCnHeatmap({ cn, units, unitOrder, sampleColor, windows, left, width
     const ctx = c.getContext("2d");
     const im = ctx.createImageData(W, bodyH);
     const binOfX = Array.from({ length: W }, (_, x) => binAtX(cn, x + 0.5, W));
+    // each pixel row is the mean of the cells it covers (rows are grouped by cluster): per-cell Hi-C CN is Poisson-noisy
     for (let y = 0; y < bodyH; y += 1) {
-      const ci = order[Math.min(order.length - 1, Math.floor(((y + 0.5) / bodyH) * order.length))];
-      const nt = neutral[cn.cells[ci]?.sample ?? "all"] ?? 2;
+      const r0 = Math.floor((y / bodyH) * order.length);
+      const r1 = Math.max(r0 + 1, Math.floor(((y + 1) / bodyH) * order.length));
+      const rows = order.slice(r0, Math.min(order.length, r1));
+      const nt = neutral[cn.cells[rows[0]]?.sample ?? "all"] ?? 2;
       for (let x = 0; x < W; x += 1) {
-        const [R, G, B] = relCnRgb(cn.values[ci * cn.nBins + binOfX[x]], nt);
+        let sum = 0;
+        let k = 0;
+        rows.forEach((ci) => {
+          const v = cn.values[ci * cn.nBins + binOfX[x]];
+          if (Number.isFinite(v)) {
+            sum += v;
+            k += 1;
+          }
+        });
+        const [R, G, B] = relCnRgb(k ? sum / k : NaN, nt);
         const o = 4 * (y * W + x);
         im.data[o] = R;
         im.data[o + 1] = G;
@@ -166,9 +178,9 @@ function CellCnHeatmap({ cn, units, unitOrder, sampleColor, windows, left, width
         onMouseLeave={() => setBrush(null)}
       />
       <div style={{ fontSize: 11, color: "#666", marginTop: 2, display: "flex", flexWrap: "wrap", gap: "2px 10px", alignItems: "center" }}>
-        <span>{order.length} cells × {cn.nBins} bins of {cn.binSize / 1e6} Mb · bars: sample (left), cluster (right) · black boxes: the Hi-C windows · click a row: its cluster map · drag: set the Hi-C window</span>
+        <span>{order.length} cells × {cn.nBins} bins of {cn.binSize / 1e6} Mb{order.length > bodyH ? ` (each pixel row = mean of ~${Math.round(order.length / bodyH)} neighboring cells of the same cluster)` : ""} · bars: sample (left), cluster (right) · black boxes: the Hi-C windows · click a row: its cluster map · drag: set the Hi-C window</span>
         <span>
-          <b>relative CN</b> (Hi-C coverage; not absolute copy number): white = the sample&apos;s median ({Object.entries(neutral).map(([s, v]) => `${s} ${v.toFixed(2)}`).join(", ")}), blue = half, red = 4× or more
+          <b>relative CN</b> (Hi-C coverage; not absolute copy number): white = the sample&apos;s median ({Object.entries(neutral).map(([s, v]) => `${s} ${v.toFixed(2)}`).join(", ")}) ± 20%, blue = ¼ or less, red = 4× or more
           {(cn.ploidy || []).length ? ` · graph ploidy ${cn.ploidy.map((p) => `${p.sample} ${Number(p.ploidy).toFixed(2)}`).join(", ")}` : ""}
         </span>
         <span>{cn.note || ""}</span>
