@@ -1,5 +1,5 @@
 import {
-  eaglecCounts, eaglecHoverLines, eaglecMarks, filterCalls, laneArcs, markColor, markPoints, markRadius, marksAt, nearestMark, overlaysFromSpec,
+  eaglecCounts, eaglecHoverLines, junctionHoverLines, eaglecMarks, filterCalls, laneArcs, markColor, markPoints, markRadius, marksAt, nearestMark, overlaysFromSpec,
   overlaysToSpec, parseEaglec, validateEaglec,
 } from "./eaglec";
 import { hicStateFromTrack, hicTrack, colorMaxes, sharedLabel } from "./hic";
@@ -68,6 +68,7 @@ describe("EagleC overlay helpers", () => {
     expect(lines.join(" ")).toMatch(/prob 0\.990/);
     expect(lines.join(" ")).toMatch(/kept: in graph \(edge 12/);
     expect(eaglecHoverLines(parseEaglec(FILE)[1]).join(" ")).toMatch(/dropped/);
+    expect(junctionHoverLines({ cid: 7, cn: 3, source: "eaglec", a: { chrom: "7", pos: 1 }, b: { chrom: "7", pos: 9 } })[0]).toBe("graph junction 7 · CN 3 · source eaglec");
   });
 
   it("lane arcs keep one-sided calls", () => {

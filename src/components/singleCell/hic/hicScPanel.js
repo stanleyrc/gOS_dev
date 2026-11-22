@@ -9,7 +9,7 @@ import { formatLocus, layoutWindows, parseLocus, placesToWindow, windowToPlaces 
 import { DEFAULT_OVERLAYS, EAGLEC_URL } from "../../../helpers/singleCell/trackBrowser/eaglec";
 import { hicStateFromTrack, sharedLabel } from "../../../helpers/singleCell/trackBrowser/hic";
 import {
-  DEFAULT_HIC_LOCUS, HIC_DATASET_LABEL, cellRowOrder, cnBinsOf, decodeCellsCn, hicUnitList, hicWindowsFromView, mapLabel, orderUnits,
+  DEFAULT_HIC_LOCUS, HIC_DATASET_LABEL, cellRowOrder, hicDataVersion, cnBinsOf, decodeCellsCn, hicUnitList, hicWindowsFromView, mapLabel, orderUnits,
   reportHasHic, sampleColors, samplesOf, unitsForSelection, validateCellsCn, validateUnits,
 } from "../../../helpers/singleCell/hicUnits";
 import { TrackLocusContext } from "../trackBrowser/locusContext";
@@ -274,6 +274,7 @@ export default function HicScPanel() {
         <Space wrap>
           <span>Hi-C contact maps</span>
           <Tag color="gold" style={{ whiteSpace: "normal" }}>{unitsJson.data?.data_label || HIC_DATASET_LABEL}</Tag>
+          <Text type="secondary" data-hic-version style={{ fontSize: 12, fontWeight: 400 }}>data: {hicDataVersion(unitsJson.data, units)}</Text>
         </Space>
       }
     >

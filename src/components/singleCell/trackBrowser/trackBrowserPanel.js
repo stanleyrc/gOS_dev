@@ -21,7 +21,7 @@ import {
 } from "../../../helpers/singleCell/trackBrowser/layout";
 import { expectedDepth, foregroundFromCn, unitFit } from "../../../helpers/singleCell/trackBrowser/coverageAxes";
 import { buildSpec, interimTracks, resolveUrl, specFilesFromListing, specsDirOf, unitsFromCells, validateSpec } from "../../../helpers/singleCell/trackBrowser/trackSpec";
-import { hasMatchGroups, hicUnitList, orderUnits, sampleColors, samplesOf } from "../../../helpers/singleCell/hicUnits";
+import { hasMatchGroups, hicDataVersion, hicUnitList, orderUnits, sampleColors, samplesOf } from "../../../helpers/singleCell/hicUnits";
 import { defaultHicLayout, hicLayoutFromSpec, hicLayoutToSpec, loadHicLayout, saveHicLayout } from "../../../helpers/singleCell/trackBrowser/pairedLayout";
 import PairedHicView from "./pairedHicView";
 import useUnitData from "./useUnitData";
@@ -921,7 +921,7 @@ export default function TrackBrowserPanel() {
             showGraph={showGraph} showCov={showCov} graphH={Math.max(70, Math.round((overrides.graph ?? effBase) * 1.6))} covH={Math.max(40, overrides.coverage ?? effBase)} scalesFor={scalesFor}
             unitOf={(id) => unitById.get(id) || allUnits.list.find((u) => u.id === id) || { id }} narrow={narrow} sampleColor={(smp) => sColors[smp]} groupOf={groupOf} order={hicOrder}
             minFrac={minSupport / 100} onJunction={(j, id) => openReads(j, id)} dataLabel={unitsJson?.data_label || null}
-            yNote={multiSample ? `Graph y: ${ySample ? "per sample" : "shared across units"}.` : ""}
+            yNote={multiSample ? `Graph y: ${ySample ? "per sample" : "shared across units"}.` : ""} versionNote={hicDataVersion(unitsJson, hicList)}
           />
         )}
         <div ref={scrollRef} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)} style={{ height: hicUnits.length > 0 && hicLayout.hicMode === "paired" ? 0 : bodyH, overflowY: "auto", overflowX: "hidden", position: "relative", borderTop: hicUnits.length > 0 && hicLayout.hicMode === "paired" ? "none" : "1px solid #ddd" }}>
@@ -931,7 +931,7 @@ export default function TrackBrowserPanel() {
           </div>
         </div>
         {(hicUnits.length > 0 || hicFromSpec) && hic.visible && hicLayout.hicMode !== "paired" && (
-          <HicSection units={hicUnits} state={hic} setState={setHic} dataPath={dataPath} patient={patientId} genome={genome} graphs={data.graphs} dataVersion={data.version} narrow={narrow} groupOf={multiSample ? groupOf : null} order={hicOrder} />
+          <HicSection units={hicUnits} state={hic} setState={setHic} dataPath={dataPath} patient={patientId} genome={genome} graphs={data.graphs} dataVersion={data.version} narrow={narrow} groupOf={multiSample ? groupOf : null} order={hicOrder} versionNote={hicUnits.length ? hicDataVersion(unitsJson, hicList) : null} />
         )}
         {tip && (
           <div style={{ position: "fixed", left: Math.min(hover.cx + 14, (typeof window !== "undefined" ? window.innerWidth : 1600) - 330), top: hover.cy + 14, background: "rgba(255,255,255,0.97)", border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px", fontSize: 12, pointerEvents: "none", whiteSpace: "pre", zIndex: 1000, boxShadow: "0 1px 4px rgba(0,0,0,0.15)", maxWidth: 420 }}>

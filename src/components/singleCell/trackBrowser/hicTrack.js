@@ -578,7 +578,7 @@ export function overlayCountText(shown, eaglec, ov) {
  */
 // dataVersion: re-render when the panel's per-unit graphs arrive (junction overlay)
 // eslint-disable-next-line no-unused-vars
-export default function HicSection({ units, state, setState, dataPath, patient, genome, graphs, dataVersion, narrow, groupOf = null, order = null, dataLabel: labelOverride = null }) {
+export default function HicSection({ units, state, setState, dataPath, patient, genome, graphs, dataVersion, narrow, groupOf = null, order = null, dataLabel: labelOverride = null, versionNote = null }) {
   const L = useTrackLocus();
   const { geometry } = L;
   const urlOf = (id) => resolveUrl(HIC_URL, { dataPath, patient, unit: id, genome });
@@ -604,6 +604,7 @@ export default function HicSection({ units, state, setState, dataPath, patient, 
       <Space wrap size={[8, 4]} style={{ marginBottom: 4 }}>
         <Text strong>Hi-C contacts</Text>
         {dataLabel && <Tag color="gold" style={{ whiteSpace: "normal" }}>{dataLabel}</Tag>}
+        {versionNote && <Text type="secondary" data-hic-version style={{ fontSize: 12 }}>data: {versionNote}</Text>}
       </Space>
       <HicControls state={state} setState={setState} units={units} shown={shown} resList={resList} mapW={mapW} height={height} narrow={narrow} perSample={Boolean(groupOf) && samples.size > 1} />
       <HicOverlayLegend state={state} setState={setState} counts={ov.eaglec?.on ? overlayCountText(shown, eaglec, ov) : null} rule={rule} />

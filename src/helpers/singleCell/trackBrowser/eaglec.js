@@ -115,7 +115,7 @@ export function junctionHoverLines(j) {
   const a = j.a || {};
   const b = j.b || {};
   const id = j.id ?? j.cid;
-  return [`graph junction${id != null ? ` ${id}` : ""}${Number.isFinite(j.cn) ? ` · CN ${j.cn}` : ""}`, `${fmtPos(a.chrom, a.pos)} × ${fmtPos(b.chrom, b.pos)}`];
+  return [`graph junction${id != null ? ` ${id}` : ""}${Number.isFinite(j.cn) ? ` · CN ${j.cn}` : ""}${j.source ? ` · source ${j.source}` : ""}`, `${fmtPos(a.chrom, a.pos)} × ${fmtPos(b.chrom, b.pos)}`];
 }
 
 /** Counts for a legend: { total, shown, kept, dropped } (shown = after the filter, both ends anywhere). */

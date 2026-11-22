@@ -42,6 +42,7 @@ export function hicUnitList(cells, unitsJson = null) {
     hasEaglec: c.has_eaglec == null ? null : truthy(c.has_eaglec),
     matchGroup: c.match_group ?? null,
     notAvailable: c.not_available || {},
+    raw: c,
   });
   if (!unitsJson || validateUnits(unitsJson).length) return recs.map(fromRec);
   const byKey = new Map();
@@ -216,4 +217,19 @@ export function hicWindowsFromView(windows, maxWindows = 4) {
   const wide = w.find((x) => x.end - x.start > MAX_HIC_VIEW_SPAN);
   if (wide) return { windows: null, reason: `the view spans ${Math.round((wide.end - wide.start) / 1e6)} Mb; brush a region of at most ${MAX_HIC_VIEW_SPAN / 1e6} Mb` };
   return { windows: w, reason: null };
+}
+
+export const HIC_PUBLIC_VERSION = "hic_user v2025-05-16 (main cluster)";
+
+/**
+ * Data-version note for the Hi-C maps and graphs: units.json / unit metadata `graph_version` (+ `junction_source`,
+ * `coverage_normalization` when present), else the fixed note for the public droplet Hi-C graphs.
+ */
+export function hicDataVersion(unitsJson = null, units = []) {
+  const pick = (k) => unitsJson?.[k] ?? (units || []).map((u) => u?.[k] ?? u?.raw?.[k]).find((v) => v != null && v !== "") ?? null;
+  const v = pick("graph_version");
+  if (!v) return HIC_PUBLIC_VERSION;
+  const js = pick("junction_source");
+  const cov = pick("coverage_normalization");
+  return [v, js ? `junctions: ${js}` : null, cov ? `coverage: ${cov}` : null].filter(Boolean).join(" · ");
 }

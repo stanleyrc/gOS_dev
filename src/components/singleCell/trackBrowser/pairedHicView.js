@@ -107,7 +107,7 @@ function OrderEditor({ unit, layout, setLayout }) {
  */
 export default function PairedHicView({
   units, state, setState, layout, setLayout, dataPath, patient, genome, data, showGraph, showCov, graphH, covH, scalesFor,
-  unitOf, narrow, sampleColor, groupOf, order, minFrac, onJunction, dataLabel, yNote,
+  unitOf, narrow, sampleColor, groupOf, order, minFrac, onJunction, dataLabel, yNote, versionNote = null,
 }) {
   const L = useTrackLocus();
   const { geometry } = L;
@@ -170,6 +170,7 @@ export default function PairedHicView({
       <Space wrap size={[8, 4]} style={{ marginBottom: 4 }}>
         <Text strong>Hi-C with each graph</Text>
         {dataLabel && <Text type="secondary">{dataLabel}</Text>}
+        {versionNote && <Text type="secondary" data-hic-version style={{ fontSize: 12 }}>· data: {versionNote}</Text>}
       </Space>
       <HicControls state={state} setState={setState} units={units} shown={shown} resList={resList} mapW={mapW} height={height} narrow={narrow} perSample={samples.size > 1} />
       <HicOverlayLegend state={state} setState={setState} counts={ov.eaglec?.on ? overlayCountText(shown, eaglec, ov) : null} rule={rule} />

@@ -1,5 +1,5 @@
 import {
-  cellRowOrder, cnBinsOf, decodeCellsCn, hasMatchGroups, hicUnitList, hicWindowsFromView, mapLabel, orderUnits, reportHasHic, sampleColors,
+  HIC_PUBLIC_VERSION, cellRowOrder, cnBinsOf, hicDataVersion, decodeCellsCn, hasMatchGroups, hicUnitList, hicWindowsFromView, mapLabel, orderUnits, reportHasHic, sampleColors,
   unitFolderOf, unitsForSelection, validateCellsCn, validateUnits,
 } from "./hicUnits";
 import { clearUnitSources, registerUnitSources, resolveUnitFolder } from "./unitSource";
@@ -70,6 +70,12 @@ describe("Hi-C units of a report", () => {
     expect(unitsForSelection(["X_c1", "Y_c0"], units)).toEqual(["X_c1", "Y_c0"]);
     expect(unitsForSelection(["nope"], units)).toEqual([]);
     expect(mapLabel(units[2], true)).toMatch(/cluster pseudobulk \(30 cells\); per-cell contact maps are not exported/);
+  });
+
+  it("gives a data-version note from units.json / unit records, else the fixed note", () => {
+    expect(hicDataVersion(null, hicUnitList(CELLS))).toBe(HIC_PUBLIC_VERSION);
+    expect(hicDataVersion({ graph_version: "v9", junction_source: "both" })).toBe("v9 · junctions: both");
+    expect(hicDataVersion(null, hicUnitList([{ ...CELLS[0], graph_version: "v8", coverage_normalization: "pon" }]))).toBe("v8 · coverage: pon");
   });
 
   it("uses the genome view region only when narrow enough", () => {

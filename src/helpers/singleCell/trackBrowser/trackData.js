@@ -102,7 +102,7 @@ export function graphInWindows(graph, slots) {
     const a = end(cx.source);
     const b = end(cx.sink);
     if (!a || !b || (a.slot < 0 && b.slot < 0)) return;
-    out.alts.push({ cid: cx.cid, cn: Number(cx.weight), title: cx.title || "", a, b });
+    out.alts.push({ cid: cx.cid, cn: Number(cx.weight), title: cx.title || "", a, b, ...(cx.junction_source ? { source: cx.junction_source } : {}) });
   });
   return out;
 }
