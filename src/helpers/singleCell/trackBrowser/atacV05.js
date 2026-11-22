@@ -89,10 +89,10 @@ export function residualRange(lanes, hits) {
   const ids = new Set(hits.map((h) => h.region.id));
   lanes.forEach((l) => ids.forEach((id) => {
     const v = l.values?.get(id);
-    if (v && v.resid != null) m = Math.max(m, Math.abs(v.resid) + (v.se || 0));
+    if (v && v.resid != null) m = Math.max(m, Math.abs(v.resid)); // whiskers beyond the range are clipped
   }));
   if (!(m > 0)) return 0.5;
-  const steps = [0.1, 0.2, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5];
+  const steps = [0.05, 0.1, 0.2, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 5];
   return steps.find((s) => s >= m) || Math.ceil(m);
 }
 

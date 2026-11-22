@@ -116,7 +116,7 @@ export function AtacResidualBlock({ res, slots, geometry, width, by, onBy, group
       ctx.font = "11px system-ui, sans-serif";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
-      ctx.fillText(lane.label, leftW - 14, mid);
+      ctx.fillText(lane.note && lane.note.startsWith("this plate: ") ? `${lane.label} (${lane.note.slice(12)})` : lane.label, leftW - 14, mid);
       slots.forEach((s) => {
         const x0 = trackLeft + s.x0;
         ctx.fillStyle = li % 2 ? "#f6f6f6" : COLORS.band;

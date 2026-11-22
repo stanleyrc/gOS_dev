@@ -96,6 +96,14 @@ function geneAt(genes, g) {
   return best == null ? null : genes.geneTitles[best];
 }
 
+/** The ATAC pool of a clade; datasets without clade pools (ATAC-only libraries: one "all" pool) use the all-cells pool. */
+function poolOfGroup(idx, group) {
+  if (!idx) return null;
+  const hit = poolFor(idx, { group });
+  if (hit) return hit;
+  return idx.byGroup.size === 0 || [...idx.byGroup.keys()].every((k) => k === "all") ? idx.all || poolFor(idx, { id: "all" }) : null;
+}
+
 export const TRACKSPEC_URL = "{dataPath}{patient}/trackspec.json";
 const FILTER_DEFAULT = { depth: "all", sphase: "show" };
 
@@ -233,6 +241,7 @@ export default function TrackBrowserPanel() {
   const [showRes, setShowRes] = useState(urlParam("tbresid") !== "0");
   const [showAcn, setShowAcn] = useState(urlParam("tbacn") !== "0");
   const [acnGenome, setAcnGenome] = useState(urlParam("tbacn") === "genome");
+  const linkAcn = useRef(urlParam("tbacn")); // as opened (the URL is rewritten from the state)
 
   // ?trackspec=<url>: a spec from gCells (or exported here) sets loci, per-window y, layout, selection and tracks.
   // Without one, the dataset's own {dataPath}{patient}/trackspec.json (v0.4 datasets) is the default view; its loci
@@ -255,7 +264,7 @@ export default function TrackBrowserPanel() {
       const genomeView = realLoci.length < s.loci.length || s.default_view === "genome_wide";
       if (!(keepLink && urlParam("tblocus"))) setLocusText(realLoci.length ? realLoci.join(" | ") : specPresets(s)[0]?.locus || "chr1");
       if (genomeView && !urlParam("tbheat")) setHeatGenome(true);
-      if (genomeView && !urlParam("tbacn")) setAcnGenome(true);
+      if (genomeView && !linkAcn.current) setAcnGenome(true);
       if (Array.isArray(s.windows)) setWindowY(s.windows.map((w) => ({ ...DEFAULT_Y, ...(w?.y || {}) })));
       const byType = (t) => (s.tracks || []).find((x) => x.type === t);
       setShowGraph(Boolean(byType("graph")) && byType("graph").visible !== false);
@@ -281,7 +290,7 @@ export default function TrackBrowserPanel() {
       if (Array.isArray(L.pinned) && !(keepLink && urlParam("tbpin"))) setPinned(L.pinned.slice(0, 3));
       if (Array.isArray(L.pb_expanded) && !urlParam("tbpbx")) setPbExpanded(Object.fromEntries(L.pb_expanded.map((g) => [`${g}`, true])));
       const acnT = byType("atac_cn");
-      if (acnT && !urlParam("tbacn") && !genomeView) setAcnGenome(acnT.genome_wide !== false && (acnT.genome_wide === true || (s.tracks || [])[0]?.type === "atac_cn"));
+      if (acnT && !linkAcn.current && !genomeView) setAcnGenome(acnT.genome_wide !== false && (acnT.genome_wide === true || (s.tracks || [])[0]?.type === "atac_cn"));
       const resT = byType("atac_residual");
       if (resT?.by && !urlParam("tbres")) setResBy(resT.by === "time" || resT.by === "time_point" ? "time" : "clade");
       const F = s.filters || {};
@@ -320,7 +329,13 @@ export default function TrackBrowserPanel() {
     if (!specOk) return [];
     const titles = { cn_heatmap: "CN heat map", graph: "genome graph", coverage: "coverage", atac: "ATAC", events: "events", cn_diff: "CN difference", junctions: "junctions", atac_residual: "ATAC residual", atac_cn: "ATAC-only CN", clade_rates: "JW-07 rates", cin_events: "JW-07 events", cin_wc_changes: "JW-07 cell strips", cin_events_carried: "JW-07 cell strips" };
     const types = new Set([...Object.keys(spec.data.unavailable && !Array.isArray(spec.data.unavailable) ? spec.data.unavailable : {}), ...(Array.isArray(spec.data.unavailable) ? spec.data.unavailable.map((x) => x?.type || x?.id) : []), ...(spec.data.tracks || []).filter((t) => t.unavailable).map((t) => t.type)]);
-    return [...types].filter(Boolean).map((t) => ({ type: t, title: titles[t] || t, reason: unavailableOf(spec.data, t) }));
+    const seen = new Set();
+    return [...types].filter(Boolean).map((t) => ({ type: t, title: titles[t] || t, reason: unavailableOf(spec.data, t) })).filter((r) => {
+      const key = `${r.title}|${r.reason}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [specOk, spec]);
   const unavailableTypes = useMemo(() => new Set(unavailableRows.map((r) => r.type)), [unavailableRows]);
 
@@ -561,7 +576,7 @@ export default function TrackBrowserPanel() {
   const poolIds = useMemo(() => {
     const idx = v04Pre.current.atacIndex;
     if (!idx) return [];
-    return [...new Set(atacRowsInView.filter((r) => r.kind === "clade").map((r) => poolFor(idx, { group: r.group })?.id).filter(Boolean))];
+    return [...new Set(atacRowsInView.filter((r) => r.kind === "clade").map((r) => poolOfGroup(idx, r.group)?.id).filter(Boolean))];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [atacRowsInView, atacIndexOk]);
   const cellAtacIds = useMemo(() => {
@@ -628,7 +643,7 @@ export default function TrackBrowserPanel() {
       }
       const members = row.members || [];
       // a dataset without per-clade pools (e.g. ATAC-only libraries: one "all" pool) draws the all-cells pool
-      const pool = idx ? poolFor(idx, { group: row.group }) || (idx.byGroup.size === 0 ? idx.all : null) : null;
+      const pool = idx ? poolOfGroup(idx, row.group) : null;
       // filters on: pool the shown cells' 500 kb ATAC in the browser (n stated); otherwise the exported pool
       if (filterActive && members.length <= POOL_CELLS_MAX && members.some((id) => v04.cellAtac.has(id))) {
         const pooled = poolCellArrays(members.map((id) => v04.cellAtac.get(id)).filter(Boolean));
@@ -1047,7 +1062,7 @@ export default function TrackBrowserPanel() {
           )}
           {it.height < 44 && <a style={{ fontSize: 11, position: "absolute", right: 2, top: 1 }} onClick={togglePin} title={isPinned ? "unpin" : "pin tall"}>{isPinned ? "×" : "⇕"}</a>}
           {!isClade && !isPb && it.height >= 60 && !narrow && gH > 0 && cH > 0 && <div style={{ color: COLORS.muted, position: "absolute", top: gH + 2 }}>coverage</div>}
-          {aH >= 18 && !isPb && (gH + cH >= 30 || it.height >= 44) && <div style={{ color: COLORS.muted, position: "absolute", top: gH + cH + (gH + cH ? 2 : 30), whiteSpace: "nowrap" }} title={atacData.get(isClade ? `clade:${row.group}` : `cell:${row.id}`)?.label || ""}>ATAC {atacUnit}</div>}
+          {aH >= 18 && !isPb && (gH + cH >= 30 || it.height >= 62) && <div style={{ color: COLORS.muted, position: "absolute", top: gH + cH + (gH + cH ? 2 : 46), whiteSpace: "nowrap" }} title={atacData.get(isClade ? `clade:${row.group}` : `cell:${row.id}`)?.label || ""}>ATAC {atacUnit}</div>}
         </div>
         <div style={{ position: "absolute", left: leftW, top: 0, width: contentW }}>
           {gH > 0 && (graphStyle === "ggraph"
@@ -1372,8 +1387,8 @@ export default function TrackBrowserPanel() {
             {cinLane.caveat && <span title={cinLane.caveat} style={{ maxWidth: 520, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>({cinLane.caveat})</span>}
           </div>
         )}
-        {unavailableRows.map((r) => <UnavailableRow key={r.type} title={r.title} reason={r.reason} leftW={trackLeft} width={width} />)}
         {acnFirst && showAcn && v05.acn && (v05.acn.ok ? <AtacCnBlock res={v05.acn} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} genomeWide={acnGenome} onGenomeWide={setAcnGenome} chromoBins={chromoBins} onJumpChrom={(c) => { setAcnGenome(false); setLocusText(`chr${c}`); }} /> : <UnavailableRow title="ATAC-only CN" reason={v05.acn.error} leftW={trackLeft} width={width} />)}
+        {unavailableRows.map((r) => <UnavailableRow key={r.type} title={r.title} reason={r.reason} leftW={trackLeft} width={width} />)}
         {heatOn && !hmIndex && v04.hm.status !== "loading" && <UnavailableRow title="CN heat map" reason={v04.hm.error || v04.hm.status} leftW={trackLeft} width={width} />}
         {heatOn && hmIndex && (
           <CnHeatmapBlock
