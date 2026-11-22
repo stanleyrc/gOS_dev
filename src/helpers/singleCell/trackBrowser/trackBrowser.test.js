@@ -3,7 +3,7 @@ import {
 } from "./locus";
 import { cnFromForeground, coverageAxes, expectedDepth, foregroundFromCn, niceTicks, unitFit } from "./coverageAxes";
 import { coverageColumns, graphInWindows, junctionCarriers, lowerBound, sameJunction } from "./trackData";
-import { buildSpec, interimTracks, resolveUrl, selectUnits, unitsFromCells, validateSpec } from "./trackSpec";
+import { SPEC_VERSION, buildSpec, interimTracks, resolveUrl, selectUnits, unitsFromCells, v04Tracks, validateSpec } from "./trackSpec";
 
 // synthetic two-chromosome genome
 const chromoBins = {
@@ -178,5 +178,25 @@ describe("places for the genome-graph component", () => {
     const d = windowToPlaces(chromoBins, w);
     expect(d).toEqual([1001001, 1005001]);
     expect(placesToWindow(chromoBins, d)).toEqual(w);
+  });
+});
+
+describe("track spec v0.4", () => {
+  const base = { spec: "gos-track-spec", loci: ["chr1:1-100"], units: { list: [] } };
+  test("cn_heatmap, atac and cn_diff are defined types; v0.3 files stay readable", () => {
+    expect(SPEC_VERSION).toBe("0.4");
+    expect(validateSpec({ ...base, version: "0.4", tracks: v04Tracks() })).toEqual([]);
+    expect(validateSpec({ ...base, version: "0.3", tracks: interimTracks() })).toEqual([]);
+    expect(validateSpec({ ...base, version: "0.4", tracks: [{ id: "d", type: "cn_diff", by: "plate" }] })[0]).toMatch(/cn_diff.by/);
+  });
+  test("units carry the dATAC attributes (depth from b_frag_good, else B_unique_fragments)", () => {
+    const u = unitsFromCells([
+      { cell_id: "a", clone_id: "c1", b_frag_good: 2e5, B_unique_fragments: 1, plate: "T0_A", time_point: "T0", s_phase: "TRUE", qc_mapd: "0.3", ecdna_call: "none" },
+      { cell_id: "b", clone_id: "c1", B_unique_fragments: 500, s_phase: "NA" },
+      { cell_id: "c", clone_id: "c2" },
+    ]).list;
+    expect(u[0]).toMatchObject({ depth: 2e5, plate: "T0_A", time_point: "T0", s_phase: "TRUE", qc_mapd: 0.3, ecdna_call: "none" });
+    expect(u[1].depth).toBe(500);
+    expect(u[2]).toMatchObject({ depth: null, qc_mapd: null, plate: null });
   });
 });

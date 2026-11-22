@@ -19,6 +19,9 @@ export function normalizeEvents(json) {
       confidence: e.confidence || "",
       ecdna: e.ecdna_call || "",
       genes: e.genes || "",
+      // v0.4: ATAC at the amplicon (gCells accessibility aggregates), when the exporter added them
+      fragmentsPerCopy: Number.isFinite(Number(e.fragments_per_copy)) && e.fragments_per_copy !== null && e.fragments_per_copy !== "" ? Number(e.fragments_per_copy) : null,
+      atacVsCn: e.atac_vs_cn ?? null,
     }))
     .filter((e) => e.chrom && Number.isFinite(e.start) && Number.isFinite(e.end) && e.end >= e.start);
 }

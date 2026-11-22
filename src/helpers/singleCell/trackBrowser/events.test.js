@@ -13,3 +13,10 @@ test("events: normalize, clip to windows, label", () => {
   expect(eventLabel(ev[0])).toBe("BFB (fold-back ladder) · ecDNA caller: stable");
   expect(eventLabel(ev[1])).toBe("whole-chromosome missegregation (fixed (clonal))");
 });
+
+test("events v0.4: fragments per copy and ATAC vs CN kept when present", () => {
+  const ev = normalizeEvents([{ id: "a", kind: "amplicon", chrom: "12", start: 1, end: 10, fragments_per_copy: "3.2", atac_vs_cn: "0.81" }, { id: "b", kind: "amplicon", chrom: "12", start: 1, end: 10 }]);
+  expect(ev[0].fragmentsPerCopy).toBe(3.2);
+  expect(ev[0].atacVsCn).toBe("0.81");
+  expect(ev[1].fragmentsPerCopy).toBeNull();
+});

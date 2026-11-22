@@ -28,8 +28,13 @@ describe("rows", () => {
     expect(clampHeight(5)).toBe(12);
     expect(clampHeight(999)).toBe(200);
     const cell = { kind: "cell" };
-    expect(subRowHeights(cell, 30, { coverage: 80 }, tracks)).toEqual({ graph: 30, coverage: 80 });
-    expect(subRowHeights(cell, 30, {}, { graph: false, coverage: true })).toEqual({ graph: 0, coverage: 30 });
+    expect(subRowHeights(cell, 30, { coverage: 80 }, tracks)).toEqual({ graph: 30, coverage: 80, atac: 0 });
+    expect(subRowHeights(cell, 30, {}, { graph: false, coverage: true })).toEqual({ graph: 0, coverage: 30, atac: 0 });
+    // v0.4 atac sub-row: cells and clades (not exported pseudobulk graphs); default 3/4 of the base, override wins
+    expect(subRowHeights(cell, 40, {}, { graph: true, coverage: true, atac: true }).atac).toBe(30);
+    expect(subRowHeights(cell, 40, { atac: 70 }, { graph: true, coverage: true, atac: true }).atac).toBe(70);
+    expect(subRowHeights({ kind: "clade" }, 40, {}, { graph: true, coverage: false, atac: true }).atac).toBe(30);
+    expect(subRowHeights({ kind: "pbgraph" }, 40, {}, { graph: true, coverage: false, atac: true }).atac).toBe(0);
     const clade = subRowHeights({ kind: "clade" }, 30, {}, tracks);
     expect(clade.coverage).toBe(0);
     expect(clade.graph).toBeGreaterThan(AUTO_FIT_MIN);

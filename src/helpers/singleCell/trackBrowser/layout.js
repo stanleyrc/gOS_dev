@@ -44,14 +44,20 @@ export function buildRows(units, mode = "pseudobulk", expanded = {}, pbGraphs = 
 }
 
 /**
- * Height (px) of each sub-row of a row. base: the slider value; overrides: { graph, coverage } (null = base);
- * tracks: { graph: bool, coverage: bool }. Clade and exported pseudobulk-graph rows show the graph only, at clade height.
+ * Height (px) of each sub-row of a row. base: the slider value; overrides: { graph, coverage, atac } (null = base);
+ * tracks: { graph: bool, coverage: bool, atac: bool }. Clade rows show the graph (pseudobulk) and, with the atac
+ * track on, the clade's ATAC pool; exported pseudobulk-graph rows show the graph only, at clade height. Cell rows
+ * show graph, coverage and (atac on) the cell's ATAC.
  */
 export function subRowHeights(row, base, overrides = {}, tracks = { graph: true, coverage: true }) {
   const g = clampHeight(overrides.graph ?? base);
   const c = clampHeight(overrides.coverage ?? base);
-  if (row.kind === "clade" || row.kind === "pbgraph") return tracks.graph || tracks.coverage ? { graph: clampHeight(Math.max(g, AUTO_FIT_MIN) * PSEUDOBULK_FACTOR), coverage: 0 } : { graph: 0, coverage: 0 };
-  return { graph: tracks.graph ? g : 0, coverage: tracks.coverage ? c : 0 };
+  const a = tracks.atac ? clampHeight(overrides.atac ?? Math.max(24, Math.round(base * 0.75))) : 0;
+  if (row.kind === "clade" || row.kind === "pbgraph") {
+    const graph = tracks.graph || tracks.coverage ? clampHeight(Math.max(g, AUTO_FIT_MIN) * PSEUDOBULK_FACTOR) : 0;
+    return { graph, coverage: 0, atac: row.kind === "clade" ? a : 0 };
+  }
+  return { graph: tracks.graph ? g : 0, coverage: tracks.coverage ? c : 0, atac: a };
 }
 
 /**
@@ -61,7 +67,7 @@ export function subRowHeights(row, base, overrides = {}, tracks = { graph: true,
 export function autoFitBase(rows, base, overrides, tracks, viewH, gap = 3) {
   const total = (b) => rows.reduce((s, r) => {
     const h = subRowHeights(r, b, overrides, tracks);
-    return s + h.graph + h.coverage + gap;
+    return s + h.graph + h.coverage + h.atac + gap;
   }, 0);
   let b = Math.max(base, AUTO_FIT_MIN);
   if (total(b) >= viewH) return clampHeight(b);
@@ -82,7 +88,7 @@ export function rowOffsets(rows, base, overrides, tracks, gap = 3) {
   let top = 0;
   const out = rows.map((row) => {
     const h = subRowHeights(row, base, overrides, tracks);
-    const item = { row, top, height: h.graph + h.coverage, graph: h.graph, coverage: h.coverage };
+    const item = { row, top, height: h.graph + h.coverage + h.atac, graph: h.graph, coverage: h.coverage, atac: h.atac };
     top += item.height + gap;
     return item;
   });

@@ -2,9 +2,11 @@
 import { formatLocus, parseLocus } from "./locus";
 
 export const SPEC_NAME = "gos-track-spec";
-export const SPEC_VERSION = "0.3";
-export const KNOWN_TYPES = ["coverage", "graph", "reads", "genes", "junctions", "snv_reads", "signature", "events"];
-export const RESERVED_TYPES = ["junction_support", "walks", "cn_heatmap", "cn_correlation_1d", "cn_correlation_2d", "hic", "atac", "segments", "peaks"];
+export const SPEC_VERSION = "0.4";
+export const KNOWN_TYPES = ["coverage", "graph", "reads", "genes", "junctions", "snv_reads", "signature", "events", "cn_heatmap", "atac", "cn_diff"];
+export const RESERVED_TYPES = ["junction_support", "walks", "cn_correlation_1d", "cn_correlation_2d", "hic", "segments", "peaks"];
+/** Types computed in the browser from other tracks (no url). */
+export const DERIVED_TYPES = ["cn_diff"];
 
 /** The default M1 tracks over the interim gOS per-cell files (coverage.arrow, complex.json, pooled junction slices). */
 export function interimTracks() {
@@ -16,6 +18,22 @@ export function interimTracks() {
     { id: "reads", type: "reads", title: "Reads", url: "{dataPath}{patient}/slices/junctions.dna.bam", format: "bam", read_group: "unit", fallback_url: "{dataPath}{unit}/reads.bam", window: 300, max_units: 6, target: "junction", group_by: "unit" },
   ];
 }
+
+/** The patient-level v0.4 tracks gOS adds when a dataset has the files (a missing file is a "not available" row). */
+export function v04Tracks() {
+  return [
+    { id: "events", type: "events", title: "Events", url: "{dataPath}{patient}/events.json", format: "gos-events-json", height: 44 },
+    { id: "cnhm", type: "cn_heatmap", title: "CN heat map", url: "{dataPath}{patient}/cn_heatmap/index.json", format: "gos-cn-heatmap-u16", row_px: 3, strips: ["clade", "plate", "time_point", "s_phase", "qc_mapd", "depth", "ecdna_call"] },
+    { id: "cndiff", type: "cn_diff", title: "CN difference", by: "clade", a: [], b: [], height: 60, visible: false },
+    { id: "atac", type: "atac", title: "ATAC", url: "{dataPath}{patient}/atac/index.json", format: "gos-atac-index", per_unit: false, per_copy: false, cell_url: "{dataPath}{unit}/atac.arrow", height: 40 },
+  ];
+}
+
+/** Depth of a cell record: good B fragments when present, else B unique fragments, else null. */
+const cellDepth = (c) => {
+  const v = c.b_frag_good ?? c.B_unique_fragments;
+  return Number.isFinite(Number(v)) && v !== null && v !== "" ? Number(v) : null;
+};
 
 /** Units of a patient from the gOS cell records (state.SingleCell.cells), in row order (tree leaf order first). */
 export function unitsFromCells(cells, order = [], cloneColors = {}) {
@@ -32,6 +50,15 @@ export function unitsFromCells(cells, order = [], cloneColors = {}) {
       ploidy: Number(c.ploidy) > 0 ? Number(c.ploidy) : null,
       mean_depth: Number(c.qc_depth) > 0 ? Number(c.qc_depth) : null,
       normal: c.normal === true || c.clone_id === "Normal",
+      // v0.4 attributes (dATAC contract): heat-map strips and the depth / S-phase filters
+      plate: c.plate ?? null,
+      time_point: c.time_point ?? null,
+      replicate: c.replicate ?? null,
+      s_phase: c.s_phase ?? null,
+      qc_mapd: Number.isFinite(Number(c.qc_mapd)) && c.qc_mapd !== null && c.qc_mapd !== "" ? Number(c.qc_mapd) : null,
+      depth: cellDepth(c),
+      depth_class: c.depth_class ?? null,
+      ecdna_call: c.ecdna_call ?? null,
     };
   });
   const groups = {};
@@ -76,6 +103,7 @@ export function validateSpec(spec) {
       if (!t || !t.id) errors.push(`track ${i} has no id`);
       else if (!KNOWN_TYPES.includes(t.type) && !RESERVED_TYPES.includes(t.type)) errors.push(`track ${t.id}: unknown type ${t.type}`);
       if (t && t.per_unit && !`${t.url || ""}`.includes("{unit}")) errors.push(`track ${t.id}: per_unit url needs {unit}`);
+      if (t && t.type === "cn_diff" && t.by && !["clade", "time_point"].includes(t.by)) errors.push(`track ${t.id}: cn_diff.by must be clade or time_point`);
     });
   if (spec.tracks?.some((t) => t?.per_unit) && !Array.isArray(spec.units?.list)) errors.push("per-unit tracks need units.list");
   return errors;

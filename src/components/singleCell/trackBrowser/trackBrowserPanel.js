@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import {
-  Alert, Button, Card, Input, InputNumber, Popover, Segmented, Select, Slider, Space, Switch, Tag, Tooltip, Typography,
+  Alert, AutoComplete, Button, Card, Input, InputNumber, Popover, Segmented, Select, Slider, Space, Switch, Tag, Tooltip, Typography,
 } from "antd";
 import { DownloadOutlined, LeftOutlined, RightOutlined, SettingOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import useContainerWidth from "../useContainerWidth";
@@ -20,10 +20,17 @@ import {
   saveLayoutPrefs, scalesDiffer, valueQuantile,
 } from "../../../helpers/singleCell/trackBrowser/layout";
 import { expectedDepth, foregroundFromCn, unitFit } from "../../../helpers/singleCell/trackBrowser/coverageAxes";
-import { buildSpec, interimTracks, resolveUrl, unitsFromCells, validateSpec } from "../../../helpers/singleCell/trackBrowser/trackSpec";
+import { SPEC_VERSION, buildSpec, interimTracks, resolveUrl, unitsFromCells, v04Tracks, validateSpec } from "../../../helpers/singleCell/trackBrowser/trackSpec";
+import { applyCellFilters, diffSides, filterLabel, filterParams, orderBySelection, parseFilterParams, rowEmphasis, toggleSelection } from "../../../helpers/singleCell/trackBrowser/cellFilters";
+import { binRange, diffProfile, medianProfile, rowsOf } from "../../../helpers/singleCell/trackBrowser/cnHeatmap";
+import { perCopyValues, poolCellArrays, poolFor, signalMax, valueColumns } from "../../../helpers/singleCell/trackBrowser/atac";
+import { peaksInWindow } from "../../../helpers/singleCell/trackBrowser/peaks";
 import { PSEUDOBULK_GRAPHS_URL, manifestLoci, normalizePseudobulkGraphs } from "../../../helpers/singleCell/trackBrowser/pseudobulkGraphs";
 import { EVENTS_URL, eventLabel, eventsInWindows, normalizeEvents } from "../../../helpers/singleCell/trackBrowser/events";
 import useUnitData from "./useUnitData";
+import useV04Data from "./useV04Data";
+import { CnDiffBlock, CnHeatmapBlock, UnavailableRow } from "./heatmapBlock";
+import AtacRow from "./atacRow";
 import { COLORS, drawEvents, drawGenes, drawJunctions, drawRuler, drawTree, hitTest, setupCanvas } from "./draw";
 import { CanvasRow, GraphPlotRow, NoteRow } from "./trackRow";
 import { TrackLocusContext } from "./locusContext";
@@ -32,7 +39,7 @@ const { Text } = Typography;
 const HEADER = { ruler: 34, genes: 46, events: 44 };
 const ROW_GAP = 3;
 const GGRAPH_MIN = 32;
-const PIN_H = { graph: 150, coverage: 120, clade: 190, pbgraph: 190 };
+const PIN_H = { graph: 150, coverage: 120, clade: 190, pbgraph: 190, atac: 70 };
 const HIGHLIGHT_GENES = ["CDK4", "MDM2", "GLI1", "DDIT3", "HMGA2", "FRS2", "LRIG3", "WIF1", "EGFR", "PDGFRA", "MYCN", "CDKN2A", "TSPAN31", "YEATS4", "CPM", "OS9", "AVIL", "CTDSP2"];
 export const DEFAULT_LOCI = {
   MGH303: [
@@ -85,6 +92,63 @@ function geneAt(genes, g) {
   return best == null ? null : genes.geneTitles[best];
 }
 
+export const TRACKSPEC_URL = "{dataPath}{patient}/trackspec.json";
+const FILTER_DEFAULT = { depth: "all", sphase: "show" };
+
+/** A per-cell 500 kb arrow (genome-wide x of the bin start, y) inside one window as 0-based { start, end, value }. */
+function cellBinsInWindow(arr, slot, chromoBins) {
+  if (!arr) return [];
+  const w = slot.window;
+  const off = toGlobal(chromoBins, w.chrom, 0);
+  if (!Number.isFinite(off)) return [];
+  const bw = arr.binWidth || 500000;
+  const g0 = off + w.start - bw;
+  const g1 = off + w.end;
+  const out = [];
+  const i0 = lowerBound(arr.x, g0);
+  for (let i = i0; i < arr.x.length && arr.x[i] <= g1; i += 1) {
+    const start = arr.x[i] - off - 1;
+    out.push({ start, end: start + bw, value: Number(arr.y[i]) });
+  }
+  return out;
+}
+
+/** The spec's reason a track is not available: `unavailable: { <type>: reason }` or a track's own `unavailable`. */
+function unavailableOf(spec, type) {
+  if (!spec) return null;
+  const u = spec.unavailable;
+  const t = (spec.tracks || []).find((x) => x.type === type);
+  if (t && t.unavailable) return `${t.unavailable}`;
+  if (u && typeof u === "object" && !Array.isArray(u) && u[type]) return `${u[type]}`;
+  if (Array.isArray(u)) {
+    const hit = u.find((x) => x && (x.type === type || x.id === type));
+    if (hit) return `${hit.reason || hit.text || "no reason given"}`;
+  }
+  return null;
+}
+
+/** Locus presets carried by a spec (`presets`, `loci_presets` or `layout.presets`: [{ label, locus }]). */
+function specPresets(spec) {
+  const list = spec?.presets || spec?.loci_presets || spec?.layout?.presets || [];
+  return Array.isArray(list) ? list.filter((l) => l && typeof l.locus === "string").map((l) => ({ label: l.label || l.locus, locus: l.locus })) : [];
+}
+
+/** Gene matches for the jump box: [{ value, label, place: [g0, g1] }] (genes state of gOS). */
+function geneMatches(genes, q, max = 12) {
+  const t = `${q || ""}`.trim().toUpperCase();
+  if (t.length < 2 || !genes?.geneTitles?.length) return [];
+  const out = [];
+  const seen = new Set();
+  for (let i = 0; i < genes.geneTitles.length && out.length < max; i += 1) {
+    const n = `${genes.geneTitles[i] || ""}`;
+    if (genes.geneTypes && genes.geneTypes[i] !== "gene") continue;
+    if (!n.toUpperCase().startsWith(t) || seen.has(n)) continue;
+    seen.add(n);
+    out.push({ value: n, label: n, place: [genes.genesStartPoint[i], genes.genesEndPoint[i]] });
+  }
+  return out;
+}
+
 /**
  * Track browser (brief cu M1, readability brief dc): one shared locus model (split windows, each with its own y
  * scale), clade pseudobulk rows first with per-cell rows expandable under each clade (or all cells in tree order
@@ -120,7 +184,7 @@ export default function TrackBrowserPanel() {
     saveLayoutPrefs({ base, overrides, autoFit, junctionH, readsH });
   }, [base, overrides, autoFit, junctionH, readsH]);
 
-  const [spec, setSpec] = useState({ status: "default" });
+  const [spec, setSpec] = useState({ status: "loading" });
   const [locusText, setLocusText] = useState(() => urlParam("tblocus") || presets[1]?.locus || presets[0].locus);
   const [windows, setWindows] = useState([]);
   const [windowY, setWindowY] = useState([]);
@@ -140,38 +204,74 @@ export default function TrackBrowserPanel() {
   const [reads, setReads] = useState(null);
   const [hover, setHover] = useState(null);
   const [scrollTop, setScrollTop] = useState(0);
+  // v0.4: cell filters (tbdepth, tbsphase), clade selection (tbsel), heat map / ATAC / cn_diff view state
+  const linkFilters = useMemo(() => parseFilterParams(urlParam), []);
+  const [depthMode, setDepthMode] = useState(linkFilters.depth);
+  const [sphaseMode, setSphaseMode] = useState(linkFilters.sphase);
+  const [selected, setSelected] = useState(linkFilters.selected);
+  const [showHeat, setShowHeat] = useState(urlParam("tbheat") !== "0");
+  const [heatGenome, setHeatGenome] = useState(urlParam("tbheat") === "genome");
+  const [heatRowPx, setHeatRowPx] = useState(() => (Number(urlParam("tbhpx")) > 0 ? Math.min(12, Number(urlParam("tbhpx"))) : 3));
+  const [heatColors, setHeatColors] = useState(urlParam("tbhcol") === "abs" ? "absolute" : "ploidy");
+  const [heatExpanded, setHeatExpanded] = useState({});
+  const [showAtac, setShowAtac] = useState(urlParam("tbatac") !== "0");
+  const [perCopy, setPerCopy] = useState(urlParam("tbcopy") === "1");
+  const [diff, setDiff] = useState(() => {
+    const d = urlParam("tbdiff");
+    if (!d) return { on: false, by: "clade", a: [], b: [] };
+    const [by, a, b] = d.split(":");
+    return { on: true, by: by === "time_point" ? "time_point" : "clade", a: (a || "").split(",").filter(Boolean), b: (b || "").split(",").filter(Boolean) };
+  });
+  const [geneQuery, setGeneQuery] = useState("");
 
-  // ?trackspec=<url>: a spec from gCells (or exported here) sets loci, per-window y, layout, selection and tracks
+  // ?trackspec=<url>: a spec from gCells (or exported here) sets loci, per-window y, layout, selection and tracks.
+  // Without one, the dataset's own {dataPath}{patient}/trackspec.json (v0.4 datasets) is the default view; its loci
+  // and mode never override a link's tblocus / tbmode. No file: the interim gOS tracks.
   useEffect(() => {
-    const url = urlParam("trackspec");
-    if (!url) return;
+    if (!patientId) return;
+    const linked = urlParam("trackspec");
+    const url = linked || resolveUrl(TRACKSPEC_URL, { dataPath: dataset?.dataPath || "", patient: patientId });
+    setSpec({ status: "loading" });
     tryGet(url).then((r) => {
-      if (r.status !== "ok") return setSpec({ status: "error", error: `track spec not available (${r.status} at ${url})` });
+      if (r.status !== "ok") return setSpec(linked ? { status: "error", error: `track spec not available (${r.status} at ${url})` } : { status: "default" });
       const errors = validateSpec(r.data);
       if (errors.length) return setSpec({ status: "error", error: `track spec not readable: ${errors.join("; ")}` });
       const s = r.data;
-      setSpec({ status: "ok", data: s, url });
-      setLocusText(s.loci.join(" | "));
+      setSpec({ status: "ok", data: s, url, auto: !linked });
+      const keepLink = !linked;
+      if (!(keepLink && urlParam("tblocus"))) setLocusText(s.loci.join(" | "));
       if (Array.isArray(s.windows)) setWindowY(s.windows.map((w) => ({ ...DEFAULT_Y, ...(w?.y || {}) })));
       const byType = (t) => (s.tracks || []).find((x) => x.type === t);
       setShowGraph(Boolean(byType("graph")) && byType("graph").visible !== false);
       setShowCov(Boolean(byType("coverage")) && byType("coverage").visible !== false);
+      if (byType("atac") && byType("atac").per_copy != null && !urlParam("tbcopy")) setPerCopy(Boolean(byType("atac").per_copy));
+      const dt = byType("cn_diff");
+      if (dt && !urlParam("tbdiff")) setDiff({ on: dt.visible !== false && (dt.a || []).length > 0 && (dt.b || []).length > 0, by: dt.by === "time_point" ? "time_point" : "clade", a: [].concat(dt.a || []).map(String), b: [].concat(dt.b || []).map(String) });
+      const hmT = byType("cn_heatmap");
+      if (hmT?.row_px && !urlParam("tbhpx")) setHeatRowPx(Math.min(12, Math.max(1, Number(hmT.row_px) || 3)));
       const L = s.layout || {};
-      if (L.row_height) setBase(clampHeight(L.row_height));
+      if (L.row_height && !(keepLink && urlParam("tbh"))) setBase(clampHeight(L.row_height));
       if (L.overrides) setOverrides(L.overrides);
-      if (L.auto_fit != null) setAutoFit(Boolean(L.auto_fit));
+      if (L.auto_fit != null && !(keepLink && urlParam("tbh"))) setAutoFit(Boolean(L.auto_fit));
       if (L.junction_height) setJunctionH(L.junction_height);
       if (L.reads_height) setReadsH(L.reads_height);
-      if (L.mode) setMode(L.mode);
+      if (L.mode && !(keepLink && urlParam("tbmode"))) setMode(L.mode === "cells" ? "cells" : "pseudobulk");
       if (L.share_y != null) setShareY(Boolean(L.share_y));
       if (Number.isFinite(L.clade_min_support)) setMinSupport(L.clade_min_support);
       if (L.graph_style) setGraphStyle(L.graph_style === "canvas" ? "canvas" : "ggraph");
-      if (Array.isArray(L.pinned)) setPinned(L.pinned.slice(0, 3));
-      if (s.selection?.clades) setGroups(s.selection.clades);
+      if (Array.isArray(L.pinned) && !(keepLink && urlParam("tbpin"))) setPinned(L.pinned.slice(0, 3));
+      const F = s.filters || {};
+      if (F.depth && !urlParam("tbdepth")) setDepthMode(F.depth === "deep" ? "deep" : "all");
+      if (F.s_phase && !urlParam("tbsphase")) setSphaseMode(["hide", "only"].includes(F.s_phase) ? F.s_phase : "show");
+      if (Array.isArray(F.clades) && F.clades.length) setGroups(F.clades.map(String)); // v0.4 "hide others": keep only these clades
+      if (!linked) return null; // a dataset's default view selects nothing
+      // v0.4: selection.clades selects (outline, move to top, dim the rest); in v0.3 files it filtered
+      if (s.selection?.clades) (`${s.version}` === "0.3" ? setGroups : setSelected)(s.selection.clades.map(String));
       if (s.selection?.units) setCladeIds(s.selection.units);
       return null;
     });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, dataset?.dataPath]);
 
   const tracks = spec.status === "ok" ? spec.data.tracks : interimTracks();
   const trackOf = (type) => tracks.find((t) => t.type === type) || null;
@@ -182,12 +282,29 @@ export default function TrackBrowserPanel() {
   const specBase = spec.status === "ok" ? spec.url : null;
   const dataPath = dataset?.dataPath || "";
   const genome = dataset?.reference || "hg38";
+  // v0.4 tracks: from the spec (a listed track whose file is missing is a "not available (reason)" row), else tried
+  // quietly at the default URLs (datasets without them show nothing new)
+  const specOk = spec.status === "ok";
+  const defaults = useMemo(() => Object.fromEntries(v04Tracks().map((t) => [t.type, t])), []);
+  // a spec that lists the track: missing files are "not available" rows; otherwise (no spec, or a v0.3 spec) the
+  // default URL is tried quietly
+  const heatListed = specOk && Boolean(trackOf("cn_heatmap"));
+  const atacListed = specOk && Boolean(trackOf("atac"));
+  const heatTrack = heatListed ? trackOf("cn_heatmap") : spec.status === "loading" ? null : defaults.cn_heatmap;
+  const atacTrack = atacListed ? trackOf("atac") : spec.status === "loading" ? null : defaults.atac;
+  const unavailableRows = useMemo(() => {
+    if (!specOk) return [];
+    const titles = { cn_heatmap: "CN heat map", graph: "genome graph", coverage: "coverage", atac: "ATAC", events: "events", cn_diff: "CN difference", junctions: "junctions" };
+    const types = new Set([...Object.keys(spec.data.unavailable && !Array.isArray(spec.data.unavailable) ? spec.data.unavailable : {}), ...(Array.isArray(spec.data.unavailable) ? spec.data.unavailable.map((x) => x?.type || x?.id) : []), ...(spec.data.tracks || []).filter((t) => t.unavailable).map((t) => t.type)]);
+    return [...types].filter(Boolean).map((t) => ({ type: t, title: titles[t] || t, reason: unavailableOf(spec.data, t) }));
+  }, [specOk, spec]);
+  const unavailableTypes = useMemo(() => new Set(unavailableRows.map((r) => r.type)), [unavailableRows]);
 
   // ----- event track (spec `events`, or {dataPath}{patient}/events.json): amplicon classes, ecDNA calls, arm events
   const [events, setEvents] = useState({ status: "loading", list: [] });
   const specEvents = spec.status === "ok" ? (spec.data.tracks || []).find((t) => t.type === "events") : undefined;
   useEffect(() => {
-    if (!patientId) return;
+    if (!patientId || spec.status === "loading") return;
     if (spec.status === "ok" && !specEvents) {
       setEvents({ status: "none", list: [] });
       return;
@@ -232,7 +349,11 @@ export default function TrackBrowserPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pbList, dataPath]);
   // a dataset's own locus presets (manifest `loci`) replace the generic fallback unless a link or spec set the locus
-  const datasetPresets = pbManifest.loci;
+  const datasetPresets = useMemo(() => {
+    const fromSpec = specOk ? specPresets(spec.data) : [];
+    const seen = new Set(fromSpec.map((p) => p.locus));
+    return [...fromSpec, ...pbManifest.loci.filter((p) => !seen.has(p.locus))];
+  }, [specOk, spec, pbManifest.loci]);
   const presetsShown = DEFAULT_LOCI[patientId] ? presets : datasetPresets.length ? datasetPresets : presets;
   const presetApplied = useRef(false);
   const linkedLocus = useRef(urlParam("tblocus") || urlParam("trackspec")); // as opened (tblocus is rewritten once the locus parses)
@@ -259,11 +380,20 @@ export default function TrackBrowserPanel() {
   useEffect(() => setUrlParam("tbmode", mode === "cells" ? "cells" : null), [mode]);
   useEffect(() => setUrlParam("tbstyle", graphStyle === "canvas" ? "canvas" : null), [graphStyle]);
   useEffect(() => setUrlParam("tbpin", pinned.length ? pinned.join(",") : null), [pinned]);
+  useEffect(() => {
+    Object.entries(filterParams({ depth: depthMode, sphase: sphaseMode, selected })).forEach(([k, v]) => setUrlParam(k, v));
+  }, [depthMode, sphaseMode, selected]);
+  useEffect(() => setUrlParam("tbheat", !showHeat ? "0" : heatGenome ? "genome" : null), [showHeat, heatGenome]);
+  useEffect(() => setUrlParam("tbhpx", heatRowPx !== 3 ? `${heatRowPx}` : null), [heatRowPx]);
+  useEffect(() => setUrlParam("tbhcol", heatColors === "absolute" ? "abs" : null), [heatColors]);
+  useEffect(() => setUrlParam("tbatac", showAtac ? null : "0"), [showAtac]);
+  useEffect(() => setUrlParam("tbcopy", perCopy ? "1" : null), [perCopy]);
+  useEffect(() => setUrlParam("tbdiff", diff.on ? `${diff.by}:${diff.a.join(",")}:${diff.b.join(",")}` : null), [diff]);
 
   // ----- units, tree order, rows
   const allUnits = useMemo(() => unitsFromCells(cells, order, cloneColors), [cells, order, cloneColors]);
   const groupOptions = useMemo(() => Object.keys(allUnits.groups).map((g) => ({ label: g, value: g })), [allUnits]);
-  const units = useMemo(() => {
+  const units0 = useMemo(() => {
     let list = allUnits.list;
     if (hideNormal) list = list.filter((u) => !u.normal);
     if (groups.length) list = list.filter((u) => groups.includes(u.group));
@@ -273,6 +403,9 @@ export default function TrackBrowserPanel() {
     }
     return list;
   }, [allUnits, groups, cladeIds, hideNormal]);
+  const filtered = useMemo(() => applyCellFilters(units0, { depth: depthMode, sphase: sphaseMode }), [units0, depthMode, sphaseMode]);
+  const units = filtered.units;
+  const filterText = filterLabel({ depth: depthMode, sphase: sphaseMode });
   const unitIds = useMemo(() => units.map((u) => u.id), [units]);
   const unitById = useMemo(() => new Map(units.map((u) => [u.id, u])), [units]);
   const treeLayout = useMemo(() => {
@@ -283,11 +416,15 @@ export default function TrackBrowserPanel() {
     return { layout: clipLongBranches(built.layout, longBranchCap(built.layout)), order: [...built.layout.leaves, ...built.unplaced] };
   }, [tree, unitIds]);
   const cellOrder = treeLayout.order;
-  const orderedUnits = useMemo(() => cellOrder.map((id) => unitById.get(id)).filter(Boolean), [cellOrder, unitById]);
+  const treeOrderedUnits = useMemo(() => cellOrder.map((id) => unitById.get(id)).filter(Boolean), [cellOrder, unitById]);
+  // selected clades move to the top (each in tree order); the others keep their order and are dimmed
+  const orderedUnits = useMemo(() => orderBySelection(treeOrderedUnits, selected), [treeOrderedUnits, selected]);
   const rowsList = useMemo(() => buildRows(orderedUnits, mode, expanded, pbList), [orderedUnits, mode, expanded, pbList]);
   const groupColor = useCallback((g) => allUnits.groups[g]?.color || "#999", [allUnits]);
 
-  const tracksOn = useMemo(() => ({ graph: showGraph, coverage: showCov }), [showGraph, showCov]);
+  const [atacIndexOk, setAtacIndexOk] = useState(false);
+  const atacOn = showAtac && Boolean(atacTrack) && !unavailableTypes.has("atac") && (atacListed || atacIndexOk);
+  const tracksOn = useMemo(() => ({ graph: showGraph && !unavailableTypes.has("graph"), coverage: showCov && !unavailableTypes.has("coverage"), atac: atacOn }), [showGraph, showCov, atacOn, unavailableTypes]);
   const viewH = narrow ? 520 : 680;
   const effBase = autoFit ? autoFitBase(rowsList, base, overrides, tracksOn, viewH, ROW_GAP) : base;
   // the genome-graph component needs room for its bars and axis: graph rows are at least GGRAPH_MIN px in that style
@@ -321,7 +458,7 @@ export default function TrackBrowserPanel() {
 
   // ----- geometry
   // geometry shared by every track: the genome-graph component's layout (gapX left / between / right of the windows)
-  const treeW = mode === "cells" && !narrow && treeLayout.layout ? 110 : 0;
+  const treeW = mode === "cells" && !narrow && treeLayout.layout && !selected.length ? 110 : 0;
   const labelW = narrow ? 84 : mode === "cells" ? 128 : 160;
   const leftW = treeW + labelW;
   const gapX = narrow ? 28 : 40;
@@ -329,6 +466,162 @@ export default function TrackBrowserPanel() {
   const trackLeft = leftW + gapX;
   const slots = useMemo(() => layoutWindows(windows, contentW - 2 * gapX, gapX), [windows, contentW, gapX]);
   const domains = useMemo(() => windows.map((w) => windowToPlaces(chromoBins, w)).filter(Boolean), [windows, chromoBins]);
+
+  // ----- v0.4 data: CN heat map matrices, ATAC pools (bigWig + peaks) and per-cell ATAC
+  const filterActive = depthMode !== FILTER_DEFAULT.depth || sphaseMode !== FILTER_DEFAULT.sphase;
+  const atacRowsInView = useMemo(() => {
+    if (!atacOn) return [];
+    const list = visibleItems.filter((it) => it.atac > 0).map((it) => it.row);
+    pinned.forEach((k) => {
+      if (k.startsWith("clade:")) list.push({ kind: "clade", group: k.slice(6), members: orderedUnits.filter((u) => u.group === k.slice(6)).map((u) => u.id) });
+      else if (k.startsWith("cell:")) list.push({ kind: "cell", id: k.slice(5) });
+    });
+    return list;
+  }, [atacOn, visibleItems, pinned, orderedUnits]);
+  const POOL_CELLS_MAX = 300; // browser pools of per-cell ATAC (filters on) load at most this many cells per clade
+  const v04Pre = useRef({ atacIndex: null });
+  const poolIds = useMemo(() => {
+    const idx = v04Pre.current.atacIndex;
+    if (!idx) return [];
+    return [...new Set(atacRowsInView.filter((r) => r.kind === "clade").map((r) => poolFor(idx, { group: r.group })?.id).filter(Boolean))];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atacRowsInView, atacIndexOk]);
+  const cellAtacIds = useMemo(() => {
+    const ids = atacRowsInView.filter((r) => r.kind === "cell").map((r) => r.id);
+    if (filterActive) atacRowsInView.filter((r) => r.kind === "clade" && r.members.length <= POOL_CELLS_MAX).forEach((r) => ids.push(...r.members));
+    return [...new Set(ids)];
+  }, [atacRowsInView, filterActive]);
+  const v04 = useV04Data({ dataPath, patient: patientId, genome, specBase, heatTrack, atacTrack: atacTrack && !unavailableTypes.has("atac") ? atacTrack : null, slots, lodWanted: showHeat && heatGenome, poolIds, cellAtacIds });
+  v04Pre.current.atacIndex = v04.atac.status === "ok" ? v04.atac.index : null;
+  useEffect(() => setAtacIndexOk(v04.atac.status === "ok"), [v04.atac.status]);
+  const hmIndex = v04.hm.status === "ok" ? v04.hm.index : null;
+  const heatOn = showHeat && Boolean(heatTrack) && !unavailableTypes.has("cn_heatmap") && (hmIndex || (heatListed && v04.hm.status !== "loading" && v04.hm.status !== "none"));
+
+  // clade median CN per window over the shown cells (per-copy ATAC; the heat map computes its own bands)
+  const cladeMedian = useCallback(
+    (members, k) => {
+      if (!hmIndex || !slots[k]) return null;
+      const entry = hmIndex.chroms.get(slots[k].window.chrom);
+      const mat = v04.mats.get(slots[k].window.chrom);
+      if (!entry || !mat) return null;
+      return { entry, prof: medianProfile(mat, entry.starts.length, rowsOf(hmIndex, members), binRange(entry, slots[k].window)) };
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hmIndex, slots, v04.version]
+  );
+  // ATAC sub-row data per row key: { cols: [Float32Array per window], peaks, note, label, kind }
+  const atacData = useMemo(() => {
+    const out = new Map();
+    if (!atacOn) return out;
+    const idx = v04.atac.status === "ok" ? v04.atac.index : null;
+    const cellCols = (id, k) => {
+      const arr = v04.cellAtac.get(id);
+      if (!arr) return null;
+      let vals = cellBinsInWindow(arr, slots[k], chromoBins);
+      if (perCopy) {
+        const entry = hmIndex?.chroms.get(slots[k].window.chrom);
+        const mat = v04.mats.get(slots[k].window.chrom);
+        const r = hmIndex?.cellIndex.get(`${id}`);
+        vals = perCopyValues(vals, entry, entry && mat && r != null ? mat.subarray(r * entry.starts.length, (r + 1) * entry.starts.length) : null);
+      }
+      return valueColumns(vals, slots[k]);
+    };
+    atacRowsInView.forEach((row) => {
+      const key = row.kind === "clade" ? `clade:${row.group}` : `cell:${row.id}`;
+      if (out.has(key)) return;
+      if (row.kind === "cell") {
+        const st = v04.cellAtacStatus.get(row.id);
+        const cols = slots.map((_, k) => cellCols(row.id, k));
+        out.set(key, { kind: "cell", cols, note: cols.some(Boolean) ? null : st && st !== "loading" ? `ATAC not available (${st}: no atac.arrow for this cell)` : "ATAC: loading", label: "cell, 500 kb" });
+        return;
+      }
+      const members = row.members || [];
+      const pool = idx ? poolFor(idx, { group: row.group }) : null;
+      // filters on: pool the shown cells' 500 kb ATAC in the browser (n stated); otherwise the exported pool
+      if (filterActive && members.length <= POOL_CELLS_MAX && members.some((id) => v04.cellAtac.has(id))) {
+        const pooled = poolCellArrays(members.map((id) => v04.cellAtac.get(id)).filter(Boolean));
+        const arr = { x: pooled.x, y: pooled.y, binWidth: 500000 };
+        const cols = slots.map((s, k) => {
+          let vals = cellBinsInWindow(arr, s, chromoBins);
+          if (perCopy) {
+            const cm = cladeMedian(members, k);
+            vals = perCopyValues(vals, cm?.entry, cm?.prof.median);
+          }
+          return valueColumns(vals, s);
+        });
+        out.set(key, { kind: "clade", cols, note: null, label: `browser pool of ${pooled.n} shown cells, 500 kb` });
+        return;
+      }
+      if (!pool) {
+        out.set(key, { kind: "clade", cols: [], note: idx ? `ATAC pool not available (no pool for ${row.group} in atac/index.json)` : v04.atac.status === "loading" ? "ATAC: loading" : `ATAC pool not available (${v04.atac.error || v04.atac.status})`, label: "" });
+        return;
+      }
+      const cols = slots.map((s, k) => {
+        const reg = v04.regions.get(v04.regionKey(pool.id, s));
+        if (!reg || reg.status !== "ok") return null;
+        let vals = reg.values;
+        if (perCopy) {
+          const cm = cladeMedian(members, k);
+          vals = perCopyValues(vals, cm?.entry, cm?.prof.median);
+        }
+        return valueColumns(vals, s);
+      });
+      const regErr = slots.map((s) => v04.regions.get(v04.regionKey(pool.id, s))).find((r) => r && r.status === "error");
+      const peaksBy = v04.peaks.get(pool.id);
+      const peaks = slots.map((s) => (peaksBy && s.window.end - s.window.start <= 20e6 ? peaksInWindow(peaksBy, s.window) : null));
+      const zoom = slots.map((s) => v04.regions.get(v04.regionKey(pool.id, s))?.zoom).find((z) => z > 0);
+      out.set(key, {
+        kind: "clade",
+        cols,
+        peaks,
+        note: regErr ? `ATAC not available (${regErr.error})` : cols.some(Boolean) ? null : "ATAC: loading",
+        label: `pool ${pool.id}: ${pool.n_cells ?? "?"} cells${filterActive ? " (all cells; filters not applied: clade too large or no per-cell ATAC)" : ""}${zoom ? `, ${zoom >= 1000 ? `${Math.round(zoom / 1000)} kb` : `${zoom} bp`} zoom` : ", 1 kb"}`,
+      });
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atacOn, atacRowsInView, v04.version, slots, perCopy, filterActive, chromoBins, hmIndex, cladeMedian]);
+  // shared y max per window: one for clade pools, one for cells (rows of a kind compare directly)
+  const atacMax = useMemo(() => {
+    const m = { clade: [], cell: [] };
+    ["clade", "cell"].forEach((kind) => {
+      m[kind] = slots.map((_, k) => signalMax([...atacData.values()].filter((d) => d.kind === kind).map((d) => d.cols[k])));
+    });
+    return m;
+  }, [atacData, slots]);
+  const atacUnit = perCopy ? "per copy" : v04.atac.status === "ok" ? (v04.atac.index.unit || "CPM").toUpperCase() : "CPM";
+
+  // ----- cn_diff (clade vs clade, time point vs time point): median CN of the shown cells of A minus B
+  const timePoints = useMemo(() => [...new Set(units.map((u) => u.time_point).filter((t) => t && t !== "NA"))].sort((a, b) => Number(`${a}`.replace(/\D/g, "")) - Number(`${b}`.replace(/\D/g, ""))), [units]);
+  const cladeNames = useMemo(() => [...new Set(orderedUnits.map((u) => u.group ?? "no clone"))], [orderedUnits]);
+  const diffState = useMemo(() => {
+    if (!diff.on) return null;
+    let { a, b } = diff;
+    let dA = [];
+    let dB = [];
+    if (diff.by === "time_point" && timePoints.length >= 2) {
+      const late = timePoints.filter((t) => ["T11", "T12"].includes(t));
+      dA = late.length ? late : [timePoints[timePoints.length - 1]];
+      dB = [timePoints[0]];
+    } else if (cladeNames.length >= 2) {
+      dA = [cladeNames[0]];
+      dB = [cladeNames[1]];
+    }
+    if (!a.length) a = dA;
+    if (!b.length) b = dB.length && dB.some((x) => !a.includes(x)) ? dB : dA.filter((x) => !a.includes(x));
+    return { ...diff, aNames: a, bNames: b, ...diffSides(units, { by: diff.by, a, b }) };
+  }, [diff, units, timePoints, cladeNames]);
+  const diffProfiles = useMemo(() => {
+    if (!diffState || !hmIndex) return [];
+    const ra = rowsOf(hmIndex, diffState.a);
+    const rb = rowsOf(hmIndex, diffState.b);
+    return slots.map((s) => {
+      const entry = hmIndex.chroms.get(s.window.chrom);
+      const mat = v04.mats.get(s.window.chrom);
+      return entry && mat ? diffProfile(mat, entry.starts.length, ra, rb, binRange(entry, s.window)) : null;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diffState, hmIndex, slots, v04.version]);
 
   // ----- per-window y scales: auto from the shown units' segment CNs (max or 99th percentile), shared, or manual
   const windowStats = useMemo(() => {
@@ -541,11 +834,12 @@ export default function TrackBrowserPanel() {
     return pinnedRows.map((row) => {
       const gH = row.kind === "clade" || row.kind === "pbgraph" ? PIN_H[row.kind] : showGraph ? PIN_H.graph : 0;
       const cH = row.kind === "clade" || row.kind === "pbgraph" ? 0 : showCov ? PIN_H.coverage : 0;
-      const it = { row, top, graph: gH, coverage: cH, height: gH + cH };
+      const aH = atacOn && row.kind !== "pbgraph" ? PIN_H.atac : 0;
+      const it = { row, top, graph: gH, coverage: cH, atac: aH, height: gH + cH + aH };
       top += it.height + 6;
       return it;
     });
-  }, [pinnedRows, showGraph, showCov]);
+  }, [pinnedRows, showGraph, showCov, atacOn]);
 
   // tree (all cells mode): a sticky canvas at the left of the scrolling stack
   const treeRef = useRef(null);
@@ -563,6 +857,8 @@ export default function TrackBrowserPanel() {
     const { row } = it;
     const gH = it.graph;
     const cH = it.coverage;
+    const aH = it.atac || 0;
+    const emph = pinnedRow ? "normal" : rowEmphasis(row, selected);
     const color = groupColor(row.group);
     const isClade = row.kind === "clade";
     const isPb = row.kind === "pbgraph";
@@ -588,7 +884,7 @@ export default function TrackBrowserPanel() {
     );
     const graphNote = isPb && gStatus !== "loading" ? `pseudobulk graph not available (${gStatus}: no complex.json for ${row.id})` : gStatus === "missing" ? (isClade ? `graph not available (no complex.json for these ${missingAll} cells${row.group === "Normal" ? "; normal cells have no JaBbA fit" : ""})` : "graph not available (no complex.json)") : "graph: loading";
     return (
-      <div key={`${pinnedRow ? "pin" : "row"}:${row.key}`} style={{ position: pinnedRow ? "relative" : "absolute", top: pinnedRow ? undefined : it.top, left: 0, width, height: it.height, marginBottom: pinnedRow ? 6 : 0, borderBottom: "1px solid #eee" }}>
+      <div key={`${pinnedRow ? "pin" : "row"}:${row.key}`} style={{ position: pinnedRow ? "relative" : "absolute", top: pinnedRow ? undefined : it.top, left: 0, width, height: it.height, marginBottom: pinnedRow ? 6 : 0, borderBottom: "1px solid #eee", opacity: emph === "dimmed" ? 0.4 : 1, outline: emph === "selected" && (isClade || isPb) ? `2px solid ${COLORS.sel}` : "none", outlineOffset: -2 }}>
         <div style={{ position: "absolute", left: treeW, top: 0, width: labelW - 4, height: it.height, overflow: "hidden", borderLeft: `6px solid ${color}`, paddingLeft: 6 + (row.depth ? 10 : 0), fontSize: 11, lineHeight: "14px", background: pinnedRow ? "#fffaf0" : "#fff" }}>
           {isPb ? (
             <>
@@ -603,7 +899,8 @@ export default function TrackBrowserPanel() {
               <div style={{ fontWeight: 600, fontSize: 12, cursor: pinnedRow ? "default" : "pointer", marginTop: 2 }} onClick={() => !pinnedRow && setExpanded((ex) => ({ ...ex, [row.group]: !ex[row.group] }))}>
                 {pinnedRow ? "" : expanded[row.group] ? "▾ " : "▸ "}{short}
               </div>
-              <div style={{ color: COLORS.muted }}>median of {members.length} cells</div>
+              <div style={{ color: COLORS.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={filterText ? `n used: ${members.length} (${filterText})` : ""}>median of {members.length} cells{filterText ? ` (${filterText})` : ""}</div>
+              {!pinnedRow && <a style={{ fontSize: 11, marginRight: 6 }} onClick={(e) => setSelected((sel) => toggleSelection(sel, row.group, e.shiftKey))} title="select: outline, move to the top, dim the others (shift: add)">{selected.includes(row.group) ? "unselect" : "select"}</a>}
             </>
           ) : (
             <>
@@ -616,6 +913,7 @@ export default function TrackBrowserPanel() {
           )}
           {it.height < 44 && <a style={{ fontSize: 11, position: "absolute", right: 2, top: 1 }} onClick={togglePin} title={isPinned ? "unpin" : "pin tall"}>{isPinned ? "×" : "⇕"}</a>}
           {!isClade && !isPb && it.height >= 60 && !narrow && gH > 0 && cH > 0 && <div style={{ color: COLORS.muted, position: "absolute", top: gH + 2 }}>coverage</div>}
+          {aH >= 18 && !isPb && (gH + cH) >= 30 && <div style={{ color: COLORS.muted, position: "absolute", top: gH + cH + 2 }}>ATAC</div>}
         </div>
         <div style={{ position: "absolute", left: leftW, top: 0, width: contentW }}>
           {gH > 0 && (graphStyle === "ggraph"
@@ -626,6 +924,14 @@ export default function TrackBrowserPanel() {
               <CanvasRow kind="cell" unit={unit} row={row} graph={raw} coverage={data.coverage.get(row.id)} graphH={0} covH={cH} width={contentW} covStatus={data.status.get(`cov:${row.id}`)} />
             </div>
           )}
+          {aH > 0 && !isPb && (() => {
+            const d = atacData.get(isClade ? `clade:${row.group}` : `cell:${row.id}`);
+            return (
+              <div title={d?.label ? `ATAC (${atacUnit}) · ${d.label}` : "ATAC"}>
+                <AtacRow cols={d?.cols} maxes={atacMax[isClade ? "clade" : "cell"]} peaks={d?.peaks} height={aH} width={contentW} unitLabel={`ATAC ${atacUnit}`} note={d ? d.note : "ATAC: loading"} />
+              </div>
+            );
+          })()}
         </div>
         {!pinnedRow && gH > 0 && handle("graph", gH)}
         {!pinnedRow && cH > 0 && handle("coverage", gH + cH)}
@@ -749,17 +1055,21 @@ export default function TrackBrowserPanel() {
       patient: patientId,
       windows,
       units: { ...allUnits, list: units, ...(pbList.length ? { pseudobulk_graphs: pbList.map(({ order, ...e }) => e) } : {}) },
-      tracks: tracks.map((t) => {
+      tracks: [...tracks, ...[!heatListed && hmIndex ? heatTrack : null, !atacListed && atacIndexOk ? atacTrack : null].filter(Boolean), ...(tracks.some((t) => t.type === "cn_diff") || !diffState ? [] : [defaults.cn_diff])].map((t) => {
+        if (t.type === "cn_heatmap") return { ...t, visible: showHeat, row_px: heatRowPx, colors: heatColors, genome_wide: heatGenome };
+        if (t.type === "atac") return { ...t, visible: showAtac, per_copy: perCopy };
+        if (t.type === "cn_diff") return { ...t, visible: Boolean(diffState), by: diff.by, a: diffState?.aNames || [], b: diffState?.bNames || [] };
         if (t.type === "graph") return { ...t, visible: showGraph, height: overrides.graph ?? base };
         if (t.type === "coverage") return { ...t, visible: showCov, height: overrides.coverage ?? base };
         if (t.type === "junctions") return { ...t, height: junctionH };
         if (t.type === "reads") return { ...t, height: readsH };
         return t;
       }),
-      selection: groups.length || cladeIds ? { ...(groups.length ? { clades: groups } : {}), ...(cladeIds ? { units: cladeIds } : {}) } : null,
+      selection: selected.length || cladeIds ? { ...(selected.length ? { clades: selected } : {}), ...(cladeIds ? { units: cladeIds } : {}) } : null,
       provenance: { source: "gOS track browser export", data: "interim gOS per-cell files" },
     });
     s.windows = windows.map((w, i) => ({ locus: s.loci[i], y: { mode: yStates[i].mode, min: scales[i].min, max: scales[i].max, log: scales[i].log, robust: yStates[i].robust } }));
+    s.filters = { depth: depthMode, s_phase: sphaseMode, ...(groups.length ? { clades: groups } : {}) };
     s.layout = { row_height: base, overrides, auto_fit: autoFit, junction_height: junctionH, reads_height: readsH, mode, share_y: shareY, pinned, clade_min_support: minSupport, graph_style: graphStyle };
     const blob = new Blob([JSON.stringify(s, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
@@ -770,6 +1080,8 @@ export default function TrackBrowserPanel() {
   };
 
   if (!patientId) return <Alert type="info" showIcon message="Track browser: open a single-cell patient." />;
+  const hasDepth = units0.some((u) => u.depth != null || u.depth_class);
+  const hasSphase = units0.some((u) => u.s_phase != null && `${u.s_phase}` !== "NA");
   if (!cells.length) return <Alert type="info" showIcon message="Track browser: cells not available for this patient." />;
 
   const tip = hover ? tooltipText(hover, { data, slots, chromoBins, genes, pseudobulk, cellOrder, unitById }) : null;
@@ -795,7 +1107,7 @@ export default function TrackBrowserPanel() {
   const locus = { windows, setWindows: applyWindows, slots, scales, domains, chromoBins, onPlotDomains, geometry: { leftW, gapX, contentW, trackLeft } };
   return (
     <TrackLocusContext.Provider value={locus}>
-    <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : "0.3 · interim gOS files"}</Text>}</Space>}>
+    <Card size="small" className="sc-track-browser" title={<Space wrap><span>Track browser</span><Tag color="blue">preview</Tag>{!narrow && <Text type="secondary">spec {spec.status === "ok" ? `${spec.data.version} · ${spec.data.id}` : `${SPEC_VERSION} · interim gOS files`}</Text>}</Space>}>
       <Space wrap style={{ marginBottom: 6 }}>
         <Input.Search style={{ width: narrow ? Math.max(200, width - 10) : 470 }} size="small" value={locusText} onChange={(e) => setLocusText(e.target.value)} onSearch={(v) => setLocusText(v)} enterButton="Go" placeholder="chr12:57,000,000-70,000,000 | chr11:39.2m-39.7m" />
         <Select size="small" style={{ width: 180 }} placeholder="preset loci" value={null} options={presetsShown.map((p) => ({ label: p.label, value: p.locus }))} onChange={(v) => setLocusText(v)} />
@@ -808,7 +1120,7 @@ export default function TrackBrowserPanel() {
         </Tooltip>
       </Space>
       <Space wrap style={{ marginBottom: 6 }}>
-        <Segmented size="small" value={mode} onChange={(v) => { setMode(v); setScrollTop(0); if (scrollRef.current) scrollRef.current.scrollTop = 0; }} options={[{ label: "clade pseudobulk", value: "pseudobulk" }, { label: "all cells + tree", value: "cells" }]} />
+        <Segmented size="small" value={mode} onChange={(v) => { setMode(v); setScrollTop(0); if (scrollRef.current) scrollRef.current.scrollTop = 0; }} options={[{ label: "clades", value: "pseudobulk" }, { label: "cells + tree", value: "cells" }]} />
         {mode === "pseudobulk" && <Space size={4}><Text>clade junctions ≥</Text><InputNumber size="small" min={0} max={100} value={minSupport} onChange={(v) => setMinSupport(v ?? 0)} style={{ width: 62 }} /><Text>% of cells</Text></Space>}
         {mode === "pseudobulk" && <Button size="small" onClick={() => setExpanded(Object.values(expanded).some(Boolean) ? {} : Object.fromEntries(Object.keys(allUnits.groups).map((g) => [g, true])))}>{Object.values(expanded).some(Boolean) ? "collapse all" : "expand all"}</Button>}
         <Space size={4}><Switch size="small" checked={showGraph} onChange={setShowGraph} /><Text>graph</Text></Space>
@@ -827,6 +1139,52 @@ export default function TrackBrowserPanel() {
         <Space size={4}><Switch size="small" checked={hideNormal} onChange={setHideNormal} /><Text>hide normal</Text></Space>
         {cladeIds && <Button size="small" onClick={() => setCladeIds(null)}>show all cells (clade of {cladeIds.length})</Button>}
       </Space>
+      <Space wrap style={{ marginBottom: 6 }}>
+        {(hasDepth || hasSphase) && <Text strong style={{ fontSize: 12 }}>cells</Text>}
+        {hasDepth && <Segmented size="small" value={depthMode} onChange={setDepthMode} options={[{ label: "all cells", value: "all" }, { label: "deep only (≥ 1e5 fragments)", value: "deep" }]} />}
+        {hasSphase && <Space size={4}><Text>S-phase</Text><Segmented size="small" value={sphaseMode} onChange={setSphaseMode} options={[{ label: "show", value: "show" }, { label: "hide", value: "hide" }, { label: "only", value: "only" }]} /></Space>}
+        {filterActive && <Text type="secondary" style={{ fontSize: 12 }}>{units.length} of {units0.length} cells shown ({filtered.dropped.depth ? `${filtered.dropped.depth} shallow or no depth` : ""}{filtered.dropped.depth && filtered.dropped.sphase ? ", " : ""}{filtered.dropped.sphase ? `${filtered.dropped.sphase} by S-phase` : ""}); clade medians and pools use the shown cells</Text>}
+        {selected.length > 0 && <Tag color="orange" closable onClose={(e) => { e.preventDefault(); setSelected([]); }}>selected: {selected.join(", ")}</Tag>}
+        {selected.length > 0 && <Button size="small" onClick={() => { setGroups(selected); setSelected([]); }}>hide others</Button>}
+        {heatTrack && !unavailableTypes.has("cn_heatmap") && (hmIndex || heatListed) && (
+          <>
+            <Space size={4}><Switch size="small" checked={showHeat} onChange={setShowHeat} /><Text>CN heat map</Text></Space>
+            {showHeat && <Space size={4}><Switch size="small" checked={heatGenome} onChange={setHeatGenome} /><Text>genome-wide</Text></Space>}
+            {showHeat && <Space size={4}><Text>row px</Text><InputNumber size="small" min={1} max={12} value={heatRowPx} onChange={(v) => setHeatRowPx(v || 1)} style={{ width: 56 }} /></Space>}
+            {showHeat && <Segmented size="small" value={heatColors} onChange={setHeatColors} options={[{ label: "CN vs ploidy", value: "ploidy" }, { label: "absolute CN", value: "absolute" }]} />}
+            <Space size={4}><Switch size="small" checked={diff.on} onChange={(v) => setDiff((d) => ({ ...d, on: v }))} /><Text>CN difference</Text></Space>
+            {diff.on && (
+              <>
+                <Segmented size="small" value={diff.by} onChange={(v) => setDiff({ on: true, by: v, a: [], b: [] })} options={[{ label: "clade", value: "clade" }, ...(timePoints.length >= 2 ? [{ label: "time point", value: "time_point" }] : [])]} />
+                <Select size="small" mode="multiple" style={{ minWidth: 120 }} placeholder="A" value={diff.a.length ? diff.a : diffState?.aNames || []} options={(diff.by === "time_point" ? timePoints : cladeNames).map((g) => ({ label: g, value: g }))} onChange={(v) => setDiff((d) => ({ ...d, a: v }))} />
+                <Text>minus</Text>
+                <Select size="small" mode="multiple" style={{ minWidth: 120 }} placeholder="B" value={diff.b.length ? diff.b : diffState?.bNames || []} options={(diff.by === "time_point" ? timePoints : cladeNames).map((g) => ({ label: g, value: g }))} onChange={(v) => setDiff((d) => ({ ...d, b: v }))} />
+              </>
+            )}
+          </>
+        )}
+        {atacTrack && !unavailableTypes.has("atac") && (atacListed || atacIndexOk) && (
+          <>
+            <Space size={4}><Switch size="small" checked={showAtac} onChange={setShowAtac} /><Text>ATAC</Text></Space>
+            {showAtac && <Tooltip title={hmIndex ? "divide the ATAC signal by the clade median CN (cells: the cell's CN) in each 500 kb bin" : "needs the CN heat map"}><Space size={4}><Switch size="small" checked={perCopy} disabled={!hmIndex} onChange={setPerCopy} /><Text>per copy</Text></Space></Tooltip>}
+          </>
+        )}
+        <AutoComplete
+          size="small"
+          style={{ width: 170 }}
+          value={geneQuery}
+          options={geneMatches(genes, geneQuery)}
+          onSearch={setGeneQuery}
+          onChange={setGeneQuery}
+          placeholder="jump to gene"
+          onSelect={(v, opt) => {
+            const [g0, g1] = opt.place || [];
+            const w = Number.isFinite(g0) ? placesToWindow(chromoBins, [g0 - 1e6, g1 + 1e6]) : null;
+            if (w) applyWindows([w]);
+            setGeneQuery(v);
+          }}
+        />
+      </Space>
       {locusError && <Alert type="warning" showIcon message={locusError} style={{ marginBottom: 6 }} />}
       {spec.status === "error" && <Alert type="warning" showIcon message={spec.error} style={{ marginBottom: 6 }} />}
       <div style={{ fontSize: 12, color: "#555", marginBottom: 4, lineHeight: 1.45 }}>
@@ -835,6 +1193,8 @@ export default function TrackBrowserPanel() {
             ? `Clade pseudobulk rows in the gOS genome-graph view: intervals at the median JaBbA CN of the clade's cells (blue band = interquartile range), junctions carried by at least the set % of the clade's cells (hover: cells carrying it). Computed in the browser from the per-cell graphs until the gCells export lands.${pbList.length ? " Rows marked JaBbA under a clade are the exported pseudobulk graphs (one JaBbA fit on the clade's pooled cells; label: cells and ploidy)." : ""} Click a clade label to list its cells.`
             : "Clade pseudobulk rows: black = median JaBbA CN of the clade's cells, blue band = interquartile range, arcs = junctions carried by at least the set % of the clade's cells (thicker = more cells; computed in the browser from the per-cell graphs until the gCells export lands). Click a clade label to list its cells."
           : `${cellOrder.length} cells in tree order. Graph rows: JaBbA segments at CN, arcs = junctions. Coverage rows: grey = binned coverage on the CN scale (each cell's ploidy ψ), red = segments, blue × = expected depth (f × the cell's mean depth, not raw depth).`}
+        {hmIndex ? " CN heat map: one band per clade (median CN of the shown cells) in clades mode, every cell in cells mode; click a band to select the clade (outlined, moved to the top, others dimmed; shift adds), ▸ to expand it, a cell row to pin that cell's rows." : ""}
+        {atacOn ? ` ATAC rows: clade pools (bigWig, peaks as ticks) and per-cell 500 kb ATAC${perCopy ? ", per copy (divided by the CN of the bin)" : ""}.` : ""}
         {" "}Graph rows use the standard gOS genome-graph view (hover for interval / junction details). Each window has its own y scale. Pin a row to read it tall; click a junction for reads at both breakends; drag the ruler to pan, wheel on it to zoom.
       </div>
       <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
@@ -867,6 +1227,37 @@ export default function TrackBrowserPanel() {
           ))}
         </div>
         <canvas ref={headerRef} style={{ display: "block", cursor: "grab" }} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={() => { drag.current = null; setHover(null); }} />
+        {unavailableRows.map((r) => <UnavailableRow key={r.type} title={r.title} reason={r.reason} leftW={trackLeft} width={width} />)}
+        {heatOn && !hmIndex && v04.hm.status !== "loading" && <UnavailableRow title="CN heat map" reason={v04.hm.error || v04.hm.status} leftW={trackLeft} width={width} />}
+        {heatOn && hmIndex && (
+          <CnHeatmapBlock
+            hm={v04.hm}
+            mats={v04.mats}
+            lod={v04.lod}
+            matStatus={v04.matStatus}
+            lodStatus={v04.lodStatus}
+            slots={slots}
+            geometry={{ leftW, trackLeft, gapX, contentW }}
+            width={width}
+            mode={mode}
+            units={orderedUnits}
+            groupColor={groupColor}
+            selected={selected}
+            onSelect={(g, add) => setSelected((sel) => toggleSelection(sel, g, add))}
+            expanded={heatExpanded}
+            onToggleExpand={(g) => setHeatExpanded((ex) => ({ ...ex, [g]: !ex[g] }))}
+            onPinCell={(id) => setPinned((p) => (p.includes(`cell:${id}`) ? p.filter((k) => k !== `cell:${id}`) : [...p.slice(-2), `cell:${id}`]))}
+            pinnedIds={new Set(pinned.filter((k) => k.startsWith("cell:")).map((k) => k.slice(5)))}
+            rowPx={heatRowPx}
+            genomeWide={heatGenome}
+            onJumpChrom={(c) => { setHeatGenome(false); setLocusText(`chr${c}`); }}
+            treeLayout={treeLayout.layout}
+            colorMode={heatColors}
+            title={filterText ? `CN heat map (${filterText})` : "CN heat map"}
+          />
+        )}
+        {diffState && hmIndex && !heatGenome && <CnDiffBlock index={hmIndex} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} profiles={diffProfiles} label={`${diffState.by === "time_point" ? "time point" : "clade"} ${diffState.label}`} nA={diffState.a.length} nB={diffState.b.length} />}
+        {diff.on && !hmIndex && <UnavailableRow title="CN difference" reason={heatTrack ? "needs the CN heat map matrices" : "no cn_heatmap track"} leftW={trackLeft} width={width} />}
         {pinLayout.length > 0 && (
           <div style={{ borderTop: "2px solid #f39c12", borderBottom: "2px solid #f39c12", background: "#fffaf0", margin: "2px 0" }}>
             <div style={{ fontSize: 11, color: "#8a5a00", padding: "1px 4px", height: 16 }}>Pinned ({pinLayout.length}/3) · tall rows for close reading</div>
@@ -908,7 +1299,8 @@ function tooltipText(h, { data, slots, chromoBins, genes, pseudobulk, cellOrder,
     const ev = hit.event;
     lines.push(`${ev.id} · chr${ev.chrom}:${ev.start.toLocaleString()}-${ev.end.toLocaleString()}`, `${ev.kind === "amplicon" ? "process caller" : "arm event"}: ${ev.cls || "n/a"}`);
     if (ev.status) lines.push(`status: ${ev.status}${ev.confidence ? ` · confidence ${ev.confidence}` : ""}`);
-    if (ev.kind === "amplicon") lines.push(`ecDNA caller: ${ev.ecdna || "not available"}`);
+    if (ev.kind === "amplicon") lines.push(`ecDNA caller (a call, not proof of ecDNA): ${ev.ecdna || "not available"}`);
+    if (ev.kind === "amplicon" && (ev.fragmentsPerCopy != null || ev.atacVsCn != null)) lines.push(`ATAC fragments per copy: ${ev.fragmentsPerCopy != null ? ev.fragmentsPerCopy.toPrecision(3) : "not available"} · ATAC vs CN: ${ev.atacVsCn ?? "not available"}`);
     if (ev.genes) lines.push(`genes: ${ev.genes}`);
     return lines.join("\n");
   }
