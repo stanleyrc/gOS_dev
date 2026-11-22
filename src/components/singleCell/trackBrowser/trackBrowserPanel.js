@@ -495,6 +495,7 @@ export default function TrackBrowserPanel() {
   v04Pre.current.atacIndex = v04.atac.status === "ok" ? v04.atac.index : null;
   useEffect(() => setAtacIndexOk(v04.atac.status === "ok"), [v04.atac.status]);
   const hmIndex = v04.hm.status === "ok" ? v04.hm.index : null;
+  const pinnedCellIds = useMemo(() => new Set(pinned.filter((k) => k.startsWith("cell:")).map((k) => k.slice(5))), [pinned]);
   const heatOn = showHeat && Boolean(heatTrack) && !unavailableTypes.has("cn_heatmap") && (hmIndex || (heatListed && v04.hm.status !== "loading" && v04.hm.status !== "none"));
 
   // clade median CN per window over the shown cells (per-copy ATAC; the heat map computes its own bands)
@@ -1247,7 +1248,7 @@ export default function TrackBrowserPanel() {
             expanded={heatExpanded}
             onToggleExpand={(g) => setHeatExpanded((ex) => ({ ...ex, [g]: !ex[g] }))}
             onPinCell={(id) => setPinned((p) => (p.includes(`cell:${id}`) ? p.filter((k) => k !== `cell:${id}`) : [...p.slice(-2), `cell:${id}`]))}
-            pinnedIds={new Set(pinned.filter((k) => k.startsWith("cell:")).map((k) => k.slice(5)))}
+            pinnedIds={pinnedCellIds}
             rowPx={heatRowPx}
             genomeWide={heatGenome}
             onJumpChrom={(c) => { setHeatGenome(false); setLocusText(`chr${c}`); }}

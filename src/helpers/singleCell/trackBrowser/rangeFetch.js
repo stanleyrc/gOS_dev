@@ -5,7 +5,7 @@
 export const PAGE = 65536;
 
 /** A readRange(offset, length) -> Promise<ArrayBuffer> for `url`. */
-export function rangeReader(url, { fetchImpl = typeof fetch !== "undefined" ? fetch.bind(globalThis) : null, page = PAGE, maxPages = 512 } = {}) {
+export function rangeReader(url, { fetchImpl = typeof fetch !== "undefined" ? (...a) => fetch(...a) : null, page = PAGE, maxPages = 512 } = {}) {
   const pages = new Map(); // page index -> Uint8Array
   let whole = null; // Uint8Array when the server sent the full file
   let size = Infinity;
