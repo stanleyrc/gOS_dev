@@ -177,11 +177,13 @@ export function CnHeatmapBlock({
         ctx.font = "600 11px system-ui, sans-serif";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
-        ctx.fillText(`${expanded[r.group] ? "▾" : "▸"} ${r.group}`, 4, y + h / 2);
+        const name = `${expanded[r.group] ? "▾" : "▸"} ${r.group}`;
+        ctx.fillText(name, 4, y + h / 2);
+        const nameEnd = 4 + ctx.measureText(name).width;
         ctx.font = "10px system-ui, sans-serif";
         ctx.fillStyle = COLORS.muted;
         ctx.textAlign = "right";
-        ctx.fillText(`n ${n}`, stripX0 - 4, y + h / 2);
+        if (stripX0 - 4 - ctx.measureText(`n ${n}`).width > nameEnd + 4) ctx.fillText(`n ${n}`, stripX0 - 4, y + h / 2);
         ctx.strokeStyle = "#fff";
         ctx.beginPath();
         ctx.moveTo(trackLeft, y + h - 0.5);

@@ -540,7 +540,8 @@ export default function TrackBrowserPanel() {
         return;
       }
       const members = row.members || [];
-      const pool = idx ? poolFor(idx, { group: row.group }) : null;
+      // a dataset without per-clade pools (e.g. ATAC-only libraries: one "all" pool) draws the all-cells pool
+      const pool = idx ? poolFor(idx, { group: row.group }) || (idx.byGroup.size === 0 ? idx.all : null) : null;
       // filters on: pool the shown cells' 500 kb ATAC in the browser (n stated); otherwise the exported pool
       if (filterActive && members.length <= POOL_CELLS_MAX && members.some((id) => v04.cellAtac.has(id))) {
         const pooled = poolCellArrays(members.map((id) => v04.cellAtac.get(id)).filter(Boolean));
@@ -903,7 +904,7 @@ export default function TrackBrowserPanel() {
               <div style={{ fontWeight: 600, fontSize: 12, cursor: pinnedRow ? "default" : "pointer", marginTop: 2 }} onClick={() => !pinnedRow && setExpanded((ex) => ({ ...ex, [row.group]: !ex[row.group] }))}>
                 {pinnedRow ? "" : expanded[row.group] ? "▾ " : "▸ "}{short}
               </div>
-              <div style={{ color: COLORS.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={filterText ? `n used: ${members.length} (${filterText})` : ""}>median of {members.length} cells{filterText ? ` (${filterText})` : ""}</div>
+              <div style={{ color: COLORS.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={filterText ? `n used: ${members.length} (${filterText})` : ""}>{tracksOn.graph ? "median of " : ""}{members.length} cells{filterText ? ` (${filterText})` : ""}</div>
               {!pinnedRow && <a style={{ fontSize: 11, marginRight: 6 }} onClick={(e) => setSelected((sel) => toggleSelection(sel, row.group, e.shiftKey))} title="select: outline, move to the top, dim the others (shift: add)">{selected.includes(row.group) ? "unselect" : "select"}</a>}
             </>
           ) : (
@@ -917,7 +918,7 @@ export default function TrackBrowserPanel() {
           )}
           {it.height < 44 && <a style={{ fontSize: 11, position: "absolute", right: 2, top: 1 }} onClick={togglePin} title={isPinned ? "unpin" : "pin tall"}>{isPinned ? "×" : "⇕"}</a>}
           {!isClade && !isPb && it.height >= 60 && !narrow && gH > 0 && cH > 0 && <div style={{ color: COLORS.muted, position: "absolute", top: gH + 2 }}>coverage</div>}
-          {aH >= 18 && !isPb && (gH + cH) >= 30 && <div style={{ color: COLORS.muted, position: "absolute", top: gH + cH + 2 }}>ATAC</div>}
+          {aH >= 18 && !isPb && (gH + cH >= 30 || it.height >= 44) && <div style={{ color: COLORS.muted, position: "absolute", top: gH + cH + (gH + cH ? 2 : 30), whiteSpace: "nowrap" }} title={atacData.get(isClade ? `clade:${row.group}` : `cell:${row.id}`)?.label || ""}>ATAC {atacUnit}</div>}
         </div>
         <div style={{ position: "absolute", left: leftW, top: 0, width: contentW }}>
           {gH > 0 && (graphStyle === "ggraph"
@@ -932,7 +933,7 @@ export default function TrackBrowserPanel() {
             const d = atacData.get(isClade ? `clade:${row.group}` : `cell:${row.id}`);
             return (
               <div title={d?.label ? `ATAC (${atacUnit}) · ${d.label}` : "ATAC"}>
-                <AtacRow cols={d?.cols} maxes={atacMax[isClade ? "clade" : "cell"]} peaks={d?.peaks} height={aH} width={contentW} unitLabel={`ATAC ${atacUnit}`} note={d ? d.note : "ATAC: loading"} />
+                <AtacRow cols={d?.cols} maxes={atacMax[isClade ? "clade" : "cell"]} peaks={d?.peaks} height={aH} width={contentW} note={d ? d.note : "ATAC: loading"} />
               </div>
             );
           })()}

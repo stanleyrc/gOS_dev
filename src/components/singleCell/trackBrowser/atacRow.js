@@ -12,7 +12,7 @@ const fmt = (v) => (v >= 100 ? v.toFixed(0) : v >= 1 ? v.toPrecision(2) : v.toPr
  * Float32Array of pixel columns (NaN = no data) for window k; maxes[k] its y max; peaks[k] [{ start, end }] or null;
  * note: text drawn when there is nothing to draw ("not available (reason)" / "loading").
  */
-export default function AtacRow({ cols, maxes, peaks, height, width, unitLabel = "CPM", note = null }) {
+export default function AtacRow({ cols, maxes, peaks, height, width, note = null }) {
   const L = useTrackLocus();
   const ref = useRef(null);
   useEffect(() => {
@@ -68,11 +68,6 @@ export default function AtacRow({ cols, maxes, peaks, height, width, unitLabel =
       ctx.textBaseline = "middle";
       ctx.fillText(note, left + 8, height / 2);
     }
-    ctx.fillStyle = COLORS.muted;
-    ctx.font = "9px system-ui, sans-serif";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    ctx.fillText(unitLabel, 2, 2);
-  }, [cols, maxes, peaks, height, width, note, unitLabel, L.slots, L.geometry.gapX]);
+  }, [cols, maxes, peaks, height, width, note, L.slots, L.geometry.gapX]);
   return <canvas ref={ref} style={{ display: "block" }} />;
 }
