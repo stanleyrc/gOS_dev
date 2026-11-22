@@ -129,6 +129,7 @@ const initState = {
   precompute: {}, // { manifest, qc, sphase, telomeres, calls, slices }: each { status, data } (helpers/singleCell/precompute.js)
   // Raw per-cell files already loaded for the heatmaps, reused by the tracks.
   cellFiles: {}, // { [cellId]: { genome, mutations } }
+  cellFilesDeferred: false, // spec v0.5: opened on the track browser without the per-cell files (loaded on another tab)
   selectedCellIds: [],
   visibleTracks: linkedTracks() || SC_DEFAULT_TRACKS,
   hetMode: linkedHetMode(), // ?hets=blocks
@@ -232,6 +233,7 @@ export default function appReducer(state = initState, action) {
         treeVariantError: null,
         precompute: action.precompute || {},
         cellFiles: action.cellFiles,
+        cellFilesDeferred: Boolean(action.cellFilesDeferred),
         selectedCellIds: linkedCells.length ? linkedCells : action.selectedCellIds,
         heatmapType: linked && link.heatmap && (link.heatmap === "drivers" || action[link.heatmap]?.status === "ok") ? link.heatmap : defaultHeatmap,
         driverDrawer: linked && link.driverOpen ? link.driverOpen : null,

@@ -184,10 +184,15 @@ describe("places for the genome-graph component", () => {
 describe("track spec v0.4", () => {
   const base = { spec: "gos-track-spec", loci: ["chr1:1-100"], units: { list: [] } };
   test("cn_heatmap, atac and cn_diff are defined types; v0.3 files stay readable", () => {
-    expect(SPEC_VERSION).toBe("0.4");
+    expect(SPEC_VERSION).toBe("0.5");
     expect(validateSpec({ ...base, version: "0.4", tracks: v04Tracks() })).toEqual([]);
     expect(validateSpec({ ...base, version: "0.3", tracks: interimTracks() })).toEqual([]);
     expect(validateSpec({ ...base, version: "0.4", tracks: [{ id: "d", type: "cn_diff", by: "plate" }] })[0]).toMatch(/cn_diff.by/);
+  });
+  test("v0.5: atac_residual, atac_cn and a second events track (JW-07) validate", () => {
+    const t = [...v04Tracks(), { id: "cin", type: "events", url: "{dataPath}{patient}/cin_events.json", title: "JW-07 process caller" }, { id: "res", type: "atac_residual", url: "{dataPath}{patient}/atac_residuals.json" }, { id: "acn", type: "atac_cn", url: "{dataPath}{patient}/atac_cn.json" }];
+    expect(validateSpec({ ...base, version: "0.5", tracks: t })).toEqual([]);
+    expect(unitsFromCells([{ cell_id: "a", cin_wc_changes: 2, cin_events_carried: "NA" }]).list[0]).toMatchObject({ cin_wc_changes: 2, cin_events_carried: "NA" });
   });
   test("units carry the dATAC attributes (depth from b_frag_good, else B_unique_fragments)", () => {
     const u = unitsFromCells([

@@ -2,8 +2,8 @@
 import { formatLocus, parseLocus } from "./locus";
 
 export const SPEC_NAME = "gos-track-spec";
-export const SPEC_VERSION = "0.4";
-export const KNOWN_TYPES = ["coverage", "graph", "reads", "genes", "junctions", "snv_reads", "signature", "events", "cn_heatmap", "atac", "cn_diff"];
+export const SPEC_VERSION = "0.5";
+export const KNOWN_TYPES = ["coverage", "graph", "reads", "genes", "junctions", "snv_reads", "signature", "events", "cn_heatmap", "atac", "cn_diff", "atac_residual", "atac_cn"];
 export const RESERVED_TYPES = ["junction_support", "walks", "cn_correlation_1d", "cn_correlation_2d", "hic", "segments", "peaks"];
 /** Types computed in the browser from other tracks (no url). */
 export const DERIVED_TYPES = ["cn_diff"];
@@ -23,7 +23,7 @@ export function interimTracks() {
 export function v04Tracks() {
   return [
     { id: "events", type: "events", title: "Events", url: "{dataPath}{patient}/events.json", format: "gos-events-json", height: 44 },
-    { id: "cnhm", type: "cn_heatmap", title: "CN heat map", url: "{dataPath}{patient}/cn_heatmap/index.json", format: "gos-cn-heatmap-u16", row_px: 3, strips: ["clade", "plate", "time_point", "s_phase", "qc_mapd", "depth", "ecdna_call"] },
+    { id: "cnhm", type: "cn_heatmap", title: "CN heat map", url: "{dataPath}{patient}/cn_heatmap/index.json", format: "gos-cn-heatmap-u16", row_px: 3, strips: ["clade", "plate", "time_point", "s_phase", "qc_mapd", "depth", "ecdna_call", "cin_wc_changes", "cin_events_carried"] },
     { id: "cndiff", type: "cn_diff", title: "CN difference", by: "clade", a: [], b: [], height: 60, visible: false },
     { id: "atac", type: "atac", title: "ATAC", url: "{dataPath}{patient}/atac/index.json", format: "gos-atac-index", per_unit: false, per_copy: false, cell_url: "{dataPath}{unit}/atac.arrow", height: 40 },
   ];
@@ -59,6 +59,9 @@ export function unitsFromCells(cells, order = [], cloneColors = {}) {
       depth: cellDepth(c),
       depth_class: c.depth_class ?? null,
       ecdna_call: c.ecdna_call ?? null,
+      // v0.5 (JW-07) heat-map strips
+      cin_wc_changes: c.cin_wc_changes ?? null,
+      cin_events_carried: c.cin_events_carried ?? null,
     };
   });
   const groups = {};

@@ -16,6 +16,8 @@ import { effectiveTracks, hetBlocksToGraph } from "../../helpers/singleCell/hetT
 import { arrowScatter, casePath, loadCellHeatmapFiles, signatureVersionsPath, tryGet } from "./loaders";
 import { PRECOMPUTE_FILES, mergePrecomputeIntoCells } from "../../helpers/singleCell/precompute";
 import { getCancelToken } from "../../helpers/cancelToken";
+import settingsActions from "../settings/actions";
+import { TRACK_BROWSER_TAB, shouldDeferCellFiles } from "../../helpers/singleCell/trackBrowser/lazyUnits";
 import { loadConfiguredManifestsWithStatus } from "../../helpers/staticManifests";
 import { parseNewick, rotateByLeafRank, treeForCells } from "../../helpers/singleCell/newick";
 import { linkAppliesTo, readDeepLink, readViewLink } from "../../helpers/singleCell/deepLink";
@@ -172,7 +174,10 @@ function* fetchSingleCellData(action = {}) {
     });
     const cellFiles = {};
     const genomeErrors = [];
-    for (let k = 0; k < cellIds.length; k += SC_FETCH_CONCURRENCY) {
+    // spec v0.5 lazy loading: opened on the track browser (tab 21) for a lazy dataset or a large patient, the per-cell
+    // files are not fetched here (the track browser loads only the graphs it draws); another tab asks for them later
+    const deferCellFiles = shouldDeferCellFiles({ tab: state.Settings.tab, dataset, nCells: cellIds.length, full: Boolean(action.full) });
+    for (let k = 0; !deferCellFiles && k < cellIds.length; k += SC_FETCH_CONCURRENCY) {
       const batch = cellIds.slice(k, k + SC_FETCH_CONCURRENCY);
       const results = yield all(
         batch.map((cellId) => call(loadCellHeatmapFiles, dataset, cellId, cancelToken))
@@ -190,6 +195,7 @@ function* fetchSingleCellData(action = {}) {
     const genomes = {};
     const mutations = {};
     cellIds.forEach((cellId) => {
+      if (!cellFiles[cellId]) return;
       if (cellFiles[cellId].genome) genomes[cellId] = cellFiles[cellId].genome;
       if (cellFiles[cellId].mutations) mutations[cellId] = cellFiles[cellId].mutations;
     });
@@ -282,6 +288,7 @@ function* fetchSingleCellData(action = {}) {
       altTrees: altTreesFile.status === "ok" ? altTreesFile : missing(),
       treeVariant,
       cellFiles,
+      cellFilesDeferred: deferCellFiles,
       selectedCellIds: [],
     });
   } catch (error) {
@@ -463,7 +470,17 @@ function* persistLayout() {
   }
 }
 
+/** A patient opened on the track browser with deferred per-cell files: load them when another tab is opened. */
+function* loadDeferredCellFiles(action) {
+  const state = yield select(getState);
+  const sc = state.SingleCell;
+  if (!sc?.cellFilesDeferred || sc.loading || !sc.patient?.caseReportId) return;
+  if (`${action.tab}` === TRACK_BROWSER_TAB) return;
+  yield put({ type: actions.FETCH_SINGLE_CELL_DATA_REQUEST, caseReportId: sc.patient.caseReportId, full: true });
+}
+
 function* actionWatcher() {
+  yield takeLatest(settingsActions.UPDATE_TAB, loadDeferredCellFiles);
   yield takeLatest(actions.SC_LAYOUT_UPDATED, persistLayout);
   yield takeLatest(actions.SC_CN_MODE_UPDATED, loadAllelic);
   yield takeLatest(actions.SC_CN_MAPPED_REQUEST, loadCnMapped);

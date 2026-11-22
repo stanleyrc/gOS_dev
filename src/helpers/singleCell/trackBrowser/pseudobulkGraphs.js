@@ -31,6 +31,7 @@ export function normalizePseudobulkGraphs(manifest) {
       purity: Number(e.purity) > 0 && Number(e.purity) <= 1 ? Number(e.purity) : 1,
       role: e.role || "",
       method: e.method || "",
+      plate: e.plate != null && `${e.plate}` !== "" ? `${e.plate}` : null,
       url: e.url || PSEUDOBULK_GRAPH_URL,
       order: i,
     }));

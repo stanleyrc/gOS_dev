@@ -27,6 +27,10 @@ import { perCopyValues, poolCellArrays, poolFor, signalMax, valueColumns } from 
 import { peaksInWindow } from "../../../helpers/singleCell/trackBrowser/peaks";
 import { PSEUDOBULK_GRAPHS_URL, manifestLoci, normalizePseudobulkGraphs } from "../../../helpers/singleCell/trackBrowser/pseudobulkGraphs";
 import { EVENTS_URL, eventLabel, eventsInWindows, normalizeEvents } from "../../../helpers/singleCell/trackBrowser/events";
+import { CIN_STATUS_LEGEND, cinEventLabel, cinEventLines, cinStatusColor, isCinEventsTrack, normalizeCinEvents, normalizeCladeRates, plateOfDataset } from "../../../helpers/singleCell/trackBrowser/cinEvents";
+import { normalizeAtacCn, normalizeAtacResiduals } from "../../../helpers/singleCell/trackBrowser/atacV05";
+import { graphIdsToLoad, matrixPseudobulk } from "../../../helpers/singleCell/trackBrowser/lazyUnits";
+import { AtacCnBlock, AtacResidualBlock, CladeRatesBlock, cladeRateTitle } from "./v05Blocks";
 import useUnitData from "./useUnitData";
 import useV04Data from "./useV04Data";
 import { CnDiffBlock, CnHeatmapBlock, UnavailableRow } from "./heatmapBlock";
@@ -223,6 +227,12 @@ export default function TrackBrowserPanel() {
     return { on: true, by: by === "time_point" ? "time_point" : "clade", a: (a || "").split(",").filter(Boolean), b: (b || "").split(",").filter(Boolean) };
   });
   const [geneQuery, setGeneQuery] = useState("");
+  // v0.5: collapsed exported JaBbA rows per clade (tbpbx = expanded clades), residual lanes (tbres), ATAC-only CN view
+  const [pbExpanded, setPbExpanded] = useState(() => Object.fromEntries((urlParam("tbpbx") || "").split(",").filter(Boolean).map((g) => [g, true])));
+  const [resBy, setResBy] = useState(urlParam("tbres") === "time" ? "time" : "clade");
+  const [showRes, setShowRes] = useState(urlParam("tbresid") !== "0");
+  const [showAcn, setShowAcn] = useState(urlParam("tbacn") !== "0");
+  const [acnGenome, setAcnGenome] = useState(urlParam("tbacn") === "genome");
 
   // ?trackspec=<url>: a spec from gCells (or exported here) sets loci, per-window y, layout, selection and tracks.
   // Without one, the dataset's own {dataPath}{patient}/trackspec.json (v0.4 datasets) is the default view; its loci
@@ -263,6 +273,11 @@ export default function TrackBrowserPanel() {
       if (Number.isFinite(L.clade_min_support)) setMinSupport(L.clade_min_support);
       if (L.graph_style) setGraphStyle(L.graph_style === "canvas" ? "canvas" : "ggraph");
       if (Array.isArray(L.pinned) && !(keepLink && urlParam("tbpin"))) setPinned(L.pinned.slice(0, 3));
+      if (Array.isArray(L.pb_expanded) && !urlParam("tbpbx")) setPbExpanded(Object.fromEntries(L.pb_expanded.map((g) => [`${g}`, true])));
+      const acnT = byType("atac_cn");
+      if (acnT && !urlParam("tbacn")) setAcnGenome(acnT.genome_wide !== false && (acnT.genome_wide === true || (s.tracks || [])[0]?.type === "atac_cn"));
+      const resT = byType("atac_residual");
+      if (resT?.by && !urlParam("tbres")) setResBy(resT.by === "time" || resT.by === "time_point" ? "time" : "clade");
       const F = s.filters || {};
       if (F.depth && !urlParam("tbdepth")) setDepthMode(F.depth === "deep" ? "deep" : "all");
       if (F.s_phase && !urlParam("tbsphase")) setSphaseMode(["hide", "only"].includes(F.s_phase) ? F.s_phase : "show");
@@ -297,25 +312,70 @@ export default function TrackBrowserPanel() {
   const atacTrack = atacListed ? trackOf("atac") : spec.status === "loading" ? null : defaults.atac;
   const unavailableRows = useMemo(() => {
     if (!specOk) return [];
-    const titles = { cn_heatmap: "CN heat map", graph: "genome graph", coverage: "coverage", atac: "ATAC", events: "events", cn_diff: "CN difference", junctions: "junctions" };
+    const titles = { cn_heatmap: "CN heat map", graph: "genome graph", coverage: "coverage", atac: "ATAC", events: "events", cn_diff: "CN difference", junctions: "junctions", atac_residual: "ATAC residual", atac_cn: "ATAC-only CN", clade_rates: "JW-07 rates", cin_events: "JW-07 events", cin_wc_changes: "JW-07 cell strips", cin_events_carried: "JW-07 cell strips" };
     const types = new Set([...Object.keys(spec.data.unavailable && !Array.isArray(spec.data.unavailable) ? spec.data.unavailable : {}), ...(Array.isArray(spec.data.unavailable) ? spec.data.unavailable.map((x) => x?.type || x?.id) : []), ...(spec.data.tracks || []).filter((t) => t.unavailable).map((t) => t.type)]);
     return [...types].filter(Boolean).map((t) => ({ type: t, title: titles[t] || t, reason: unavailableOf(spec.data, t) }));
   }, [specOk, spec]);
   const unavailableTypes = useMemo(() => new Set(unavailableRows.map((r) => r.type)), [unavailableRows]);
 
-  // ----- event track (spec `events`, or {dataPath}{patient}/events.json): amplicon classes, ecDNA calls, arm events
-  const [events, setEvents] = useState({ status: "loading", list: [] });
-  const specEvents = spec.status === "ok" ? (spec.data.tracks || []).find((t) => t.type === "events") : undefined;
+  // ----- event tracks (spec `events`, or {dataPath}{patient}/events.json): amplicon classes, ecDNA calls, arm events;
+  // v0.5: more than one events track (the JW-07 process caller, cin_events.json, colored by status)
+  const [eventLanes, setEventLanes] = useState([]);
+  const specEventTracks = useMemo(() => (spec.status === "ok" ? (spec.data.tracks || []).filter((t) => t.type === "events" && !t.unavailable) : null), [spec]);
   useEffect(() => {
-    if (!patientId || spec.status === "loading") return;
-    if (spec.status === "ok" && !specEvents) {
-      setEvents({ status: "none", list: [] });
-      return;
-    }
-    tryGet(resolveUrl(specEvents?.url || EVENTS_URL, { dataPath, patient: patientId, genome, base: specBase })).then((r) => setEvents(r.status === "ok" ? { status: "ok", list: normalizeEvents(r.data) } : { status: r.status, list: [] }));
+    if (!patientId || spec.status === "loading") return undefined;
+    let alive = true;
+    const list = specEventTracks || [{ id: "events", type: "events", url: EVENTS_URL }];
+    setEventLanes([]);
+    Promise.all(list.map((t) => tryGet(resolveUrl(t.url || EVENTS_URL, { dataPath, patient: patientId, genome, base: specBase })).then((r) => {
+      const cin = isCinEventsTrack(t);
+      if (r.status !== "ok") return { track: t, cin, status: r.status, list: [] };
+      if (!cin) return { track: t, cin, status: "ok", list: normalizeEvents(r.data) };
+      const c = normalizeCinEvents(r.data);
+      return { track: t, cin, status: "ok", list: c.events.map((e) => ({ ...e, jw07: true })), caveat: c.caveat, notAvailable: c.notAvailable };
+    }))).then((lanes) => alive && setEventLanes(lanes.filter((l) => l.list.length || (l.cin && l.status !== "ok" && specEventTracks))));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, dataPath, spec.status, specEventTracks]);
+  const eventsH = eventLanes.filter((l) => l.list.length).length * HEADER.events;
+  const cinLane = eventLanes.find((l) => l.cin);
+
+  // ----- v0.5 patient files: clade_rates.json (units.clade_rates), atac_residuals.json, atac_cn.json
+  const [v05, setV05] = useState({ rates: null, res: null, acn: null });
+  useEffect(() => {
+    if (!patientId || spec.status === "loading") return undefined;
+    let alive = true;
+    setV05({ rates: null, res: null, acn: null });
+    if (spec.status !== "ok") return undefined;
+    const S = spec.data;
+    const get = (url) => tryGet(resolveUrl(url, { dataPath, patient: patientId, genome, base: specBase }));
+    const ratesUrl = S.units?.clade_rates;
+    const resT = (S.tracks || []).find((t) => t.type === "atac_residual" && !t.unavailable);
+    const acnT = (S.tracks || []).find((t) => t.type === "atac_cn" && !t.unavailable);
+    const plate = plateOfDataset(dataset?.id);
+    const out = { rates: null, res: null, acn: null };
+    const done = () => alive && setV05({ ...out });
+    if (typeof ratesUrl === "string") get(ratesUrl.includes("/") || ratesUrl.startsWith("{") ? ratesUrl : `{dataPath}{patient}/${ratesUrl}`).then((r) => {
+      out.rates = r.status === "ok" ? normalizeCladeRates(r.data, plate) : { notAvailable: `${r.status}: no clade_rates.json`, rows: [] };
+      done();
+    });
+    if (resT) get(resT.url || "{dataPath}{patient}/atac_residuals.json").then((r) => {
+      out.res = r.status === "ok" ? normalizeAtacResiduals(r.data) : { ok: false, error: `${r.status}: no atac_residuals.json` };
+      done();
+    });
+    if (acnT) get(acnT.url || "{dataPath}{patient}/atac_cn.json").then((r) => {
+      out.acn = r.status === "ok" ? normalizeAtacCn(r.data) : { ok: false, error: `${r.status}: no atac_cn.json` };
+      done();
+    });
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId, dataPath, spec.status]);
-  const eventsH = events.list.length ? HEADER.events : 0;
+  const v05Order = useMemo(() => (spec.status === "ok" ? (spec.data.tracks || []).map((t) => t.type) : []), [spec]);
+  const acnFirst = v05Order.indexOf("atac_cn") >= 0 && v05Order.indexOf("atac_cn") < Math.max(0, v05Order.indexOf("cn_heatmap"));
 
   // ----- exported pseudobulk graphs (spec units.pseudobulk_graphs, or {dataPath}{patient}/pseudobulk_graphs.json)
   const [pbManifest, setPbManifest] = useState({ status: "loading", list: [], loci: [] });
@@ -332,25 +392,31 @@ export default function TrackBrowserPanel() {
   }, [patientId, dataPath, spec.status]);
   const pbList = pbManifest.list;
   const pbById = useMemo(() => new Map(pbList.map((e) => [e.id, e])), [pbList]);
+  // exported pseudobulk graphs are fetched when their row is shown (collapsed rows and other clades: not fetched)
   const [pbData, setPbData] = useState({ graphs: new Map(), status: new Map() });
+  const pbStore = useRef({ graphs: new Map(), status: new Map(), list: null });
+  const [pbWanted, setPbWanted] = useState([]);
   useEffect(() => {
-    let alive = true;
-    const graphs = new Map();
-    const status = new Map(pbList.map((e) => [e.id, "loading"]));
-    setPbData({ graphs, status: new Map(status) });
-    pbList.forEach((e) => {
+    pbStore.current = { graphs: new Map(), status: new Map(), list: pbList };
+    setPbData({ graphs: new Map(), status: new Map() });
+  }, [pbList, dataPath]);
+  useEffect(() => {
+    const st = pbStore.current;
+    const todo = pbWanted.filter((id) => pbById.has(id) && !st.status.has(id));
+    if (!todo.length) return;
+    todo.forEach((id) => {
+      st.status.set(id, "loading");
+      const e = pbById.get(id);
       tryGet(resolveUrl(e.url, { dataPath, patient: patientId, unit: e.id, genome, base: specBase })).then((r) => {
-        if (!alive) return;
-        status.set(e.id, r.status);
-        if (r.status === "ok") graphs.set(e.id, r.data);
-        setPbData({ graphs: new Map(graphs), status: new Map(status) });
+        if (pbStore.current !== st) return;
+        st.status.set(id, r.status);
+        if (r.status === "ok") st.graphs.set(id, r.data);
+        setPbData({ graphs: new Map(st.graphs), status: new Map(st.status) });
       });
     });
-    return () => {
-      alive = false;
-    };
+    setPbData({ graphs: new Map(st.graphs), status: new Map(st.status) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pbList, dataPath]);
+  }, [pbWanted.join("|"), pbById]);
   // a dataset's own locus presets (manifest `loci`) replace the generic fallback unless a link or spec set the locus
   const datasetPresets = useMemo(() => {
     const fromSpec = specOk ? specPresets(spec.data) : [];
@@ -391,6 +457,10 @@ export default function TrackBrowserPanel() {
   useEffect(() => setUrlParam("tbhcol", heatColors === "absolute" ? "abs" : null), [heatColors]);
   useEffect(() => setUrlParam("tbatac", showAtac ? null : "0"), [showAtac]);
   useEffect(() => setUrlParam("tbcopy", perCopy ? "1" : null), [perCopy]);
+  useEffect(() => setUrlParam("tbpbx", Object.keys(pbExpanded).filter((g) => pbExpanded[g]).join(",") || null), [pbExpanded]);
+  useEffect(() => setUrlParam("tbres", resBy === "time" ? "time" : null), [resBy]);
+  useEffect(() => setUrlParam("tbresid", showRes ? null : "0"), [showRes]);
+  useEffect(() => setUrlParam("tbacn", !showAcn ? "0" : acnGenome ? "genome" : "win"), [showAcn, acnGenome]);
   useEffect(() => setUrlParam("tbdiff", diff.on ? `${diff.by}:${diff.a.join(",")}:${diff.b.join(",")}` : null), [diff]);
 
   // ----- units, tree order, rows
@@ -422,7 +492,7 @@ export default function TrackBrowserPanel() {
   const treeOrderedUnits = useMemo(() => cellOrder.map((id) => unitById.get(id)).filter(Boolean), [cellOrder, unitById]);
   // selected clades move to the top (each in tree order); the others keep their order and are dimmed
   const orderedUnits = useMemo(() => orderBySelection(treeOrderedUnits, selected), [treeOrderedUnits, selected]);
-  const rowsList = useMemo(() => buildRows(orderedUnits, mode, expanded, pbList), [orderedUnits, mode, expanded, pbList]);
+  const rowsList = useMemo(() => buildRows(orderedUnits, mode, expanded, pbList, pbExpanded), [orderedUnits, mode, expanded, pbList, pbExpanded]);
   const groupColor = useCallback((g) => allUnits.groups[g]?.color || "#999", [allUnits]);
 
   const [atacIndexOk, setAtacIndexOk] = useState(false);
@@ -442,7 +512,6 @@ export default function TrackBrowserPanel() {
     return ids;
   }, [visibleItems, showCov, pinned]);
 
-  const data = useUnitData({ dataPath, patient: patientId, genome, unitIds, coverageIds, graphTrack, coverageTrack, cellFiles });
 
   // ----- patient junctions and slice regions
   const [junctions, setJunctions] = useState({ status: "loading", list: [] });
@@ -498,6 +567,18 @@ export default function TrackBrowserPanel() {
   v04Pre.current.atacIndex = v04.atac.status === "ok" ? v04.atac.index : null;
   useEffect(() => setAtacIndexOk(v04.atac.status === "ok"), [v04.atac.status]);
   const hmIndex = v04.hm.status === "ok" ? v04.hm.index : null;
+  // v0.5 lazy loading: with a CN heat map (index loading or loaded) clade rows take their median from the matrix and
+  // per-cell graphs are fetched only for the cell rows in view, pinned cells and (small) expanded clades; without one
+  // (other datasets, or the index failed) every shown cell's graph is fetched as before
+  const lazyGraphs = spec.status !== "loading" && Boolean(heatTrack) && !unavailableTypes.has("cn_heatmap") && (v04.hm.status === "ok" || v04.hm.status === "loading");
+  const graphIds = useMemo(() => {
+    if (spec.status === "loading" || (heatTrack && v04.hm.status === "none")) return [];
+    if (!lazyGraphs) return unitIds;
+    return graphIdsToLoad({ visibleItems, pinned, rows: rowsList, expanded, mode });
+  }, [spec.status, heatTrack, v04.hm.status, lazyGraphs, unitIds, visibleItems, pinned, rowsList, expanded, mode]);
+  const data = useUnitData({ dataPath, patient: patientId, genome, unitIds: graphIds, coverageIds, graphTrack, coverageTrack, cellFiles });
+  const pbWantKey = useMemo(() => [...new Set([...rowsList.filter((r) => r.kind === "pbgraph").map((r) => r.id), ...pinned.filter((k) => k.startsWith("pbgraph:")).map((k) => k.slice(8))])].join("|"), [rowsList, pinned]);
+  useEffect(() => setPbWanted(pbWantKey ? pbWantKey.split("|") : []), [pbWantKey]);
   const pinnedCellIds = useMemo(() => new Set(pinned.filter((k) => k.startsWith("cell:")).map((k) => k.slice(5))), [pinned]);
   const heatOn = showHeat && Boolean(heatTrack) && !unavailableTypes.has("cn_heatmap") && (hmIndex || (heatListed && v04.hm.status !== "loading" && v04.hm.status !== "none"));
 
@@ -637,10 +718,28 @@ export default function TrackBrowserPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diffState, hmIndex, slots, v04.version]);
 
+  // ----- clade pseudobulk (median CN, junction support) from the member cells' graphs when they are all loaded;
+  // otherwise (v0.5 lazy loading) the median / IQR of the members in the cn_heatmap matrix (no junctions)
+  const pseudobulk = useMemo(() => {
+    const out = new Map();
+    const one = (g, members) => {
+      const loaded = members.every((id) => { const st = data.status.get(`graph:${id}`); return st && st !== "loading"; });
+      if (hmIndex && (lazyGraphs || !loaded) && !(loaded && members.some((id) => data.graphs.has(id)))) return matrixPseudobulk(hmIndex, v04.mats, members, slots);
+      return pseudobulkInWindows(members.map((id) => data.graphs.get(id)), slots);
+    };
+    rowsList.filter((r) => r.kind === "clade").forEach((r) => out.set(r.group, one(r.group, r.members)));
+    pinned.filter((k) => k.startsWith("clade:")).forEach((k) => {
+      const g = k.slice(6);
+      if (!out.has(g)) out.set(g, one(g, orderedUnits.filter((u) => u.group === g).map((u) => u.id)));
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowsList, slots, data.version, pinned, orderedUnits, hmIndex, lazyGraphs, v04.version]);
+
   // ----- per-window y scales: auto from the shown units' segment CNs (max or 99th percentile), shared, or manual
   const windowStats = useMemo(() => {
     const vals = slots.map(() => []);
-    unitIds.forEach((id) => {
+    graphIds.forEach((id) => {
       const g = data.graphs.get(id);
       if (!g) return;
       graphInWindows(g, slots).segments.forEach((sg) => Number.isFinite(sg.cn) && vals[sg.slot].push(sg.cn));
@@ -649,25 +748,14 @@ export default function TrackBrowserPanel() {
       const g = r.kind === "pbgraph" ? pbData.graphs.get(r.id) : null;
       if (g) graphInWindows(g, slots).segments.forEach((sg) => Number.isFinite(sg.cn) && vals[sg.slot].push(sg.cn));
     });
+    pseudobulk.forEach((pb) => pb.source === "matrix" && pb.steps.forEach((st) => Number.isFinite(st.q3) && vals[st.slot].push(st.q3)));
     return vals.map((v) => ({ max: valueQuantile(v, 1), p99: valueQuantile(v, 0.99) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unitIds, slots, data.version, pbData, rowsList]);
+  }, [graphIds, slots, data.version, pbData, rowsList, pseudobulk]);
   const yStates = useMemo(() => slots.map((_, i) => ({ ...DEFAULT_Y, ...(windowY[i] || {}) })), [slots, windowY]);
   const scales = useMemo(() => resolveWindowScales(yStates, windowStats, shareY), [yStates, windowStats, shareY]);
   const differ = scalesDiffer(scales);
   const setY = (i, patch) => setWindowY((prev) => slots.map((_, k) => ({ ...DEFAULT_Y, ...(prev[k] || {}), ...(k === i ? patch : {}) })));
-
-  // ----- clade pseudobulk (median CN, junction support) from the member cells' graphs
-  const pseudobulk = useMemo(() => {
-    const out = new Map();
-    rowsList.filter((r) => r.kind === "clade").forEach((r) => out.set(r.group, pseudobulkInWindows(r.members.map((id) => data.graphs.get(id)), slots)));
-    pinned.filter((k) => k.startsWith("clade:")).forEach((k) => {
-      const g = k.slice(6);
-      if (!out.has(g)) out.set(g, pseudobulkInWindows(orderedUnits.filter((u) => u.group === g).map((u) => data.graphs.get(u.id)), slots));
-    });
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowsList, slots, data.version, pinned, orderedUnits]);
 
   // ----- reads (split igv.js view): both breakends of a junction or SNV positions; by cell, clone or all
   const [readsGroupBy, setReadsGroupBy] = useState(() => (["unit", "group", "all"].includes(urlParam("tbgroup")) ? urlParam("tbgroup") : "unit"));
@@ -763,7 +851,7 @@ export default function TrackBrowserPanel() {
     });
   };
   const linkDone = useRef(false);
-  const graphsLoaded = unitIds.length > 0 && unitIds.every((id) => data.status.get(`graph:${id}`) && data.status.get(`graph:${id}`) !== "loading");
+  const graphsLoaded = graphIds.length > 0 && graphIds.every((id) => data.status.get(`graph:${id}`) && data.status.get(`graph:${id}`) !== "loading");
   useEffect(() => {
     if (linkDone.current || !graphsLoaded || sliceRegions === undefined) return;
     const jx = urlParam("tbjx");
@@ -813,12 +901,21 @@ export default function TrackBrowserPanel() {
     label("genes", HEADER.ruler + 4);
     let hits = [];
     let evHits = [];
-    if (eventsH) {
-      const y = HEADER.ruler + HEADER.genes;
-      evHits = drawEvents(ctx, slots, eventsInWindows(events.list, slots), trackLeft, y, eventsH, eventLabel);
-      label("amplicons", y + 6);
-      label("arm events", y + 6 + Math.floor((eventsH - 4) / 2));
-    }
+    let y = HEADER.ruler + HEADER.genes;
+    eventLanes.filter((l) => l.list.length).forEach((lane) => {
+      const H = HEADER.events;
+      evHits = evHits.concat(lane.cin
+        ? drawEvents(ctx, slots, eventsInWindows(lane.list, slots), trackLeft, y, H, cinEventLabel, (ev) => cinStatusColor(ev.status))
+        : drawEvents(ctx, slots, eventsInWindows(lane.list, slots), trackLeft, y, H, eventLabel));
+      label(lane.cin ? "JW-07 amplicons" : "amplicons", y + 6);
+      label(lane.cin ? "JW-07 arm events" : "arm events", y + 6 + Math.floor((H - 4) / 2));
+      ctx.strokeStyle = "#eee";
+      ctx.beginPath();
+      ctx.moveTo(trackLeft, y + H - 0.5);
+      ctx.lineTo(width, y + H - 0.5);
+      ctx.stroke();
+      y += H;
+    });
     if (junctionTrack) {
       const y = HEADER.ruler + HEADER.genes + eventsH;
       const maxCells = junctions.list.reduce((m, j) => Math.max(m, j.nCells), 1);
@@ -829,7 +926,7 @@ export default function TrackBrowserPanel() {
     }
     hitsRef.current.header = hits;
     hitsRef.current.events = evHits;
-  }, [width, headerH, slots, genes, chromoBins, junctions, junctionTrack, trackLeft, junctionH, narrow, events, eventsH]);
+  }, [width, headerH, slots, genes, chromoBins, junctions, junctionTrack, trackLeft, junctionH, narrow, eventLanes, eventsH]);
 
   // pinned rows (tall, above the stack)
   const pinnedRows = useMemo(
@@ -869,6 +966,23 @@ export default function TrackBrowserPanel() {
   // (genome-graph component, or the canvas alternative) and the coverage sub-row (canvas, two axes)
   const renderRow = (it, { pinnedRow = false } = {}) => {
     const { row } = it;
+    if (row.kind === "pbsummary" || row.kind === "pbplate") {
+      const color = groupColor(row.group);
+      const toggle = () => setPbExpanded((ex) => ({ ...ex, [row.group]: !ex[row.group] }));
+      const isSum = row.kind === "pbsummary";
+      return (
+        <div key={`row:${row.key}`} style={{ position: "absolute", top: it.top, left: 0, width, height: it.height, borderBottom: "1px solid #eee", opacity: rowEmphasis({ ...row, kind: "pbgraph" }, selected) === "dimmed" ? 0.4 : 1, background: isSum ? "#f7f9fc" : "#fbfbfb", fontSize: 11, display: "flex", alignItems: "center" }}>
+          <div style={{ position: "absolute", left: treeW, top: 0, width: labelW - 4, height: it.height, borderLeft: `6px solid ${color}`, paddingLeft: 6 }} />
+          {isSum ? (
+            <a style={{ position: "absolute", left: treeW + 14, whiteSpace: "nowrap" }} onClick={toggle} title={row.plates.length ? `plates: ${row.plates.join(", ")}` : ""}>
+              {row.expanded ? "▾" : "▸"} {row.n} {row.plates.length > 1 ? "per-plate " : ""}JaBbA fits under {row.group} - {row.expanded ? "hide" : "show"}{row.plates.length > 1 ? ` (${row.plates.length} plates${row.expanded ? ", grouped by plate" : ""})` : ""}
+            </a>
+          ) : (
+            <span style={{ position: "absolute", left: treeW + 22, color: COLORS.muted, whiteSpace: "nowrap" }}>plate {row.plate ?? "not given"} · {row.n} JaBbA fit{row.n === 1 ? "" : "s"}</span>
+          )}
+        </div>
+      );
+    }
     const gH = it.graph;
     const cH = it.coverage;
     const aH = it.atac || 0;
@@ -883,7 +997,7 @@ export default function TrackBrowserPanel() {
     const resolved = isClade && members.every((id) => data.status.get(`graph:${id}`) && data.status.get(`graph:${id}`) !== "loading");
     const missingAll = isClade && resolved && members.length && members.every((id) => data.status.get(`graph:${id}`) !== "ok") ? members.length : 0;
     const raw = isClade ? null : isPb ? pbData.graphs.get(row.id) : data.graphs.get(row.id);
-    const gStatus = isClade ? (pb && pb.n ? "ok" : missingAll ? "missing" : "loading") : isPb ? pbData.status.get(row.id) || "loading" : data.status.get(`graph:${row.id}`) || "loading";
+    const gStatus = isClade ? (pb && pb.n && !(pb.source === "matrix" && pb.pending && !pb.steps.length) ? "ok" : missingAll ? "missing" : "loading") : isPb ? pbData.status.get(row.id) || "loading" : data.status.get(`graph:${row.id}`) || "loading";
     const short = isClade ? row.group : `${row.id}`.replace(`${patientId}_`, "");
     const pinKey = row.key;
     const isPinned = pinned.includes(pinKey);
@@ -913,7 +1027,7 @@ export default function TrackBrowserPanel() {
               <div style={{ fontWeight: 600, fontSize: 12, cursor: pinnedRow ? "default" : "pointer", marginTop: 2 }} onClick={() => !pinnedRow && setExpanded((ex) => ({ ...ex, [row.group]: !ex[row.group] }))}>
                 {pinnedRow ? "" : expanded[row.group] ? "▾ " : "▸ "}{short}
               </div>
-              <div style={{ color: COLORS.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={filterText ? `n used: ${members.length} (${filterText})` : ""}>{tracksOn.graph ? "median of " : ""}{members.length} cells{filterText ? ` (${filterText})` : ""}</div>
+              <div style={{ color: COLORS.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={[filterText ? `n used: ${members.length} (${filterText})` : "", pb?.source === "matrix" ? "median CN from the CN heat-map matrix (500 kb); junction support: expand the clade" : "", cladeRateTitle(v05.rates, row.group)].filter(Boolean).join("\n")}>{tracksOn.graph ? "median of " : ""}{members.length} cells{filterText ? ` (${filterText})` : ""}</div>
               {!pinnedRow && <a style={{ fontSize: 11, marginRight: 6 }} onClick={(e) => setSelected((sel) => toggleSelection(sel, row.group, e.shiftKey))} title="select: outline, move to the top, dim the others (shift: add)">{selected.includes(row.group) ? "unselect" : "select"}</a>}
             </>
           ) : (
@@ -1068,11 +1182,13 @@ export default function TrackBrowserPanel() {
       genome,
       patient: patientId,
       windows,
-      units: { ...allUnits, list: units, ...(pbList.length ? { pseudobulk_graphs: pbList.map(({ order, ...e }) => e) } : {}) },
+      units: { ...allUnits, list: units, ...(pbList.length ? { pseudobulk_graphs: pbList.map(({ order, ...e }) => e) } : {}), ...(specOk && spec.data.units?.clade_rates ? { clade_rates: spec.data.units.clade_rates } : {}) },
       tracks: [...tracks, ...[!heatListed && hmIndex ? heatTrack : null, !atacListed && atacIndexOk ? atacTrack : null].filter(Boolean), ...(tracks.some((t) => t.type === "cn_diff") || !diffState ? [] : [defaults.cn_diff])].map((t) => {
         if (t.type === "cn_heatmap") return { ...t, visible: showHeat, row_px: heatRowPx, colors: heatColors, genome_wide: heatGenome };
         if (t.type === "atac") return { ...t, visible: showAtac, per_copy: perCopy };
         if (t.type === "cn_diff") return { ...t, visible: Boolean(diffState), by: diff.by, a: diffState?.aNames || [], b: diffState?.bNames || [] };
+        if (t.type === "atac_residual") return { ...t, visible: showRes, by: resBy };
+        if (t.type === "atac_cn") return { ...t, visible: showAcn, genome_wide: acnGenome };
         if (t.type === "graph") return { ...t, visible: showGraph, height: overrides.graph ?? base };
         if (t.type === "coverage") return { ...t, visible: showCov, height: overrides.coverage ?? base };
         if (t.type === "junctions") return { ...t, height: junctionH };
@@ -1084,7 +1200,7 @@ export default function TrackBrowserPanel() {
     });
     s.windows = windows.map((w, i) => ({ locus: s.loci[i], y: { mode: yStates[i].mode, min: scales[i].min, max: scales[i].max, log: scales[i].log, robust: yStates[i].robust } }));
     s.filters = { depth: depthMode, s_phase: sphaseMode, ...(groups.length ? { clades: groups } : {}) };
-    s.layout = { row_height: base, overrides, auto_fit: autoFit, junction_height: junctionH, reads_height: readsH, mode, share_y: shareY, pinned, clade_min_support: minSupport, graph_style: graphStyle };
+    s.layout = { row_height: base, overrides, auto_fit: autoFit, junction_height: junctionH, reads_height: readsH, mode, share_y: shareY, pinned, clade_min_support: minSupport, graph_style: graphStyle, pb_expanded: Object.keys(pbExpanded).filter((g) => pbExpanded[g]) };
     const blob = new Blob([JSON.stringify(s, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1183,6 +1299,8 @@ export default function TrackBrowserPanel() {
             {showAtac && <Tooltip title={hmIndex ? "divide the ATAC signal by the clade median CN (cells: the cell's CN) in each 500 kb bin" : "needs the CN heat map"}><Space size={4}><Switch size="small" checked={perCopy} disabled={!hmIndex} onChange={setPerCopy} /><Text>per copy</Text></Space></Tooltip>}
           </>
         )}
+        {v05.res && <Space size={4}><Switch size="small" checked={showRes} onChange={setShowRes} /><Text>ATAC residual</Text></Space>}
+        {v05.acn && <Space size={4}><Switch size="small" checked={showAcn} onChange={setShowAcn} /><Text>ATAC-only CN</Text></Space>}
         <AutoComplete
           size="small"
           style={{ width: 170 }}
@@ -1241,7 +1359,15 @@ export default function TrackBrowserPanel() {
           ))}
         </div>
         <canvas ref={headerRef} style={{ display: "block", cursor: "grab" }} onMouseDown={onDown} onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={() => { drag.current = null; setHover(null); }} />
+        {cinLane && (
+          <div style={{ fontSize: 11, color: COLORS.muted, paddingLeft: trackLeft, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <span>JW-07 process caller:</span>
+            {cinLane.status !== "ok" ? <span style={{ color: "#8a5a00" }}>not available ({cinLane.status}: no cin_events.json)</span> : CIN_STATUS_LEGEND.map(([k, c]) => <span key={k}><span style={{ display: "inline-block", width: 10, height: 10, background: c, marginRight: 3, verticalAlign: "middle" }} />{k}</span>)}
+            {cinLane.caveat && <span title={cinLane.caveat} style={{ maxWidth: 520, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>({cinLane.caveat})</span>}
+          </div>
+        )}
         {unavailableRows.map((r) => <UnavailableRow key={r.type} title={r.title} reason={r.reason} leftW={trackLeft} width={width} />)}
+        {acnFirst && showAcn && v05.acn && (v05.acn.ok ? <AtacCnBlock res={v05.acn} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} genomeWide={acnGenome} onGenomeWide={setAcnGenome} chromoBins={chromoBins} onJumpChrom={(c) => { setAcnGenome(false); setLocusText(`chr${c}`); }} /> : <UnavailableRow title="ATAC-only CN" reason={v05.acn.error} leftW={trackLeft} width={width} />)}
         {heatOn && !hmIndex && v04.hm.status !== "loading" && <UnavailableRow title="CN heat map" reason={v04.hm.error || v04.hm.status} leftW={trackLeft} width={width} />}
         {heatOn && hmIndex && (
           <CnHeatmapBlock
@@ -1271,6 +1397,9 @@ export default function TrackBrowserPanel() {
           />
         )}
         {diffState && hmIndex && !heatGenome && <CnDiffBlock index={hmIndex} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} profiles={diffProfiles} label={`${diffState.by === "time_point" ? "time point" : "clade"} ${diffState.label}`} nA={diffState.a.length} nB={diffState.b.length} />}
+        {v05.rates && <CladeRatesBlock rates={v05.rates} clades={cladeNames} groupColor={groupColor} leftW={trackLeft} width={width} />}
+        {showRes && v05.res && (v05.res.ok ? <AtacResidualBlock res={v05.res} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} by={resBy} onBy={setResBy} groupColor={groupColor} /> : <UnavailableRow title="ATAC residual" reason={v05.res.error} leftW={trackLeft} width={width} />)}
+        {!acnFirst && showAcn && v05.acn && (v05.acn.ok ? <AtacCnBlock res={v05.acn} slots={slots} geometry={{ leftW, trackLeft, gapX, contentW }} width={width} genomeWide={acnGenome} onGenomeWide={setAcnGenome} chromoBins={chromoBins} onJumpChrom={(c) => { setAcnGenome(false); setLocusText(`chr${c}`); }} /> : <UnavailableRow title="ATAC-only CN" reason={v05.acn.error} leftW={trackLeft} width={width} />)}
         {diff.on && !hmIndex && <UnavailableRow title="CN difference" reason={heatTrack ? "needs the CN heat map matrices" : "no cn_heatmap track"} leftW={trackLeft} width={width} />}
         {pinLayout.length > 0 && (
           <div style={{ borderTop: "2px solid #f39c12", borderBottom: "2px solid #f39c12", background: "#fffaf0", margin: "2px 0" }}>
@@ -1309,6 +1438,7 @@ export default function TrackBrowserPanel() {
 function tooltipText(h, { data, slots, chromoBins, genes, pseudobulk, cellOrder, unitById }) {
   const lines = [];
   const hit = h.hit;
+  if (hit?.kind === "event" && hit.event.jw07) return cinEventLines(hit.event).join("\n");
   if (hit?.kind === "event") {
     const ev = hit.event;
     lines.push(`${ev.id} · chr${ev.chrom}:${ev.start.toLocaleString()}-${ev.end.toLocaleString()}`, `${ev.kind === "amplicon" ? "process caller" : "arm event"}: ${ev.cls || "n/a"}`);

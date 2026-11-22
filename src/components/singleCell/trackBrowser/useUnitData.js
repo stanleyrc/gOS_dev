@@ -50,11 +50,14 @@ export default function useUnitData({ dataPath, patient, genome, unitIds, covera
     else queue.current.push(job);
   };
 
-  // graphs: all units (complex.json is ~60 kB per cell)
+  // graphs of the requested units (complex.json is ~60 kB per cell). v0.5: the caller passes only the rows it draws
+  // (lazy loading); a queued fetch whose unit is no longer requested when its turn comes is dropped
+  const wanted = useRef(new Set());
   useEffect(() => {
     if (!graphTrack) return;
     const s = store.current;
     let fromCache = false;
+    wanted.current = new Set(unitIds);
     unitIds.forEach((id) => {
       const key = `graph:${id}`;
       const cached = cellFiles?.[id]?.genome;
@@ -65,6 +68,10 @@ export default function useUnitData({ dataPath, patient, genome, unitIds, covera
         return;
       }
       enqueue(key, async () => {
+        if (!wanted.current.has(id)) {
+          s.status.delete(key);
+          return;
+        }
         const url = resolveUrl(graphTrack.url, { dataPath, patient, unit: id, genome });
         const r = await tryGet(url);
         s.status.set(key, r.status);

@@ -178,7 +178,11 @@ export const STRIPS = [
   { key: "qc_mapd", label: "MAPD", kind: "num" },
   { key: "depth", label: "depth", kind: "num" },
   { key: "ecdna_call", label: "ecDNA caller", kind: "cat" },
+  // v0.5 (JW-07): strict whole-chromosome changes in the cell, and the JW-07 arm events it carries (NA: not scored)
+  { key: "cin_wc_changes", label: "JW-07 WC changes", kind: "num" },
+  { key: "cin_events_carried", label: "JW-07 arm events", kind: "num" },
 ];
+const NUM_KEYS = new Set(["qc_mapd", "cin_wc_changes", "cin_events_carried"]);
 const CAT = ["#4e79a7", "#f28e2b", "#59a14f", "#e15759", "#76b7b2", "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac", "#86bcb6", "#d37295"];
 const TIME_ORDER = ["T0", "T1", "T4", "T11", "T12"];
 const isNa = (v) => v == null || v === "" || v === "NA" || (typeof v === "number" && !Number.isFinite(v));
@@ -191,8 +195,10 @@ export function stripValue(unit, key) {
     const d = Number(unit.depth);
     return Number.isFinite(d) ? d : null;
   }
-  if (key === "qc_mapd") {
-    const d = Number(unit.qc_mapd);
+  if (NUM_KEYS.has(key)) {
+    const v = unit[key];
+    if (v === null || v === undefined || v === "" || v === "NA") return null;
+    const d = Number(v);
     return Number.isFinite(d) ? d : null;
   }
   const v = unit[key];

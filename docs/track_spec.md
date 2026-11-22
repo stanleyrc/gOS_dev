@@ -1,11 +1,14 @@
-# gOS / gCells track spec (`gos-track-spec`), version 0.4
+# gOS / gCells track spec (`gos-track-spec`), version 0.5
 
 One JSON document describes a stacked genome view: the loci, the units (cells or pseudobulk groups) in tree
 order, and the tracks. The same file is read by the gOS track browser (tab "Track browser"), by gCells in R
 (`gc$gt()`, `gc$iplot()`, `gc$gt_reads()`, drawn with gTrack) and by the Python reader (`gcells.py`). A view
 built in a notebook opens in gOS; a gOS view can be exported as a spec and redrawn in R.
 
-Status: **v0.4 draft (2026-11-21)**; v0.1 (2026-11-20) was written for milestone M1 of the track browser.
+Status: **v0.5 draft (2026-11-21)**; v0.1 (2026-11-20) was written for milestone M1 of the track browser.
+v0.5 adds `atac_residual` and `atac_cn` (JW-08), a second `events` lane source (the JW-07 process caller,
+`cin_events.json`, colored by status), `units.clade_rates` (JW-07 clade x plate rates), the JW-07 cell attributes
+`cin_wc_changes` / `cin_events_carried`, collapsed exported-graph rows (`layout.pb_expanded`) and lazy loading.
 v0.4 defines the reserved types `cn_heatmap` and `atac`, adds the derived `cn_diff`, cell `filters`, clade selection
 (`selection.clades` selects; it no longer hides) and `unavailable` reasons; every v0.3 file stays readable.
 v0.3 adds per-window y scales (`windows[i].y`) and the view `layout` (row heights, pseudobulk-first, pins).
@@ -24,7 +27,7 @@ v0.2 adds `snv_reads`, `signature` and read grouping (`group_by`) on `reads`; ev
 ```json
 {
   "spec": "gos-track-spec",
-  "version": "0.4",
+  "version": "0.5",
   "id": "MGH303_12q_m1",
   "title": "MGH303 12q amplicon",
   "genome": "hg38",
@@ -243,11 +246,25 @@ File: `{ "events": [ { "id", "kind": "amplicon" | "arm", "chrom", "start", "end"
 "ecdna_call", "genes" } ] }`. Drawn in the header in two lanes (amplicons, arm events); hover shows the class, status
 and ecDNA-caller call. Without a spec gOS looks for `{dataPath}{patient}/events.json`; a missing file hides the lane.
 
+**v0.5: more than one `events` track.** Each listed `events` track is its own header lane (amplicons + arm events),
+in spec order. A track whose `url` ends in `cin_events.json` (or with `"color_by": "status"`) is a JW-07
+process-caller lane, colored by status (fixed, fixed subclonal, unresolved; "ongoing" arm calls are shown as
+unresolved), with a legend and the file's `caveat`:
+
+```json
+{ "id": "cin", "type": "events", "url": "{dataPath}{patient}/cin_events.json", "title": "JW-07 process caller" }
+```
+
+File: `{ "source", "caveat", "events": [ { "id", "kind": "amplicon" | "arm", "chrom", "start", "end", "arm",
+"direction", "class", "status", "status_rule", "confidence", "carrier_frac", "by_group", "evidence" } ] }` (arm
+coordinates from hg38 arm boundaries). Hover: class, status, status rule, confidence, carrier fraction, by group,
+evidence.
+
 ### `cn_heatmap` (v0.4: cells x bins in tree order)
 
 ```json
 { "id": "cnhm", "type": "cn_heatmap", "url": "{dataPath}{patient}/cn_heatmap/index.json", "format": "gos-cn-heatmap-u16",
-  "row_px": 3, "strips": ["clade", "plate", "time_point", "s_phase", "qc_mapd", "depth", "ecdna_call"],
+  "row_px": 3, "strips": ["clade", "plate", "time_point", "s_phase", "qc_mapd", "depth", "ecdna_call", "cin_wc_changes", "cin_events_carried"],
   "colors": "ploidy", "genome_wide": false }
 ```
 
@@ -318,6 +335,34 @@ bars (gains red, losses blue) on a symmetric axis per window. `by`: `clade` (A a
 `time_point` (unit attribute `time_point`). Empty `a` / `b`: readers pick a default (clade 1 vs 2; latest vs first
 time point). The row states the n on each side.
 
+### `atac_residual` (v0.5: residual accessibility per region and clade, JW-08)
+
+```json
+{ "id": "resid", "type": "atac_residual", "url": "{dataPath}{patient}/atac_residuals.json", "by": "clade" }
+```
+
+File: `{ "source", "unit": "log2 residual accessibility after dose (log CN, depth, TSS)", "regions": [ { "id", "kind",
+"chrom", "start", "end" } ], "clade_means": [ { "clade", "region", "n", "resid", "se" } ], "tests": [ { "region",
+"clade_q", "clade_eta2", "lineage_z", "lineage_q" } ], "time_means": [ { "region", "sample", "time", "resid", "n" } ] }`.
+One lane per clade: a signed bar per region at the region's interval (positive red, negative blue; arms lighter) with
+a ± SE whisker, symmetric axis per view; hover gives residual, SE, n and the region's q values. With `time_means`
+(SW620 joint) a toggle draws one lane per time label instead (n-weighted mean over the plates; plates on hover);
+`by`: `clade` | `time`. gOS URL `tbres=time`, `tbresid=0` hides it.
+
+### `atac_cn` (v0.5: ATAC-only relative CN, JW-08)
+
+```json
+{ "id": "acn", "type": "atac_cn", "url": "{dataPath}{patient}/atac_cn.json", "genome_wide": true }
+```
+
+File: `{ "source", "unit": "relative CN (ATAC-only, mean = 1; no ploidy)", "bin_size": 1000000, "pools": [ { "id",
+"n_cells", "bins": [[chrom, start, end, atac_rel, genome_rel | null, usable]] } ], "arms": [ { "arm", "n_bins",
+"pooled_rel_cn", "sd_cells" } ] }`. One lane per pool: ATAC-only relative CN per usable 1 Mb bin, the genome CN
+(relative) overlaid where present, dashed line at 1; axis label "relative CN (ATAC-only, no ploidy)". `genome_wide`
+(default true when `atac_cn` is the spec's first track, e.g. MCF7): all chromosomes across the track width, click a
+chromosome to open it; otherwise the shared windows. Hover: the bin, its hg38 arm and that arm's row of `arms`; the
+whole arm table is one click away. gOS URL `tbacn=genome|win|0`.
+
 ### Reserved types (M2–M4; names fixed now)
 
 | type | format | notes |
@@ -349,10 +394,38 @@ time point). The row states the n on each side.
   units; row labels state the n used.
 
 Unit attributes used by v0.4 (in `units.list` or the gOS cell records): `plate`, `time_point`, `replicate`,
-`s_phase`, `qc_mapd`, `depth` (good B fragments), `depth_class`, `ecdna_call`. gOS writes the current selection and
+`s_phase`, `qc_mapd`, `depth` (good B fragments), `depth_class`, `ecdna_call`; v0.5 adds `cin_wc_changes` (JW-07
+strict whole-chromosome changes of the cell; NA = not in the JW-07 set) and `cin_events_carried` (JW-07 arm events
+the cell carries), drawn as numeric heat-map strips when present. gOS writes the current selection and
 filters here on export.
 
+## Units: clade rates and exported graph rows (v0.5)
+
+- `units.clade_rates`: URL (relative names resolve to `{dataPath}{patient}/`) of `clade_rates.json`
+  `{ "source", "unit": "whole-chromosome changes per cell (bias-corrected, calibrated)", "by_clade_plate": [ { "clade",
+  "plate", "n_cells", "rate", "lo", "hi", "p_per_chrom" } ], "by_dataset": [...], "contrast": [...], "not_available" }`.
+  Drawn as a clade x plate table (rate [interval] (n)) under the heat map and in the clade row tooltip; per-plate
+  datasets show their plate's rows; `not_available` is drawn as "not available (reason)" (e.g. H1299).
+- Exported pseudobulk graphs (`units.pseudobulk_graphs`) of one clade are collapsed into one summary row ("22
+  per-plate JaBbA fits - show") when there are more than 3; expanded, they are grouped by `plate` with a plate header
+  row. `layout.pb_expanded: ["j1"]` lists the expanded clades (gOS URL `tbpbx=j1`). Collapsed graphs are not fetched.
+
+## Lazy loading (v0.5)
+
+A reader must not fetch every unit's per-unit files when it opens a view. gOS: clade rows (median CN, IQR band) and
+heat-map bands come from the `cn_heatmap` matrices; per-cell `complex.json` / coverage are fetched only for the cell
+rows in view (the stack is virtualised), pinned cells and the cells of expanded clades (up to 300 cells; larger
+clades: only rows in view); a queued fetch whose row has left the view is dropped. A clade whose member graphs are
+all loaded draws the graph-based pseudobulk with junction support. Opening a patient directly on the track browser
+skips the single-cell loader's per-cell files when the dataset entry has `"lazyCellFiles": true` or the patient has
+more than 500 cells (they load when another tab is opened; URL `lazycells=0|1` overrides). Target: 0 `complex.json`
+requests on open in clades mode. Datasets without a `cn_heatmap` keep fetching every shown cell's graph.
+
 ## Changes
+
+- **0.5 (2026-11-21, dATAC v2 round 2):** `atac_residual` and `atac_cn` (JW-08); several `events` tracks, the JW-07
+  process-caller lane (`cin_events.json`, colored by status); `units.clade_rates`; unit attributes `cin_wc_changes`,
+  `cin_events_carried`; collapsed exported-graph rows (`layout.pb_expanded`); lazy loading.
 
 - **0.4 (2026-11-21, dATAC v2):** `cn_heatmap` (index `gos-cn-heatmap-u16`, uint16 matrices per chromosome + 5 Mb
   LOD, strips) and `atac` (index `gos-atac-index`, bigWig pools + narrowPeak, per-cell `atac.arrow`, `per_copy`)
