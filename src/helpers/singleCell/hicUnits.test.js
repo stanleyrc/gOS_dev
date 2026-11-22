@@ -1,5 +1,5 @@
 import {
-  HIC_PUBLIC_VERSION, cellRowOrder, cnBinsOf, hicDataVersion, decodeCellsCn, hasMatchGroups, hicUnitList, hicWindowsFromView, mapLabel, orderUnits, reportHasHic, sampleColors,
+  HIC_PUBLIC_VERSION, binAtX, binsToWindow, cnNeutralBySample, relCnRgb, xOfBin, cellRowOrder, cnBinsOf, hicDataVersion, decodeCellsCn, hasMatchGroups, hicUnitList, hicWindowsFromView, mapLabel, orderUnits, reportHasHic, sampleColors,
   unitFolderOf, unitsForSelection, validateCellsCn, validateUnits,
 } from "./hicUnits";
 import { clearUnitSources, registerUnitSources, resolveUnitFolder } from "./unitSource";
@@ -76,6 +76,20 @@ describe("Hi-C units of a report", () => {
     expect(hicDataVersion(null, hicUnitList(CELLS))).toBe(HIC_PUBLIC_VERSION);
     expect(hicDataVersion({ graph_version: "v9", junction_source: "both" })).toBe("v9 · junctions: both");
     expect(hicDataVersion(null, hicUnitList([{ ...CELLS[0], graph_version: "v8", coverage_normalization: "pon" }]))).toBe("v8 · coverage: pon");
+  });
+
+  it("lays the per-cell heat map out genome-wide with a data-derived neutral level", () => {
+    const f = { ...cnFile([{ id: "a", unit: "X_c0", sample: "S1" }, { id: "b", unit: "X_c0", sample: "S1" }], 4, [260, 260, 520, 130, 260, 260, 260, 65535]), chroms: [{ name: "7", start_bin: 0, nbins: 2 }, { name: "8", start_bin: 2, nbins: 2 }] };
+    const cn = decodeCellsCn(f);
+    expect(cnNeutralBySample(cn).S1).toBeCloseTo(2.6);
+    expect(relCnRgb(2.6, 2.6)).toEqual([255, 255, 255]);
+    expect(relCnRgb(10.4, 2.6)[1]).toBe(40);
+    expect(relCnRgb(1.3, 2.6)[2]).toBe(255);
+    expect(binAtX(cn, 0, 400)).toBe(0);
+    expect(binAtX(cn, 399, 400)).toBe(3);
+    expect(xOfBin(cn, 2, 400)).toBe(200);
+    expect(binsToWindow(cn, 1, 3)).toEqual({ chrom: "7", start: 1000001, end: 2000000 });
+    expect(binsToWindow(cn, 3, 2)).toEqual({ chrom: "8", start: 1, end: 2000000 });
   });
 
   it("uses the genome view region only when narrow enough", () => {

@@ -233,3 +233,59 @@ export function hicDataVersion(unitsJson = null, units = []) {
   const cov = pick("coverage_normalization");
   return [v, js ? `junctions: ${js}` : null, cov ? `coverage: ${cov}` : null].filter(Boolean).join(" · ");
 }
+
+/**
+ * CN-neutral level per sample for the per-cell heat map: the median of the sample's finite values (a sample of at
+ * most ~200k values). The values are relative CN from Hi-C coverage, so the neutral level is taken from the data
+ * rather than assumed. Returns { sample: median }.
+ */
+export function cnNeutralBySample(cn) {
+  const bySample = {};
+  cn.cells.forEach((c, i) => {
+    const s = c.sample ?? "all";
+    (bySample[s] = bySample[s] || []).push(i);
+  });
+  const out = {};
+  Object.entries(bySample).forEach(([s, rows]) => {
+    const step = Math.max(1, Math.ceil((rows.length * cn.nBins) / 200000));
+    const vals = [];
+    let k = 0;
+    rows.forEach((r) => {
+      for (let b = 0; b < cn.nBins; b += 1) {
+        k += 1;
+        if (k % step) continue;
+        const v = cn.values[r * cn.nBins + b];
+        if (Number.isFinite(v)) vals.push(v);
+      }
+    });
+    vals.sort((a, b) => a - b);
+    out[s] = vals.length ? vals[Math.floor(vals.length / 2)] : 2;
+  });
+  return out;
+}
+
+/** Heat map color of a relative CN: white at neutral, blue down to neutral/2, red up to neutral * 4 (log2 scale). */
+export function relCnRgb(v, neutral = 2) {
+  if (!Number.isFinite(v)) return [235, 235, 235];
+  const l = Math.log2(Math.max(v, 1e-3) / (neutral > 0 ? neutral : 2));
+  if (l < 0) {
+    const t = Math.min(1, -l);
+    return [Math.round(255 - 190 * t), Math.round(255 - 140 * t), 255];
+  }
+  const t = Math.min(1, l / 2);
+  return [255, Math.round(255 - 215 * t), Math.round(255 - 225 * t)];
+}
+
+/** Genome bin under a heat map column (x in 0..width-1 over all bins), and back. */
+export const binAtX = (cn, x, width) => Math.max(0, Math.min(cn.nBins - 1, Math.floor((x / width) * cn.nBins)));
+export const xOfBin = (cn, b, width) => (b / cn.nBins) * width;
+
+/** Window { chrom, start, end } of a brushed bin range, clamped to the chromosome of the first bin. */
+export function binsToWindow(cn, b0, b1) {
+  const lo = Math.min(b0, b1);
+  const hi = Math.max(b0, b1);
+  const c = cn.chroms.find((x) => lo >= x.startBin && lo < x.startBin + x.nbins);
+  if (!c) return null;
+  const end = Math.min(hi, c.startBin + c.nbins - 1);
+  return { chrom: c.name, start: (lo - c.startBin) * cn.binSize + 1, end: (end - c.startBin + 1) * cn.binSize };
+}

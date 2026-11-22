@@ -9,7 +9,7 @@ import { formatLocus, layoutWindows, parseLocus, placesToWindow, windowToPlaces 
 import { DEFAULT_OVERLAYS, EAGLEC_URL } from "../../../helpers/singleCell/trackBrowser/eaglec";
 import { hicStateFromTrack, sharedLabel } from "../../../helpers/singleCell/trackBrowser/hic";
 import {
-  DEFAULT_HIC_LOCUS, HIC_DATASET_LABEL, cellRowOrder, hicDataVersion, cnBinsOf, decodeCellsCn, hicUnitList, hicWindowsFromView, mapLabel, orderUnits,
+  DEFAULT_HIC_LOCUS, HIC_DATASET_LABEL, binAtX, binsToWindow, cellRowOrder, cnNeutralBySample, hicDataVersion, relCnRgb, xOfBin, cnBinsOf, decodeCellsCn, hicUnitList, hicWindowsFromView, mapLabel, orderUnits,
   reportHasHic, sampleColors, samplesOf, unitsForSelection, validateCellsCn, validateUnits,
 } from "../../../helpers/singleCell/hicUnits";
 import { TrackLocusContext } from "../trackBrowser/locusContext";
@@ -26,31 +26,19 @@ function urlParam(name) {
   }
 }
 
-// copy-number colors of the per-cell heat map: white at the sample's ploidy (neutral), blue below, red above (log2)
-function cnRgb(v, neutral = 2) {
-  if (!Number.isFinite(v)) return [235, 235, 235];
-  if (v < neutral) {
-    const t = Math.max(0, Math.min(1, (neutral - v) / neutral));
-    return [Math.round(255 - 180 * t), Math.round(255 - 130 * t), 255];
-  }
-  const t = Math.max(0, Math.min(1, Math.log2(v / neutral) / 3));
-  return [255, Math.round(255 - 200 * t), Math.round(255 - 220 * t)];
-}
-
 /**
- * Per-cell copy number heat map (gos-hic-cellcn/1) with a cluster bar and a sample bar, over the panel's windows.
- * Click a row: select its cluster; drag across a window: set the region to the brushed span.
+ * Genome-wide per-cell copy number heat map (gos-hic-cellcn/1, 1 Mb bins, all chromosomes) with a sample bar and a
+ * cluster bar; the Hi-C windows are outlined on it. Click a row: open its cluster's map; drag across the heat map: set
+ * the Hi-C window to the brushed span (clamped to the chromosome where the drag starts).
  */
-function CellCnHeatmap({ cn, units, unitOrder, sampleColor, slots, left, width, onPickUnit, onBrush }) {
+function CellCnHeatmap({ cn, units, unitOrder, sampleColor, windows, left, width, onPickUnit, onBrush }) {
   const ref = useRef(null);
   const order = useMemo(() => cellRowOrder(cn, unitOrder), [cn, unitOrder]);
-  // at most ~360 px: rows thinner than a pixel overlap (thousands of cells)
-  const rowH = Math.min(4, 360 / Math.max(1, order.length));
-  const H = Math.max(40, Math.ceil(order.length * rowH));
-  const neutralOf = useMemo(() => {
-    const m = new Map((cn.ploidy || []).map((x) => [x.sample, Number(x.ploidy)]));
-    return (smp) => (m.get(smp) > 0 ? m.get(smp) : 2);
-  }, [cn]);
+  const HEAD = 16;
+  const bodyH = Math.max(60, Math.min(360, order.length * 4));
+  const W = Math.max(50, Math.round(width - left - 8));
+  const neutral = useMemo(() => cnNeutralBySample(cn), [cn]);
+  const [brush, setBrush] = useState(null);
   const unitOf = useMemo(() => {
     const m = new Map();
     units.forEach((u) => {
@@ -67,40 +55,84 @@ function CellCnHeatmap({ cn, units, unitOrder, sampleColor, slots, left, width, 
     });
     return out;
   }, [unitOrder]);
+  const rowOfY = (y) => order[Math.min(order.length - 1, Math.max(0, Math.floor(((y - HEAD) / bodyH) * order.length)))];
+  // heat map pixels (cells x genome), drawn once per data / width
+  const img = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = bodyH;
+    const ctx = c.getContext("2d");
+    const im = ctx.createImageData(W, bodyH);
+    const binOfX = Array.from({ length: W }, (_, x) => binAtX(cn, x + 0.5, W));
+    for (let y = 0; y < bodyH; y += 1) {
+      const ci = order[Math.min(order.length - 1, Math.floor(((y + 0.5) / bodyH) * order.length))];
+      const nt = neutral[cn.cells[ci]?.sample ?? "all"] ?? 2;
+      for (let x = 0; x < W; x += 1) {
+        const [R, G, B] = relCnRgb(cn.values[ci * cn.nBins + binOfX[x]], nt);
+        const o = 4 * (y * W + x);
+        im.data[o] = R;
+        im.data[o + 1] = G;
+        im.data[o + 2] = B;
+        im.data[o + 3] = 255;
+      }
+    }
+    ctx.putImageData(im, 0, 0);
+    return c;
+  }, [cn, order, W, bodyH, neutral]);
   useEffect(() => {
-    const ctx = setupCanvas(ref.current, width, H);
-    if (!ctx) return;
-    ctx.clearRect(0, 0, width, H);
-    order.forEach((ci, r) => {
+    const ctx = setupCanvas(ref.current, width, HEAD + bodyH + 2);
+    if (!ctx || !img) return;
+    ctx.clearRect(0, 0, width, HEAD + bodyH + 2);
+    ctx.drawImage(img, left, HEAD);
+    // sample + cluster bars
+    for (let y = 0; y < bodyH; y += 1) {
+      const ci = order[Math.min(order.length - 1, Math.floor(((y + 0.5) / bodyH) * order.length))];
       const cell = cn.cells[ci];
       const u = unitOf.get(cell.unit);
-      const y = r * rowH;
-      const hh = Math.max(1, rowH);
-      const neutral = neutralOf(cell.sample || u?.sample);
       ctx.fillStyle = sampleColor(cell.sample || u?.sample) || "#bbb";
-      ctx.fillRect(left - 26, y, 10, hh);
+      ctx.fillRect(left - 26, HEAD + y, 10, 1);
       ctx.fillStyle = clusterColors[u?.id] || "#999";
-      ctx.fillRect(left - 14, y, 10, hh);
-      slots.forEach((s) => {
-        const bins = cnBinsOf(cn, s.window);
-        if (!bins) return;
-        const [b0, b1] = bins;
-        const n = b1 - b0 + 1;
-        for (let b = b0; b <= b1; b += 1) {
-          const x0 = left + s.x0 + ((b - b0) / n) * s.width;
-          const [R, G, B] = cnRgb(cn.values[ci * cn.nBins + b], neutral);
-          ctx.fillStyle = `rgb(${R},${G},${B})`;
-          ctx.fillRect(x0, y, Math.max(1, s.width / n + 0.5), hh);
-        }
-      });
+      ctx.fillRect(left - 14, HEAD + y, 10, 1);
+    }
+    // chromosome boundaries and labels
+    ctx.font = "10px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    cn.chroms.forEach((c, i) => {
+      const x0 = left + xOfBin(cn, c.startBin, W);
+      const x1 = left + xOfBin(cn, c.startBin + c.nbins, W);
+      if (i) {
+        ctx.strokeStyle = "rgba(60,60,60,0.6)";
+        ctx.beginPath();
+        ctx.moveTo(x0 + 0.5, HEAD - 3);
+        ctx.lineTo(x0 + 0.5, HEAD + bodyH);
+        ctx.stroke();
+      }
+      if (x1 - x0 >= 12) {
+        ctx.fillStyle = "#333";
+        ctx.fillText(c.name, (x0 + x1) / 2, HEAD - 5);
+      }
     });
-  }, [cn, order, rowH, H, width, left, slots, unitOf, sampleColor, clusterColors, neutralOf]);
-  const drag = useRef(null);
+    // the Hi-C windows, outlined
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 2;
+    (windows || []).forEach((w) => {
+      const bins = cnBinsOf(cn, w);
+      if (!bins) return;
+      const x0 = left + xOfBin(cn, bins[0], W);
+      const x1 = Math.max(x0 + 3, left + xOfBin(cn, bins[1] + 1, W));
+      ctx.strokeRect(x0 - 1, HEAD - 1, x1 - x0 + 2, bodyH + 2);
+    });
+    if (brush) {
+      ctx.fillStyle = "rgba(30,90,200,0.18)";
+      ctx.fillRect(Math.min(brush.x0, brush.x1), HEAD, Math.abs(brush.x1 - brush.x0), bodyH);
+    }
+  }, [img, width, left, bodyH, cn, order, unitOf, sampleColor, clusterColors, windows, W, brush]);
   const at = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
   };
-  const slotAt = (x) => slots.findIndex((s) => x >= left + s.x0 && x <= left + s.x0 + s.width);
+  const inMap = (x) => x >= left && x <= left + W;
   return (
     <div>
       <canvas
@@ -108,29 +140,38 @@ function CellCnHeatmap({ cn, units, unitOrder, sampleColor, slots, left, width, 
         data-hic-cellcn
         style={{ display: "block", cursor: "crosshair" }}
         onMouseDown={(e) => {
-          const [x, y] = at(e);
-          drag.current = { x, y, k: slotAt(x) };
+          const [x] = at(e);
+          if (inMap(x)) setBrush({ x0: x, x1: x });
+        }}
+        onMouseMove={(e) => {
+          if (!brush) return;
+          const [x] = at(e);
+          setBrush((b) => (b ? { ...b, x1: Math.max(left, Math.min(left + W, x)) } : b));
         }}
         onMouseUp={(e) => {
-          const d = drag.current;
-          drag.current = null;
-          if (!d) return;
+          const b = brush;
+          setBrush(null);
           const [x, y] = at(e);
-          if (Math.abs(x - d.x) > 6 && d.k >= 0) {
-            const s = slots[d.k];
-            const bp = (px) => Math.round(s.window.start + ((Math.max(left + s.x0, Math.min(left + s.x0 + s.width, px)) - left - s.x0) / s.width) * (s.window.end - s.window.start));
-            onBrush({ chrom: s.window.chrom, start: Math.min(bp(d.x), bp(x)), end: Math.max(bp(d.x), bp(x)) });
+          if (b && Math.abs(x - b.x0) > 4) {
+            const w = binsToWindow(cn, binAtX(cn, b.x0 - left, W), binAtX(cn, Math.max(left, Math.min(left + W, x)) - left, W));
+            if (w) onBrush(w);
             return;
           }
-          const ci = order[Math.floor(y / rowH)];
+          if (y < HEAD) return;
+          const ci = rowOfY(y);
           const cell = ci != null ? cn.cells[ci] : null;
           const u = cell ? unitOf.get(cell.unit) : null;
           if (u) onPickUnit(u.id, cell.id);
         }}
+        onMouseLeave={() => setBrush(null)}
       />
-      <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
-        {order.length} cells · bars: sample (left), cluster (right) · white = the sample&apos;s ploidy, red above, blue below · click a row to open its cluster map · drag across a window to zoom the region · {cn.note || "relative copy number"}
-        {cn.source ? ` · source: ${cn.source}` : ""}
+      <div style={{ fontSize: 11, color: "#666", marginTop: 2, display: "flex", flexWrap: "wrap", gap: "2px 10px", alignItems: "center" }}>
+        <span>{order.length} cells × {cn.nBins} bins of {cn.binSize / 1e6} Mb · bars: sample (left), cluster (right) · black boxes: the Hi-C windows · click a row: its cluster map · drag: set the Hi-C window</span>
+        <span>
+          <b>relative CN</b> (Hi-C coverage; not absolute copy number): white = the sample&apos;s median ({Object.entries(neutral).map(([s, v]) => `${s} ${v.toFixed(2)}`).join(", ")}), blue = half, red = 4× or more
+          {(cn.ploidy || []).length ? ` · graph ploidy ${cn.ploidy.map((p) => `${p.sample} ${Number(p.ploidy).toFixed(2)}`).join(", ")}` : ""}
+        </span>
+        <span>{cn.note || ""}</span>
       </div>
     </div>
   );
@@ -298,7 +339,7 @@ export default function HicScPanel() {
         </Space>
         {cellsCn.status === "ok" ? (
           <TrackLocusContext.Provider value={locus}>
-            <CellCnHeatmap cn={cellsCn.data} units={units} unitOrder={order} sampleColor={sampleColor} slots={slots} left={labelW + gapX} width={width} onPickUnit={(id, cellId) => pick(id, cellId)} onBrush={(w) => setOwn(formatLocus([w]))} />
+            <CellCnHeatmap cn={cellsCn.data} units={units} unitOrder={order} sampleColor={sampleColor} windows={windows} left={labelW + gapX} width={width} onPickUnit={(id, cellId) => pick(id, cellId)} onBrush={(w) => setOwn(formatLocus([w]))} />
           </TrackLocusContext.Provider>
         ) : (
           <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>
