@@ -1,7 +1,7 @@
-// Light / dark / cyberpunk theme for the whole app: stored in this browser, exposed on
+// Light / dark / cyberpunk / sea (lagoon, deep sea) theme for the whole app: stored in this browser, exposed on
 // <html data-theme> for CSS, and read by App for the antd algorithm.
 
-import { cssVars, isDarkLike, svgRemapCss } from "./singleCell/plotTheme";
+import { cssVars, isDarkLike, isSkin, svgRemapCss } from "./singleCell/plotTheme";
 
 export { isDarkLike };
 
@@ -11,15 +11,16 @@ const listeners = new Set();
 export function getAppTheme() {
   try {
     const v = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return v === "dark" || v === "cyberpunk" ? v : "light";
+    return isSkin(v) ? v : "light";
   } catch (error) {
     return "light";
   }
 }
 
 export function applyAppTheme(theme) {
-  // cyberpunk reuses every dark code path: <html data-theme> stays "dark" and
-  // data-skin carries the real mode for the neon overrides
+  // cyberpunk / sea / deep sea reuse every dark code path (lagoon the light
+  // ones): <html data-theme> stays "dark" / "light" and data-skin carries the
+  // real mode for the skin overrides
   document.documentElement.setAttribute("data-theme", isDarkLike(theme) ? "dark" : "light");
   document.documentElement.setAttribute("data-skin", theme);
   document.documentElement.style.colorScheme = isDarkLike(theme) ? "dark" : "light";
@@ -52,3 +53,22 @@ export function onAppThemeChange(fn) {
 }
 
 export const isDark = () => isDarkLike(getAppTheme());
+
+/** A skin named in the URL (?theme=sea) or null. */
+export function themeFromUrl(search = typeof window !== "undefined" ? window.location.search : "") {
+  const v = new URLSearchParams(search || "").get("theme");
+  return isSkin(v) ? v : null;
+}
+
+/** ?theme=<skin> selects and stores that skin (shareable links, screenshots). */
+export function adoptUrlTheme() {
+  const v = themeFromUrl();
+  if (v && v !== getAppTheme()) {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, v);
+    } catch (error) {
+      // storage unavailable: getAppTheme falls back to light
+    }
+  }
+  return v;
+}

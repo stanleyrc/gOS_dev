@@ -1,5 +1,6 @@
 import {
   CN_PALETTE_PRESETS,
+  CN_NA_COLORS,
   cnColorer,
   columnBins,
   countTicks,
@@ -33,7 +34,8 @@ describe("copy-number palettes", () => {
     expect(color(2)).toBe(rgba("#FFFFFF"));
     expect(color(0)).toBe(rgba("#168CCB"));
     expect(color(25)).toBe(rgba("#000000"));
-    expect(color(NaN)).toBe(rgba("#EEEEEE"));
+    expect(color(NaN)).toBe(rgba(CN_NA_COLORS.light)); // NA is a mid grey, never the white of CN 2
+    expect(color(NaN)).not.toBe(color(2));
   });
 
   it("shifts the allelic palette so CN 1 is white", () => {

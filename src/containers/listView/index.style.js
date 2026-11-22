@@ -38,6 +38,81 @@ const Wrapper = styled.div`
   .filters-box .ant-form-item {
     margin-bottom: 10px;
   }
+  /* left filter column (resizable) + content */
+  .home-layout {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    min-width: 0;
+  }
+  .home-filters {
+    position: relative;
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  .home-filters > .filters-box {
+    min-width: 0;
+  }
+  .home-filters-resize {
+    position: absolute;
+    top: 0;
+    right: -11px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    border-radius: 4px;
+    z-index: 2;
+  }
+  .home-filters-resize:hover {
+    background: var(--sc-accent-soft, rgba(22, 119, 255, 0.12));
+  }
+  .home-content {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  @media (max-width: 767px) {
+    .home-layout {
+      flex-direction: column;
+    }
+    .home-filters {
+      width: 100% !important;
+    }
+    .home-filters-resize {
+      display: none;
+    }
+  }
+  /* filter labels wrap instead of being cut off; full name in the tooltip */
+  .filters-box .ant-form-item-label > label {
+    white-space: normal;
+    height: auto;
+    line-height: 1.3;
+    overflow-wrap: break-word;
+  }
+  .filters-box .ant-collapse-header-text {
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  .filters-box .filter-option-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .filters-box .filter-option-text {
+    white-space: normal;
+  }
+  .data-type-badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .data-type-badge {
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 18px;
+    padding: 0 6px;
+    background: var(--sc-accent-soft, #e6f4ff);
+    color: var(--sc-text, #1f1f1f);
+  }
   .filters-box .ant-form-item-label {
     padding: 0px !important;
   }
@@ -93,6 +168,7 @@ const Wrapper = styled.div`
 
   .order-select {
     width: 340px;
+    max-width: 100%;
   }
 
   .stats .ant-statistic-content-value,
@@ -114,7 +190,7 @@ const Wrapper = styled.div`
     margin-bottom: 0;
   }
   .tags-container > .tags-operator-item.ant-form-item {
-    flex: 0 0 22px;
+    flex: 0 0 76px;
   }
   .tags-container > .tags-cascader-item.ant-form-item {
     flex: 1 1 auto;

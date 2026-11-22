@@ -1163,7 +1163,7 @@
         "drivers": "Drivers",
         "clones": "Clones",
         "expression": "{{gene}} expression",
-        "missing": "missing",
+        "missing": "not available",
         "binned": "binned columns: fraction of sites with alt reads"
       },
       "tmb": {

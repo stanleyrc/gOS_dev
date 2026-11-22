@@ -5,7 +5,7 @@ import { Segmented, Typography } from "antd";
 import settingsActions from "../../redux/settings/actions";
 import usePlotTheme from "../singleCell/usePlotTheme";
 import SvgExportButton from "../singleCell/svgExportButton";
-import { TYPE, FONT_FAMILY } from "../../helpers/singleCell/plotTheme";
+import { TYPE, FONT_FAMILY, isDarkLike } from "../../helpers/singleCell/plotTheme";
 import { priorityGenesMemo } from "../../helpers/singleCell/priorityGenes";
 import { externalLinks } from "../../helpers/singleCell/externalLinks";
 import { measureText } from "../../helpers/utility";
@@ -29,7 +29,7 @@ const MODE_OPTIONS = [
 ];
 
 function colours(theme) {
-  const dark = theme.mode === "dark";
+  const dark = isDarkLike(theme.mode);
   return {
     coding: dark ? "#6fa8ff" : "#1d4f91",
     noncoding: dark ? "#5fcf8a" : "#2b8a4b",

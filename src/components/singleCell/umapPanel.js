@@ -10,6 +10,7 @@ import usePixelRatio from "./usePixelRatio";
 import { annotationColors } from "../../helpers/singleCell/matrix";
 import { themePalette } from "../../helpers/singleCell/themes";
 import { cnAtPosition, geneLocus } from "../../helpers/singleCell/dosage";
+import { isDarkLike } from "../../helpers/singleCell/plotTheme";
 import { searchGeneNames, topVariableGenes } from "../../helpers/singleCell/staticRna";
 import { kmeans, pca, scaledExpression } from "../../helpers/singleCell/rnaStats";
 import useRnaData from "./rna/useRnaData";
@@ -695,7 +696,7 @@ export default function UmapPanel() {
                   onPick={on3dPick}
                   hoveredIndex={hoveredIndex3d}
                   ink={pt.text}
-                  haloColor={pt.mode === "light" ? [0.08, 0.08, 0.08] : [0.95, 0.95, 0.95]}
+                  haloColor={!isDarkLike(pt.mode) ? [0.08, 0.08, 0.08] : [0.95, 0.95, 0.95]}
                 />
               ) : (
                 <div ref={zoom.bindRef} style={{ width, height }} onDoubleClick={zoom.reset}>

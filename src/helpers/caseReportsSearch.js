@@ -16,6 +16,7 @@ import {
   specimenDateMatchesRangeFilter,
 } from "./specimenDate";
 import { isCellRecord } from "./singleCell/cellFiles";
+import { dedupeReports, isDedupeOn } from "./reportDataTypes";
 
 export const emptyInterpretationSummary = () => ({
   all: new Set(),
@@ -30,6 +31,7 @@ const nonEmptyFilterEntries = (searchFilters = {}) =>
       key !== "page" &&
       key !== "per_page" &&
       key !== "orderId" &&
+      key !== "dedupe" &&
       key !== "operator" &&
       !key.endsWith("-operator") &&
       value !== null &&
@@ -310,12 +312,16 @@ export const searchCaseReportRecords = (
   fields,
   externalData,
 ) => {
-  const matchedRecords = filterCaseReportRecords(
+  const filtered = filterCaseReportRecords(
     records,
     searchFilters,
     fields,
     externalData,
   );
+  // "One per patient": versioned copies collapse onto one canonical report
+  const matchedRecords = isDedupeOn(searchFilters || {})
+    ? dedupeReports(filtered)
+    : filtered;
   const page = searchFilters?.page || defaultSearchFilters().page;
   const perPage =
     searchFilters?.per_page || defaultSearchFilters().per_page;
